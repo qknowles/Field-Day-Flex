@@ -1,0 +1,52 @@
+{
+  "name": "field-day-desktop-data-manager",
+  "private": true,
+  "version": "1.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "ci": "npx prettier --write **/*.{html,css,js,md} --config .prettierrc && npm run lint && npm test",
+    "preview": "vite preview",
+    "lint": "eslint .",
+    "test": "jest --passWithNoTests"
+  },
+  "dependencies": {
+    "@blaumaus/react-alert": "^7.0.5",
+    "@material-tailwind/react": "^1.2.5",
+    "@syncfusion/ej2-react-spreadsheet": "^20.4.44",
+    "daisyui": "^2.50.0",
+    "esbuild": "^0.17.7",
+    "firebase": "^9.15.0",
+    "framer-motion": "^8.5.0",
+    "jotai": "^1.13.1",
+    "lodash": "^4.17.21",
+    "react": "^18.2.0",
+    "react-csv": "^2.2.2",
+    "react-dom": "^18.2.0",
+    "react-firebase-hooks": "^5.1.1",
+    "react-hot-toast": "^2.4.0",
+    "react-icons": "^4.7.1"
+  },
+  "devDependencies": {
+    "@babel/preset-env": "^7.25.8",
+    "@babel/preset-react": "^7.25.7",
+    "@testing-library/jest-dom": "^6.6.1",
+    "@testing-library/react": "^16.0.1",
+    "@types/react": "^18.0.26",
+    "@types/react-dom": "^18.0.9",
+    "@vitejs/plugin-react-swc": "^3.0.0",
+    "autoprefixer": "^10.4.13",
+    "babel-jest": "^29.7.0",
+    "eslint": "^9.12.0",
+    "eslint-plugin-react": "^7.37.1",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "jsdom": "^25.0.1",
+    "postcss": "^8.4.21",
+    "prettier": "^3.3.3",
+    "tailwindcss": "^3.2.4",
+    "vite": "^4.0.0",
+    "vitest": "^2.1.3"
+  }
+}
