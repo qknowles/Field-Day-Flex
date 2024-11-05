@@ -24,20 +24,20 @@ export default function TopNav({ auth, setAuthenticated }) {
                         </p>
                     </li>
                 </ul>
-                <UserController user={auth.user} auth={auth} />
+                <UserController user={auth.user} auth={auth} setAuthenticated={setAuthenticated} />
             </nav>
         </div>
     );
 }
 
-function UserController({ user, auth }) {
+function UserController({ user, auth, setAuthenticated }) {
     return (
         user
         &&
         <div className='flex items-center space-x-5'>
             <div>{user.email}</div>
             <UserImage className="h-12" user={user} />
-            <LogoutButton auth={auth} />
+            <LogoutButton auth={auth} setAuthenticated={setAuthenticated} />
         </div>
     );
 }
