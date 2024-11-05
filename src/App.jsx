@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Authenticator } from './utils/authenticator';
-import TablePage from './pages/TablePage';
+// import TablePage from './pages/TablePage';
 import LoginPage from './pages/LoginPage';
 import TopNav from './components/TopNav';
 
@@ -11,10 +11,10 @@ function App() {
 
     return (
         <div className="flex flex-col w-full min-h-screen text-neutral-800 dark:text-neutral-200 select-none">
-            <TopNav title="Field Day Flex" auth={auth} setAuthenticated={setAuthenticated} />
+            <TopNav auth={auth} setAuthenticated={setAuthenticated} />
             <div className="flex flex-grow">
                 {authenticated ? (
-                    <TablePage auth ={auth} setAuthenticated={setAuthenticated}/>
+                    <span>table page not implemented</span>// <TablePage auth ={auth} setAuthenticated={setAuthenticated}/>
                 ) : (
                     <LoginPage auth={auth} setAuthenticated={setAuthenticated} />
                 )}
