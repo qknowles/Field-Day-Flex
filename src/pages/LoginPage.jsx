@@ -52,6 +52,11 @@ export default function LoginPage({ auth, setAuthenticated }) {
                             </div>
                         }
                     />
+                    <Button
+                        // onClick={async () => await auth.createAccount()} // Implement functionality to show login window.
+                        text={!auth.loading ? 'Create Account' : 'Please wait.'}
+                        disabled={auth.loading}
+                    />
                 </div>
             </div>
             <div
