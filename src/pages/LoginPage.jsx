@@ -5,17 +5,27 @@ import { GoogleIcon, LizardIcon } from '../assets/icons';
 import NewAccount from '../windows/NewAccount';
 
 export default function LoginPage({ auth, setAuthenticated }) {
-    const [showNewAccount, setShowNewAccount] = useState(false);
     const LOADING_MESSAGE = "Loading Google's authentication.";
     const LOGIN_MESSAGE = 'Click login to sign in with your ASURITE ID.';
 
+    const [showNewAccount, setShowNewAccount] = useState(false);
+    const [showLogin, setShowLogin] = useState(false);
+    const [showTablePage, setShowTablePage] = useState(false);
+
+    const [email, setEmail] = useState('');
+
     const openNewAccount = () => setShowNewAccount(true);
     const closeNewAccount = () => setShowNewAccount(false);
+    const openAccount = () => {
+        if (showNewAccount) setShowNewAccount(false);
+        if (showLogin) setShowLogin(false);
+        setShowTablePage(true);
+    };
 
     return (
         <PageWrapper>
             {showNewAccount ? (
-                <NewAccount onCancel={closeNewAccount} />
+                <NewAccount CancelAccount={closeNewAccount} OpenNewAccount={openAccount} SetEmail={setEmail} auth={auth} />
             ) : (
                 <>
                     <div className="pt-10">
