@@ -22,7 +22,7 @@ export const tableBody = {
     },
 };
 
-export const modalVariant = {
+export const windowVariant = {
     hidden: {
         opacity: 0,
         y: '100%',
