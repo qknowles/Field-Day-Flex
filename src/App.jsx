@@ -3,6 +3,7 @@ import { Authenticator } from './utils/authenticator';
 // import TablePage from './pages/TablePage';
 import LoginPage from './pages/LoginPage';
 import TopNav from './components/TopNav';
+import { Notifier } from './components/Notifier';
 
 const auth = new Authenticator();
 
@@ -11,6 +12,7 @@ function App() {
 
     return (
         <div className="flex flex-col w-full min-h-screen text-neutral-800 dark:text-neutral-200 select-none">
+            <Notifier />
             <TopNav auth={auth} setAuthenticated={setAuthenticated} />
             <div className="flex flex-grow">
                 {authenticated ? (

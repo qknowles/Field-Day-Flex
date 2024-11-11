@@ -14,8 +14,34 @@ import {
     or,
     getCountFromServer,
 } from 'firebase/firestore';
+import { createUserWithEmailAndPassword } from "firebase/auth";
 import { db } from './firebase';
 import { Type } from '../components/Notifier';
+
+export const accountExists = async (email) => {
+    const UsersCollection = collection(db, "Users");
+    const emailQuery = query(UsersCollection, where("email", "==", email));
+    const userSnapshot = await getDocs(emailQuery);
+    return !userSnapshot.empty;
+};
+
+export const createAccount = async (name, email, hashedPassword) => {
+    try {
+        await addDoc(collection(db, "Users"), {
+            name: name,
+            email: email,
+            password: hashedPassword,
+            createdAt: new Date(),
+        });
+        return true;
+    } catch (error) {
+        console.error("Error creating account:", error);
+        return false;
+    }
+};
+
+
+
 
 export const getArthropodLabels = async () => {
     const snapshot = await getDocs(
@@ -27,6 +53,7 @@ export const getArthropodLabels = async () => {
     // Sort the answers by the 'primary' field alphabetically
     return answers.map((ans) => ans.primary).sort((a, b) => a.localeCompare(b));
 };
+
 
 const getDocsFromCollection = async (collectionName, constraints = []) => {
     if (!Array.isArray(constraints)) constraints = [constraints];
