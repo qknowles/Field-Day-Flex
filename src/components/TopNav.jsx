@@ -1,7 +1,6 @@
-import {LizardIcon} from '../assets/icons';
-import LogoutButton from './LogoutButton';
-import UserImage from './UserImage';
+import { LizardIcon } from '../assets/icons';
 import React from 'react';
+import Button from './Button';
 
 /**
  *
@@ -9,8 +8,7 @@ import React from 'react';
  * @param title Title to be displayed on the left of the nav bar.
  * @returns
  */
-export default function TopNav({ auth, setAuthenticated }) {
-
+export default function TopNav({ email, setEmail, setAuthenticated }) {
     return (
         <div className="px-5 bg-neutral-800 dark:bg-neutral-900 text-neutral-100 w-full shadow-md max-h-16">
             <nav className="py-2 flex justify-between">
@@ -19,25 +17,34 @@ export default function TopNav({ auth, setAuthenticated }) {
                         <LizardIcon className="text-asu-maroon fill-current h-12 cursor-pointer" />
                     </li>
                     <li>
-                        <p className="text-lg font-bold">Field Day
-                        <span style={{ fontFamily: '"Lucida Handwriting", cursive' }}> Flex</span>
+                        <p className="text-lg font-bold">
+                            Field Day
+                            <span style={{ fontFamily: '"Lucida Handwriting", cursive' }}>
+                                {' '}
+                                Flex
+                            </span>
                         </p>
                     </li>
                 </ul>
-                <UserController user={auth.user} auth={auth} setAuthenticated={setAuthenticated} />
+                <UserController email={email} setEmail={setEmail} setAuthenticated={setAuthenticated} />
             </nav>
         </div>
     );
 }
 
-function UserController({ user, auth, setAuthenticated }) {
+function UserController({ email, setEmail, setAuthenticated }) {
     return (
-        user
-        &&
-        <div className='flex items-center space-x-5'>
-            <div>{user.email}</div>
-            <UserImage className="h-12" user={user} />
-            <LogoutButton auth={auth} setAuthenticated={setAuthenticated} />
-        </div>
+        email && (
+            <div className="flex items-center space-x-5">
+                <div>{email}</div>
+                <Button
+                    text="Logout"
+                    onClick={() => {
+                        setAuthenticated(false);
+                        setEmail(false);
+                    }}
+                />
+            </div>
+        )
     );
 }
