@@ -16,7 +16,9 @@ export default function TablePage({ email }) {
                 selectedProject={selectedProject}
                 setSelectedProject={setSelectedProject}
             />
-            <div className="flex-grow bg-white dark:bg-neutral-950">Placeholder</div>
+            <div className="flex-grow bg-white dark:bg-neutral-950">
+                {selectedTab || "Placeholder"}
+            </div>
         </PageWrapper>
     );
 }
