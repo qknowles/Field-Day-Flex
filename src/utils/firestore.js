@@ -54,6 +54,16 @@ export const createAccount = async (name, email, hashedPassword) => {
     }
 };
 
+export const getTabNames = async () => {
+    const testArray = [];
+    return testArray;
+}
+
+export const getProjectNames = async () => {
+    const testArray = [];
+    return testArray;
+}
+
 
 
 
