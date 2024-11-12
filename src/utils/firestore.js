@@ -17,6 +17,104 @@ import {
 import { db } from './firebase';
 import { Type } from '../components/Notifier';
 
+export const accountExists = async (email) => {
+    const usersCollection = collection(db, 'Users');
+    const emailQuery = query(usersCollection, where('email', '==', email));
+    const userSnapshot = await getDocs(emailQuery);
+
+    return !userSnapshot.empty;
+};
+
+export const verifyPassword = async (email, hashedPassword) => {
+    try {
+        const usersCollection = collection(db, 'Users');
+        const verifyQuery = query(
+            usersCollection,
+            where('email', '==', email),
+            where('password', '==', hashedPassword),
+        );
+        const userSnapshot = await getDocs(verifyQuery);
+
+        return !userSnapshot.empty;
+
+    } catch (error) {
+        console.error('Error verifying password:', error);
+        return false;
+    }
+};
+
+export const createAccount = async (name, email, hashedPassword) => {
+    try {
+        await addDoc(collection(db, 'Users'), {
+            name: name,
+            email: email,
+            password: hashedPassword,
+            createdAt: new Date(),
+        });
+
+        return true;
+
+    } catch (error) {
+        console.error('Error creating account:', error);
+        return false;
+    }
+};
+
+export const getProjectNames = async (email) => {
+    try {
+        const projectsRef = collection(db, 'Projects');
+        const projectsQuery = query(
+            projectsRef,
+            where('contributors', 'array-contains', email),
+        );
+        const projectsSnapshot = await getDocs(projectsQuery);
+
+        const projectNames = projectsSnapshot.docs
+            .map((doc) => doc.data().project_name)
+            .filter((name) => name);
+
+        return projectNames;
+
+    } catch (error) {
+        console.error('Error retrieving project names:', error);
+        return [];
+    }
+};
+
+export const getTabNames = async (email, projectName) => {
+    try {
+        const projectRef = collection(db, 'Projects');
+        const projectsQuery = query(
+            projectRef,
+            where('project_name', '==', projectName),
+            where('contributors', 'array-contains', email)
+        );
+        const projectSnapshot = await getDocs(projectsQuery);
+
+        if (projectSnapshot.empty) {
+            return [];
+        }
+
+        const projectDoc = projectSnapshot.docs[0];
+        const tabsRef = collection(projectDoc.ref, 'Tabs');
+        const tabsSnapshot = await getDocs(tabsRef);
+
+        const tabNames = tabsSnapshot.docs
+            .map((tabDoc) => tabDoc.data().tab_name)
+            .filter(name => name);
+
+        return tabNames;
+
+    } catch (error) {
+        console.error('Error retrieving tab names:', error);
+        return [];
+    }
+};
+
+
+
+
+
 export const getArthropodLabels = async () => {
     const snapshot = await getDocs(
         query(collection(db, 'AnswerSet'), where('set_name', '==', 'ArthropodSpecies')),
@@ -27,6 +125,7 @@ export const getArthropodLabels = async () => {
     // Sort the answers by the 'primary' field alphabetically
     return answers.map((ans) => ans.primary).sort((a, b) => a.localeCompare(b));
 };
+
 
 const getDocsFromCollection = async (collectionName, constraints = []) => {
     if (!Array.isArray(constraints)) constraints = [constraints];

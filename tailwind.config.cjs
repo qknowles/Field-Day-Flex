@@ -9,8 +9,8 @@ module.exports = {
     extend: {
       height: {
         'data-input': 'calc(100vh - 22em)',
-        'tab-modal-content': 'calc(100vh - 334px)',
-        'tab-bar': '54px'
+        'window-content': 'calc(100vh - 334px)',
+        'window-bar': '54px'
       },
       colors: {
         'asu-maroon': '#8c1d40',
