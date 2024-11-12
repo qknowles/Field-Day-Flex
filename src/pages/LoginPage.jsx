@@ -1,31 +1,33 @@
 import React, { useState } from 'react';
 import Button from '../components/Button';
 import PageWrapper from '../wrappers/PageWrapper';
-import { GoogleIcon, LizardIcon } from '../assets/icons';
+import { LizardIcon } from '../assets/icons';
 import NewAccount from '../windows/NewAccount';
+import Login from '../windows/Login'
 
-export default function LoginPage({ auth, setAuthenticated }) {
-    const LOADING_MESSAGE = "Loading Google's authentication.";
-    const LOGIN_MESSAGE = 'Click login to sign in with your ASURITE ID.';
+export default function LoginPage({ auth, setAuthenticated, setEmail }) {
 
     const [showNewAccount, setShowNewAccount] = useState(false);
     const [showLogin, setShowLogin] = useState(false);
-    const [showTablePage, setShowTablePage] = useState(false);
-
-    const [email, setEmail] = useState('');
 
     const openNewAccount = () => setShowNewAccount(true);
     const closeNewAccount = () => setShowNewAccount(false);
+    
+    const openLogin = () => setShowLogin(true);
+    const closeLogin = () => setShowLogin(false);
+
     const openAccount = () => {
         if (showNewAccount) setShowNewAccount(false);
         if (showLogin) setShowLogin(false);
-        setShowTablePage(true);
+        setAuthenticated(true);
     };
 
     return (
         <PageWrapper>
             {showNewAccount ? (
-                <NewAccount CancelAccount={closeNewAccount} OpenNewAccount={openAccount} SetEmail={setEmail} auth={auth} />
+                <NewAccount CancelAccount={closeNewAccount} OpenNewAccount={openAccount} SetEmail={setEmail} />
+            ) : showLogin ? (
+                <Login CancelLogin={closeLogin} OpenAccount={openAccount} SetEmail={setEmail}  />
             ) : (
                 <>
                     <div className="pt-10">
@@ -60,16 +62,10 @@ export default function LoginPage({ auth, setAuthenticated }) {
                         }}
                     >
                         <div className="flex flex-col space-y-5">
-                            <p>{auth.loading ? LOADING_MESSAGE : LOGIN_MESSAGE}</p>
                             <Button
-                                onClick={async () => setAuthenticated(await auth.login())}
+                                onClick={openLogin}
                                 text={!auth.loading ? 'Login' : 'Please wait.'}
                                 disabled={auth.loading}
-                                icon={
-                                    <div className="bg-white rounded-full p-1 dark:bg-black">
-                                        <GoogleIcon />
-                                    </div>
-                                }
                             />
                             <Button
                                 onClick={openNewAccount}

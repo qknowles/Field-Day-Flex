@@ -9,6 +9,7 @@ const auth = new Authenticator();
 
 function App() {
     const [authenticated, setAuthenticated] = useState(false);
+    const [email, setEmail] = useState('');
 
     return (
         <div className="flex flex-col w-full min-h-screen text-neutral-800 dark:text-neutral-200 select-none">
@@ -16,9 +17,9 @@ function App() {
             <TopNav auth={auth} setAuthenticated={setAuthenticated} />
             <div className="flex flex-grow">
                 {authenticated ? (
-                    <span>table page not implemented</span>// <TablePage auth ={auth} setAuthenticated={setAuthenticated}/>
+                    <span>table page not implemented</span>// <TablePage auth ={auth} email={email}/>
                 ) : (
-                    <LoginPage auth={auth} setAuthenticated={setAuthenticated} />
+                    <LoginPage auth={auth} setAuthenticated={setAuthenticated} setEmail={setEmail} />
                 )}
             </div>
         </div>
