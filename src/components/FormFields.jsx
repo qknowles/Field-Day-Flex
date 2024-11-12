@@ -874,6 +874,42 @@ const ArthropodDataField = ({
 
 const EntryYearField = ({year}) => (<p>Year: {year}</p>)
 
+const SetRoleField = ({ role, setRole, layout }) => {
+    const [roleOptions, setRoleOptions] = useState([]);
+
+    useEffect(() => {
+        const fetchRoles = async () => {
+            // Mock role data for now
+            // I take it we will allow Flex users to set up their own user and role DB?
+            const roles = ["Admin", "Researcher", "Guest"];
+            setRoleOptions(roles);
+        };
+        fetchRoles();
+    }, []);
+
+    return (
+        <InputLabel
+            label="Role"
+            layout={layout}
+            input={
+                <select
+                    value={role || "Select a role"}
+                    onChange={(e) => setRole(e.target.value)}
+                >
+                    <option value="Select a role" disabled hidden>
+                        Select a role
+                    </option>
+                    {roleOptions.map((roleOption) => (
+                        <option key={roleOption} value={roleOption}>
+                            {roleOption}
+                        </option>
+                    ))}
+                </select>
+            }
+        />
+    );
+};
+
 export function FormField({ fieldName, value, setValue, site, project, taxa, layout, disabled, entry, array, speciesArray }) {
     switch (fieldName) {
         case 'dateTime':
@@ -978,6 +1014,8 @@ export function FormField({ fieldName, value, setValue, site, project, taxa, lay
             return <HdBodyField value={value} setValue={setValue} />;
         case 'year': 
             return <EntryYearField year={value} />
+        case 'role':
+            return <SetRoleField role={value} setRole={setValue} layout={layout} />;
         default:
             return <div>{`Field not found: ${fieldName}`}</div>;
     }
