@@ -7,7 +7,7 @@ import CryptoJS from 'crypto-js';
 
 export default function NewAccount({ CancelAccount, OpenNewAccount, SetEmail }) {
     const [name, setName] = useState('');
-    const [email, setEmail] = useState('');
+    const [thisEmail, setThisEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
 
@@ -18,7 +18,7 @@ export default function NewAccount({ CancelAccount, OpenNewAccount, SetEmail }) 
             return;
         }
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
+        if (!emailRegex.test(thisEmail)) {
             notify(Type.error, 'Please enter a valid email address.');
             return;
         }
@@ -35,20 +35,20 @@ export default function NewAccount({ CancelAccount, OpenNewAccount, SetEmail }) 
             return;
         }
 
-        const exists = await accountExists(email);
+        const exists = await accountExists(thisEmail);
         if (exists) {
             notify(Type.error, 'Account already exists.');
             return;
         } else {
             const hashedPassword = CryptoJS.SHA256(password).toString();
-
-            const created = await createAccount(name, email, hashedPassword);
+            const created = await createAccount(name, thisEmail, hashedPassword);
             if (created) {
-                SetEmail(email);
+                SetEmail(thisEmail);
                 notify(Type.success, 'Account created successfully.');
                 OpenNewAccount();
             } else {
                 notify(Type.error, 'Failed to create account.');
+                CancelAccount();
             }
         }
     };
@@ -81,9 +81,9 @@ export default function NewAccount({ CancelAccount, OpenNewAccount, SetEmail }) 
                     input={
                         <input
                             type="email"
-                            value={email}
+                            value={thisEmail}
                             onChange={(e) => {
-                                setEmail(e.target.value);
+                                setThisEmail(e.target.value);
                             }}
                         />
                     }

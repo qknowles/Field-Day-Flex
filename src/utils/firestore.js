@@ -14,16 +14,30 @@ import {
     or,
     getCountFromServer,
 } from 'firebase/firestore';
-import { createUserWithEmailAndPassword } from "firebase/auth";
 import { db } from './firebase';
 import { Type } from '../components/Notifier';
 
 export const accountExists = async (email) => {
-    const UsersCollection = collection(db, "Users");
-    const emailQuery = query(UsersCollection, where("email", "==", email));
+    const UsersCollection = collection(db, 'Users');
+    const emailQuery = query(UsersCollection, where('email', '==', email));
     const userSnapshot = await getDocs(emailQuery);
     return !userSnapshot.empty;
 };
+
+export const verifyPassword = async (email, hashedPassword) => {
+    try {
+        const UsersCollection = collection(db, 'Users')
+        const verifyQuery = query(UsersCollection, 
+            where('email', '==', email),
+            where('password', '==', hashedPassword));
+        const userSnapshot = await getDocs(verifyQuery);
+        return !userSnapshot.empty;
+    } catch (error) {
+        console.error("Error verifying password:", error);
+        return false;
+    }
+    
+}
 
 export const createAccount = async (name, email, hashedPassword) => {
     try {
