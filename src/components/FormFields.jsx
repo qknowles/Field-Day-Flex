@@ -910,6 +910,32 @@ const SetRoleField = ({ role, setRole, layout }) => {
     );
 };
 
+const RadioButtonField = ({ options, selectedValue, setSelectedValue, label, layout }) => {
+    return (
+        <InputLabel
+            label={label}
+            layout={layout}
+            input={
+                <div>
+                    {options.map((option) => (
+                        <div key={option}>
+                            <input
+                                type="radio"
+                                id={option}
+                                name={label}
+                                value={option}
+                                checked={selectedValue === option}
+                                onChange={(e) => setSelectedValue(e.target.value)}
+                            />
+                            <label htmlFor={option}>{option}</label>
+                        </div>
+                    ))}
+                </div>
+            }
+        />
+    );
+};
+
 export function FormField({ fieldName, value, setValue, site, project, taxa, layout, disabled, entry, array, speciesArray }) {
     switch (fieldName) {
         case 'dateTime':
@@ -1016,6 +1042,8 @@ export function FormField({ fieldName, value, setValue, site, project, taxa, lay
             return <EntryYearField year={value} />
         case 'role':
             return <SetRoleField role={value} setRole={setValue} layout={layout} />;
+        case 'radio':
+            return <RadioButtonField options={entry.options} selectedValue={value} setSelectedValue={setValue} label={entry.label} layout={layout} />;
         default:
             return <div>{`Field not found: ${fieldName}`}</div>;
     }
