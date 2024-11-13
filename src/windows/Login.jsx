@@ -50,7 +50,7 @@ export default function Login({ CancelLogin, OpenAccount, SetEmail }) {
             <div className="flex flex-col space-y-4">
                 <InputLabel
                     label="Email"
-                    layout="horizontal"
+                    layout="horizontal-single"
                     input={
                         <input
                             type="email"
@@ -63,7 +63,7 @@ export default function Login({ CancelLogin, OpenAccount, SetEmail }) {
                 />
                 <InputLabel
                     label="Password"
-                    layout="horizontal"
+                    layout="horizontal-single"
                     input={
                         <input
                             type="password"
