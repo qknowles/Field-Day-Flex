@@ -13,6 +13,91 @@ import { motion } from "framer-motion";
 import { db } from "../utils/firebase";
 import React from 'react';
 
+export const DropdownFlex = ({ options, setOptions, layout, label }) => {
+    const [editingIndex, setEditingIndex] = useState(null);
+    const [editingValue, setEditingValue] = useState('');
+
+    // Initialize options with "Add Here" at the top only once when the component mounts
+    useEffect(() => {
+        setOptions(['Add Here']);
+    }, []);
+
+    const handleOptionChange = (index, newValue) => {
+        setOptions((prevOptions) => {
+            const updatedOptions = [...prevOptions];
+            if (newValue.trim() === '') {
+                updatedOptions.splice(index, 1); // Remove option if empty
+            } else if (index === 0 && newValue !== 'Add Here') {
+                updatedOptions.splice(1, 0, newValue); // Insert after "Add Here"
+            } else {
+                updatedOptions[index] = newValue;
+            }
+            return ['Add Here', ...updatedOptions.filter(opt => opt !== 'Add Here')];
+        });
+        setEditingIndex(null);
+    };
+
+    const handleInputBlur = () => {
+        if (editingIndex !== null) {
+            handleOptionChange(editingIndex, editingValue);
+            setEditingIndex(null);
+        }
+    };
+
+    return (
+        <InputLabel
+            label={label}
+            layout={layout}
+            input={
+                <div className="space-y-2">
+                    {options.map((opt, index) => (
+                        <div key={index} className="flex items-center">
+                            {editingIndex === index ? (
+                                <input
+                                    type="text"
+                                    value={editingValue}
+                                    autoFocus
+                                    onChange={(e) => setEditingValue(e.target.value)}
+                                    onBlur={handleInputBlur}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            handleOptionChange(index, editingValue);
+                                        } else if (e.key === 'Escape') {
+                                            setEditingIndex(null);
+                                        }
+                                    }}
+                                    className="border border-gray-300 rounded"
+                                />
+                            ) : (
+                                <span
+                                    onClick={() => {
+                                        setEditingIndex(index);
+                                        setEditingValue(opt);
+                                    }}
+                                    className={classNames(
+                                        'cursor-pointer px-2 pb-1 transition duration-150 rounded',
+                                        opt === 'Add Here'
+                                            ? 'border border-gray-300 hover:bg-gray-800' // Border only for "Add Here"
+                                            : 'px-4 pb-1 bg-asu-maroon text-white hover:bg-opacity-80'
+                                    )}
+                                >
+                                    {opt}
+                                </span>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            }
+        />
+    );
+};
+
+
+
+
+
+
+
 export const YearField = ({ year, setYear, layout }) => {
     const currentYear = new Date().getFullYear();
     const getYearOptions = () => {
