@@ -17,6 +17,13 @@ export default function TabBar({
     const [showNewTab, setShowNewTab] = useState(false);
     const [showNewProject, setShowNewProject] = useState(false);
 
+    const closeNewProject = () => setShowNewProject(false);
+    const openNewProject = (projectName) => {
+        setShowNewProject(false);
+        setProjectNames((prevProjectNames) => [...prevProjectNames, projectName]);
+        setSelectedProject(projectName);
+    }
+
     const [projectNames, setProjectNames] = useState([]);
     const [tabNames, setTabNames] = useState([]);
     const [activeTabs, setActiveTabs] = useState({});
@@ -82,12 +89,13 @@ export default function TabBar({
                         projectNames={projectNames}
                         selectedProject={selectedProject}
                         setSelectedProject={setSelectedProject}
+                        layout={'horizontal'}
                     />
                 </div>
             </div>
             <div>
                 {showNewTab && <NewTab />}
-                {showNewProject && <NewProject />}
+                {showNewProject && <NewProject CancelProject={closeNewProject} OpenNewProject={openNewProject} email={email} />}
             </div>
         </>
     );

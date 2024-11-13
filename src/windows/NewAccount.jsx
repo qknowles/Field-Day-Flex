@@ -64,7 +64,7 @@ export default function NewAccount({ CancelAccount, OpenNewAccount, SetEmail }) 
             <div className="flex flex-col space-y-4">
                 <InputLabel
                     label="Name"
-                    layout="horizontal"
+                    layout="horizontal-single"
                     input={
                         <input
                             type="text"
@@ -77,7 +77,7 @@ export default function NewAccount({ CancelAccount, OpenNewAccount, SetEmail }) 
                 />
                 <InputLabel
                     label="Email"
-                    layout="horizontal"
+                    layout="horizontal-single"
                     input={
                         <input
                             type="email"
@@ -90,7 +90,7 @@ export default function NewAccount({ CancelAccount, OpenNewAccount, SetEmail }) 
                 />
                 <InputLabel
                     label="Password"
-                    layout="horizontal"
+                    layout="horizontal-single"
                     input={
                         <input
                             type="password"
@@ -103,7 +103,7 @@ export default function NewAccount({ CancelAccount, OpenNewAccount, SetEmail }) 
                 />
                 <InputLabel
                     label="Confirm Password"
-                    layout="horizontal"
+                    layout="horizontal-single"
                     input={
                         <input
                             type="password"

@@ -18,18 +18,44 @@ import { db } from './firebase';
 import { Type } from '../components/Notifier';
 
 export const accountExists = async (email) => {
-    const usersCollection = collection(db, 'Users');
-    const emailQuery = query(usersCollection, where('email', '==', email));
+    const usersRef = collection(db, 'Users');
+    const emailQuery = query(usersRef, where('email', '==', email));
     const userSnapshot = await getDocs(emailQuery);
 
     return !userSnapshot.empty;
 };
 
+export const projectExists = async (projectName) => {
+    const projectRef = collection(db, 'Projects');
+    const projectQuery = query(projectRef, where('project_name', '==', projectName));
+    const userSnapshot = await getDocs(projectQuery);
+
+    return !userSnapshot.empty;
+};
+
+export const createProject = async (projectName, email, contributors, administrators) => {
+    try {
+        const projectRef = doc(db, 'Projects', projectName);
+        await setDoc(projectRef, {
+            project_name: projectName,
+            owners: [email],
+            contributors: contributors,
+            admins: administrators,
+        });
+
+        return true;
+
+    } catch (error) {
+        console.error('Error creating project:', error);
+        return false;
+    }
+};
+
 export const verifyPassword = async (email, hashedPassword) => {
     try {
-        const usersCollection = collection(db, 'Users');
+        const usersRef = collection(db, 'Users');
         const verifyQuery = query(
-            usersCollection,
+            usersRef,
             where('email', '==', email),
             where('password', '==', hashedPassword),
         );
@@ -63,10 +89,7 @@ export const createAccount = async (name, email, hashedPassword) => {
 export const getProjectNames = async (email) => {
     try {
         const projectsRef = collection(db, 'Projects');
-        const projectsQuery = query(
-            projectsRef,
-            where('contributors', 'array-contains', email),
-        );
+        const projectsQuery = query(projectsRef, where('contributors', 'array-contains', email));
         const projectsSnapshot = await getDocs(projectsQuery);
 
         const projectNames = projectsSnapshot.docs
@@ -87,7 +110,7 @@ export const getTabNames = async (email, projectName) => {
         const projectsQuery = query(
             projectRef,
             where('project_name', '==', projectName),
-            where('contributors', 'array-contains', email)
+            where('contributors', 'array-contains', email),
         );
         const projectSnapshot = await getDocs(projectsQuery);
 
@@ -101,7 +124,7 @@ export const getTabNames = async (email, projectName) => {
 
         const tabNames = tabsSnapshot.docs
             .map((tabDoc) => tabDoc.data().tab_name)
-            .filter(name => name);
+            .filter((name) => name);
 
         return tabNames;
 
@@ -110,6 +133,7 @@ export const getTabNames = async (email, projectName) => {
         return [];
     }
 };
+
 
 
 
@@ -125,7 +149,6 @@ export const getArthropodLabels = async () => {
     // Sort the answers by the 'primary' field alphabetically
     return answers.map((ans) => ans.primary).sort((a, b) => a.localeCompare(b));
 };
-
 
 const getDocsFromCollection = async (collectionName, constraints = []) => {
     if (!Array.isArray(constraints)) constraints = [constraints];
