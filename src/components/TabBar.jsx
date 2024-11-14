@@ -18,11 +18,12 @@ export default function TabBar({
     const [showNewProject, setShowNewProject] = useState(false);
 
     const closeNewProject = () => setShowNewProject(false);
-    const openNewProject = (projectName) => {
+    const openNewProject = async (projectName) => {
         setShowNewProject(false);
         setProjectNames((prevProjectNames) => [...prevProjectNames, projectName]);
         setSelectedProject(projectName);
-    }
+    };
+    
 
     const [projectNames, setProjectNames] = useState([]);
     const [tabNames, setTabNames] = useState([]);
