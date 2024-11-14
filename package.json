@@ -15,6 +15,7 @@
     "@blaumaus/react-alert": "^7.0.5",
     "@material-tailwind/react": "^1.2.5",
     "@syncfusion/ej2-react-spreadsheet": "^20.4.44",
+    "crypto-js": "^4.2.0",
     "daisyui": "^2.50.0",
     "esbuild": "^0.17.7",
     "firebase": "^9.15.0",

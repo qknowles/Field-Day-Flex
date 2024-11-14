@@ -1,7 +1,6 @@
 // Firebase import
 // Import the functions you need from the SDKs you need
 import { initializeApp } from 'firebase/app';
-import { getAnalytics } from 'firebase/analytics';
 import { getFirestore } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 
@@ -11,14 +10,13 @@ import { getAuth } from 'firebase/auth';
 // Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
-    apiKey: 'AIzaSyDf315Ml5vfmtGVYQJa2Kq7SxUAgg_2vqs',
-    authDomain: 'field-day-backup.firebaseapp.com',
-    databaseURL: 'https://field-day-backup-default-rtdb.firebaseio.com',
-    projectId: 'field-day-backup',
-    storageBucket: 'field-day-backup.appspot.com',
-    messagingSenderId: '846923163868',
-    appId: '1:846923163868:web:e3c5e877fa12832e126c19',
-    measurementId: 'G-KW1M085EYT',
+    apiKey: 'AIzaSyD8lwhJTJX9lZe4oM5b5NRn56DUMCtJfOM',
+    authDomain: 'field-day-flex.firebaseapp.com',
+    projectId: 'field-day-flex',
+    storageBucket: 'field-day-flex.firebasestorage.app',
+    messagingSenderId: '331468313856',
+    appId: '1:331468313856:web:017637e807a4f725b78fe5',
+    measurementId: 'G-2ESB8VM51N',
 };
 
 export const app = initializeApp(firebaseConfig);
