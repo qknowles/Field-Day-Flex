@@ -89,12 +89,25 @@ export const createAccount = async (name, email, hashedPassword) => {
 export const getProjectNames = async (email) => {
     try {
         const projectsRef = collection(db, 'Projects');
-        const projectsQuery = query(projectsRef, where('contributors', 'array-contains', email));
-        const projectsSnapshot = await getDocs(projectsQuery);
 
-        const projectNames = projectsSnapshot.docs
-            .map((doc) => doc.data().project_name)
-            .filter((name) => name);
+        const ownerQuery = query(projectsRef, where('owners', 'array-contains', email));
+        const ownerSnapshot = await getDocs(ownerQuery);
+
+        const contributorQuery = query(projectsRef, where('contributors', 'array-contains', email));
+        const contributorSnapshot = await getDocs(contributorQuery);
+
+        const adminQuery = query(projectsRef, where('admins', 'array-contains', email));
+        const adminSnapshot = await getDocs(adminQuery);
+
+        const allProjectDocs = [
+            ...ownerSnapshot.docs,
+            ...contributorSnapshot.docs,
+            ...adminSnapshot.docs,
+        ];
+
+        const projectNames = Array.from(new Set(
+            allProjectDocs.map((doc) => doc.data().project_name).filter((name) => name)
+        ));
 
         return projectNames;
 

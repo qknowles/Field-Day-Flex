@@ -130,23 +130,23 @@ export const YearField = ({ year, setYear, layout }) => {
     );
 }
 
-export const ProjectField = ({ project, setProject, layout }) => {
+export const ProjectField = ({ projectNames, project, setProject, layout }) => {
     return (
         <InputLabel
             label='Project'
             layout={layout}
             input={<select
                 value={project}
-                onChange={(e) => {
-                    setProject(e.target.value);
-                } }
+                onChange={(e) => setProject(e.target.value)}
             >
-                <option value='Gateway'>Gateway</option>
-                <option value='San Pedro'>San Pedro</option>
-                <option value='Virgin River'>Virgin River</option>
-            </select>} />
+                {projectNames.map((projectName) => (
+                    <option key={projectName} value={projectName}>{projectName}</option>
+                ))}
+            </select>}
+        />
     );
-}
+};
+
 
 const DateField = ({ date, setDate, layout, disabled }) => {
     return (
