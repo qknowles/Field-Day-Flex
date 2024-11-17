@@ -5,7 +5,7 @@ import InputLabel from '../components/InputLabel';
 import { projectExists, createProject } from '../utils/firestore'
 import { Type, notify } from '../components/Notifier';
 
-export default function NewProject({ CancelProject, OpenNewProject, email }) {
+export default function NewProject({ CancelProject, OpenNewProject, Email }) {
     const [projectName, setProjectName] = useState('');
     const [contributors, setContributors] = useState([]);
     const [administrators, setAdministrators] = useState([]);
@@ -26,7 +26,7 @@ export default function NewProject({ CancelProject, OpenNewProject, email }) {
 
         const projectAlreadyExists = await projectExists(projectName);
         if (!projectAlreadyExists) {
-            await createProject(projectName, email, validContributors, validAdministrators)
+            await createProject(projectName, Email, validContributors, validAdministrators)
             OpenNewProject(projectName);
             return;
         } else {

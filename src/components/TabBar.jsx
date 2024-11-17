@@ -8,11 +8,11 @@ import NewProject from '../windows/NewProject';
 import NewTab from '../windows/NewTab'
 
 export default function TabBar({
-    email,
-    selectedTab,
-    setSelectedTab,
-    selectedProject,
-    setSelectedProject,
+    Email,
+    SelectedTab,
+    SetSelectedTab,
+    SelectedProject,
+    SetSelectedProject,
 }) {
     const [showNewTab, setShowNewTab] = useState(false);
     const [showNewProject, setShowNewProject] = useState(false);
@@ -21,7 +21,7 @@ export default function TabBar({
     const openNewProject = async (projectName) => {
         setShowNewProject(false);
         setProjectNames((prevProjectNames) => [...prevProjectNames, projectName]);
-        setSelectedProject(projectName);
+        SetSelectedProject(projectName);
     };
     
 
@@ -30,34 +30,34 @@ export default function TabBar({
     const [activeTabs, setActiveTabs] = useState({});
 
     const initializeTabs = async () => {
-        const projects = await getProjectNames(email);
+        const projects = await getProjectNames(Email);
         setProjectNames(projects);
 
         if (projects.length > 0) {
             const defaultProject = projects[0];
-            setSelectedProject(defaultProject);
+            SetSelectedProject(defaultProject);
 
-            const tabs = await getTabNames(email, defaultProject);
+            const tabs = await getTabNames(Email, defaultProject);
             setTabNames(tabs);
 
             if (tabs.length > 0) {
                 const defaultTab = tabs[0];
-                setSelectedTab(defaultTab);
+                SetSelectedTab(defaultTab);
             }
         }
     };
 
     useEffect(() => {
         initializeTabs();
-    }, [email, selectedProject]);
+    }, [Email, SelectedProject]);
 
     useEffect(() => {
         const activeStatusMap = tabNames.reduce((map, tab) => {
-            map[tab] = tab === selectedTab;
+            map[tab] = tab === SelectedTab;
             return map;
         }, {});
         setActiveTabs(activeStatusMap);
-    }, [selectedTab]);
+    }, [SelectedTab]);
 
     return (
         <>
@@ -68,7 +68,7 @@ export default function TabBar({
                             key={tabName}
                             text={tabName}
                             active={activeTabs[tabName] || false}
-                            onClick={() => setSelectedTab(tabName)}
+                            onClick={() => SetSelectedTab(tabName)}
                         />
                     ))}
                     <Tab
@@ -88,15 +88,15 @@ export default function TabBar({
                     <Button text="New Project" onClick={() => setShowNewProject(true)} />
                     <ProjectField
                         projectNames={projectNames}
-                        selectedProject={selectedProject}
-                        setSelectedProject={setSelectedProject}
+                        selectedProject={SelectedProject}
+                        setSelectedProject={SetSelectedProject}
                         layout={'horizontal'}
                     />
                 </div>
             </div>
             <div>
                 {showNewTab && <NewTab />}
-                {showNewProject && <NewProject CancelProject={closeNewProject} OpenNewProject={openNewProject} email={email} />}
+                {showNewProject && <NewProject CancelProject={closeNewProject} OpenNewProject={openNewProject} Email={Email} />}
             </div>
         </>
     );
