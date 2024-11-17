@@ -5,7 +5,7 @@ import { LizardIcon } from '../assets/icons';
 import NewAccount from '../windows/NewAccount';
 import Login from '../windows/Login';
 
-export default function HomePage({ setAuthenticated, setEmail }) {
+export default function HomePage({ SetAuthenticated, SetEmail }) {
     const [showNewAccount, setShowNewAccount] = useState(false);
     const [showLogin, setShowLogin] = useState(false);
 
@@ -18,7 +18,7 @@ export default function HomePage({ setAuthenticated, setEmail }) {
     const openAccount = () => {
         if (showNewAccount) setShowNewAccount(false);
         if (showLogin) setShowLogin(false);
-        setAuthenticated(true);
+        SetAuthenticated(true);
     };
 
     return (
@@ -27,11 +27,11 @@ export default function HomePage({ setAuthenticated, setEmail }) {
                 <NewAccount
                     CancelAccount={closeNewAccount}
                     OpenNewAccount={openAccount}
-                    SetEmail={setEmail}
+                    SetEmail={SetEmail}
                 />
             )}
             {showLogin && (
-                <Login CancelLogin={closeLogin} OpenAccount={openAccount} SetEmail={setEmail} />
+                <Login CancelLogin={closeLogin} OpenAccount={openAccount} SetEmail={SetEmail} />
             )}
             {!showNewAccount && !showLogin && (
                 <HomeScreen openLogin={openLogin} openNewAccount={openNewAccount} />
@@ -40,7 +40,7 @@ export default function HomePage({ setAuthenticated, setEmail }) {
     );
 }
 
-const HomeScreen = ({ openLogin, openNewAccount }) => (
+const HomeScreen = ({ OpenLogin, OpenNewAccount }) => (
     <>
         <div className="pt-10">
             <h1 className="title">
@@ -74,8 +74,8 @@ const HomeScreen = ({ openLogin, openNewAccount }) => (
             }}
         >
             <div className="flex flex-col space-y-5">
-                <Button onClick={openLogin} text="Login" disabled={false} />
-                <Button onClick={openNewAccount} text="Create Account" disabled={false} />
+                <Button onClick={OpenLogin} text="Login" disabled={false} />
+                <Button onClick={OpenNewAccount} text="Create Account" disabled={false} />
             </div>
         </div>
         <div

@@ -2,13 +2,7 @@ import { LizardIcon } from '../assets/icons';
 import React from 'react';
 import Button from './Button';
 
-/**
- *
- * @param auth Authenticator object.
- * @param title Title to be displayed on the left of the nav bar.
- * @returns
- */
-export default function TopNav({ email, setEmail, setAuthenticated }) {
+export default function TopNav({ Email, SetEmail, SetAuthenticated }) {
     return (
         <div className="px-5 bg-neutral-800 dark:bg-neutral-900 text-neutral-100 w-full shadow-md max-h-16">
             <nav className="py-2 flex justify-between">
@@ -26,7 +20,7 @@ export default function TopNav({ email, setEmail, setAuthenticated }) {
                         </p>
                     </li>
                 </ul>
-                <UserController email={email} setEmail={setEmail} setAuthenticated={setAuthenticated} />
+                <UserController email={Email} setEmail={SetEmail} setAuthenticated={SetAuthenticated} />
             </nav>
         </div>
     );

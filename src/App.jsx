@@ -1,11 +1,8 @@
 import React, { useState } from 'react';
-import { Authenticator } from './utils/authenticator';
 import TablePage from './pages/TablePage';
 import HomePage from './pages/HomePage';
 import TopNav from './components/TopNav';
 import { Notifier } from './components/Notifier';
-
-const auth = new Authenticator();
 
 function App() {
     const [authenticated, setAuthenticated] = useState(false);
