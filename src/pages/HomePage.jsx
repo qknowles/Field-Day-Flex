@@ -34,7 +34,7 @@ export default function HomePage({ SetAuthenticated, SetEmail }) {
                 <Login CancelLogin={closeLogin} OpenAccount={openAccount} SetEmail={SetEmail} />
             )}
             {!showNewAccount && !showLogin && (
-                <HomeScreen openLogin={openLogin} openNewAccount={openNewAccount} />
+                <HomeScreen OpenLogin={openLogin} OpenNewAccount={openNewAccount} />
             )}
         </PageWrapper>
     );
