@@ -1,11 +1,8 @@
 import React, { useState } from 'react';
-import { Authenticator } from './utils/authenticator';
 import TablePage from './pages/TablePage';
 import HomePage from './pages/HomePage';
 import TopNav from './components/TopNav';
 import { Notifier } from './components/Notifier';
-
-const auth = new Authenticator();
 
 function App() {
     const [authenticated, setAuthenticated] = useState(false);
@@ -17,9 +14,9 @@ function App() {
             <TopNav email={email} setEmail={setEmail} setAuthenticated={setAuthenticated} />
             <div className="flex flex-grow">
                 {authenticated ? (
-                    <TablePage email={email}/>
+                    <TablePage Email={email}/>
                 ) : (
-                    <HomePage setAuthenticated={setAuthenticated} setEmail={setEmail} />
+                    <HomePage SetAuthenticated={setAuthenticated} SetEmail={setEmail} />
                 )}
             </div>
         </div>

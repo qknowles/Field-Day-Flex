@@ -3,7 +3,7 @@ import Button from '../components/Button';
 import TabBar from '../components/TabBar';
 import PageWrapper from '../wrappers/PageWrapper';
 
-export default function TablePage({ email }) {
+export default function TablePage({ Email }) {
     const [selectedTab, setSelectedTab] = useState('');
     const [selectedProject, setSelectedProject] = useState('');
 
