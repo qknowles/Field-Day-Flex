@@ -10,11 +10,11 @@ export default function TablePage({ Email }) {
     return (
         <PageWrapper>
             <TabBar
-                email={email}
-                selectedTab={selectedTab}
-                setSelectedTab={setSelectedTab}
-                selectedProject={selectedProject}
-                setSelectedProject={setSelectedProject}
+                Email={Email}
+                SelectedTab={selectedTab}
+                SetSelectedTab={setSelectedTab}
+                SelectedProject={selectedProject}
+                SetSelectedProject={setSelectedProject}
             />
             <div className="flex-grow bg-white dark:bg-neutral-950">
                 {selectedTab || "Placeholder"}
