@@ -29,13 +29,13 @@ export default function NewProject({ CancelProject, OpenNewProject, Email }) {
             new Set([...validContributors, ...validAdministrators]),
         );
 
-        const finalAdmonistrators = Array.from(
+        const finalAdministrators = Array.from(
             new Set([...validAdministrators]),
         );
 
         const projectAlreadyExists = await projectExists(projectName);
         if (!projectAlreadyExists) {
-            await createProject(projectName, Email, finalContributors, finalAdmonistrators);
+            await createProject(projectName, Email, finalContributors, finalAdministrators);
             OpenNewProject(projectName);
             return;
         } else {
