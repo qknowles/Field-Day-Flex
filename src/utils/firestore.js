@@ -71,7 +71,8 @@ export const verifyPassword = async (email, hashedPassword) => {
 
 export const createAccount = async (name, email, hashedPassword) => {
     try {
-        await addDoc(collection(db, 'Users'), {
+        const userRef = doc(db, 'Users', email);
+        await setDoc(userRef, {
             name: name,
             email: email,
             password: hashedPassword,
