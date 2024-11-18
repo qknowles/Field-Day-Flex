@@ -14,9 +14,9 @@ function App() {
             <TopNav email={email} setEmail={setEmail} setAuthenticated={setAuthenticated} />
             <div className="flex flex-grow">
                 {authenticated ? (
-                    <TablePage email={email}/>
+                    <TablePage Email={email}/>
                 ) : (
-                    <HomePage setAuthenticated={setAuthenticated} setEmail={setEmail} />
+                    <HomePage SetAuthenticated={setAuthenticated} SetEmail={setEmail} />
                 )}
             </div>
         </div>
