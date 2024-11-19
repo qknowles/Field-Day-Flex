@@ -3,15 +3,22 @@ import { DropdownFlex, DropdownSelector, YesNoSelector } from '../components/For
 import WindowWrapper from '../wrappers/WindowWrapper';
 import InputLabel from '../components/InputLabel';
 import { Type, notify } from '../components/Notifier';
+//import { tabExists, createTab } from '../utils/firestore';
+import ColumnOptions from './ColumnOptions.jsx';
 
 export default function NewTab({ CancelTab, OpenNewTab, Email, SelectedProject }) {
     const [tabName, setTabName] = useState('');
-    const [columnNames, setColumnNames] = useState([]);
+    const [columnSettings, setColumnSettings] = useState([]);
     const [generateIdentifiers, setGenerateIdentifiers] = useState(false);
-    const [firstIdentifierDimension, setFirstIdentifierDimension] = useState('');
-    const [secondIdentifierDimension, setSecondIdentifierDimension] = useState('');
+    const [identifierDomain, setIdentifierDomain] = useState([SelectedProject]);
+    const [possibleIdentifiers, setPossibleIdentifiers] = useState([]);
+    const [identifierDimension, setIdentifierDimension] = useState([]);
     const [unwantedCodes, setUnwantedCodes] = useState([]);
     const [utilizeUnwantedCodes, setUtilizeUnwantedCodes] = useState(false);
+
+    const [firstIdentifierDimension, setFirstIdentifierDimension] = useState('');
+    const [secondIdentifierDimension, setSecondIdentifierDimension] = useState('');
+    const [columnNames, setColumnNames] = useState([]);
 
     const dimensionsChar = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
     const dimensionsNum = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
@@ -30,12 +37,16 @@ export default function NewTab({ CancelTab, OpenNewTab, Email, SelectedProject }
     const returnPossibleIdentifiers = (highestLetter, highestNumber, unwantedCodes) => {
         const identifiers = [];
 
-        for (let charCode = 'A'.charCodeAt(0); charCode <= highestLetter.charCodeAt(0); charCode++) {
+        for (
+            let charCode = 'A'.charCodeAt(0);
+            charCode <= highestLetter.charCodeAt(0);
+            charCode++
+        ) {
             const letter = String.fromCharCode(charCode);
-    
+
             for (let num = 1; num <= highestNumber; num++) {
                 const identifier = `${letter}${num}`;
-                
+
                 if (!unwantedCodes.includes(identifier)) {
                     identifiers.push(identifier);
                 }
@@ -66,9 +77,16 @@ export default function NewTab({ CancelTab, OpenNewTab, Email, SelectedProject }
 
         const cleanedTabName = tabName.trim();
 
-        const [columns, setColumns] = useState([]);
-        const possibleIdentifiers = returnPossibleIdentifiers(firstIdentifierDimension, secondIdentifierDimension, unwantedCodesWithoutDuplicates);
-        
+        setIdentifierDomain([...identifierDomain, cleanedTabName]);
+        setPossibleIdentifiers(
+            returnPossibleIdentifiers(
+                firstIdentifierDimension,
+                secondIdentifierDimension,
+                unwantedCodesWithoutDuplicates,
+            ),
+        );
+        setIdentifierDimension([firstIdentifierDimension, secondIdentifierDimension]);
+
         if (filteredColumnNames.length > 0) {
             setShowColumnOptions(true);
         } else {
@@ -77,72 +95,84 @@ export default function NewTab({ CancelTab, OpenNewTab, Email, SelectedProject }
     };
 
     return (
-        <WindowWrapper
-            header="New Subject"
-            onLeftButton={CancelTab}
-            onRightButton={continueTab}
-            leftButtonText="Cancel"
-            rightButtonText={rightButtonText}
-        >
-            <div className="flex flex-col space-y-4">
-                <InputLabel
-                    label="Subject Name"
-                    layout="horizontal-single"
-                    input={
-                        <input
-                            type="text"
-                            value={tabName}
-                            onChange={(e) => {
-                                setTabName(e.target.value);
-                            }}
+        <>
+            {showColumnOptions ? (
+                <ColumnOptions
+                    ColumnNames={columnNames}
+                    SetColumnNames={setColumnNames}
+                    ColulmnSettings={columnSettings}
+                    SetColumnSettings={setColumnSettings}
+                    IdentifierDomain={identifierDomain}
+                    SetIdentifierDomain={setIdentifierDomain}
+                />
+            ) : (
+                <WindowWrapper
+                    header="New Subject"
+                    onLeftButton={CancelTab}
+                    onRightButton={continueTab}
+                    leftButtonText="Cancel"
+                    rightButtonText={rightButtonText}
+                >
+                    <div className="flex flex-col space-y-4">
+                        <InputLabel
+                            label="Subject Name"
+                            layout="horizontal-single"
+                            input={
+                                <input
+                                    type="text"
+                                    value={tabName}
+                                    onChange={(e) => {
+                                        setTabName(e.target.value);
+                                    }}
+                                />
+                            }
                         />
-                    }
-                />
-                <DropdownFlex
-                    options={columnNames}
-                    setOptions={setColumnNames}
-                    label={'Column Names'}
-                />
-                <YesNoSelector
-                    label="Generate Identifiers"
-                    layout="horizontal-start"
-                    selection={generateIdentifiers}
-                    setSelection={setGenerateIdentifiers}
-                />
-                {generateIdentifiers && (
-                    <>
-                        <div className="flex space-x-2">
-                            <DropdownSelector
-                                label="Max Dimension"
-                                options={dimensionsChar}
-                                selection={firstIdentifierDimension}
-                                setSelection={setFirstIdentifierDimension}
-                                layout={'horizontal'}
-                            />
-                            <DropdownSelector
-                                label="By"
-                                options={dimensionsNum}
-                                selection={secondIdentifierDimension}
-                                setSelection={setSecondIdentifierDimension}
-                            />
-                        </div>
-                        <div className="flex flex-col space-y-4">
-                            <DropdownFlex
-                                options={unwantedCodes}
-                                setOptions={setUnwantedCodes}
-                                label="Unwanted Codes"
-                            />
-                            <YesNoSelector
-                                label="Utilize Unwanted Code"
-                                selection={utilizeUnwantedCodes}
-                                setSelection={setUtilizeUnwantedCodes}
-                                layout={'horizontal-start'}
-                            />
-                        </div>
-                    </>
-                )}
-            </div>
-        </WindowWrapper>
+                        <DropdownFlex
+                            options={columnNames}
+                            setOptions={setColumnNames}
+                            label={'Column Names'}
+                        />
+                        <YesNoSelector
+                            label="Generate Identifiers"
+                            layout="horizontal-start"
+                            selection={generateIdentifiers}
+                            setSelection={setGenerateIdentifiers}
+                        />
+                        {generateIdentifiers && (
+                            <>
+                                <div className="flex space-x-2">
+                                    <DropdownSelector
+                                        label="Max Dimension"
+                                        options={dimensionsChar}
+                                        selection={firstIdentifierDimension}
+                                        setSelection={setFirstIdentifierDimension}
+                                        layout={'horizontal'}
+                                    />
+                                    <DropdownSelector
+                                        label="By"
+                                        options={dimensionsNum}
+                                        selection={secondIdentifierDimension}
+                                        setSelection={setSecondIdentifierDimension}
+                                    />
+                                </div>
+                                <div className="flex flex-col space-y-4">
+                                    <DropdownFlex
+                                        options={unwantedCodes}
+                                        setOptions={setUnwantedCodes}
+                                        label="Unwanted Codes"
+                                    />
+                                    <YesNoSelector
+                                        label="Utilize Unwanted Code"
+                                        selection={utilizeUnwantedCodes}
+                                        setSelection={setUtilizeUnwantedCodes}
+                                        layout={'horizontal-start'}
+                                    />
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </WindowWrapper>
+            )}
+        </>
     );
 }
-
