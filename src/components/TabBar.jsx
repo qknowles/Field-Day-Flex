@@ -2,7 +2,7 @@ import Tab from './Tab';
 import React, { useEffect, useState } from 'react';
 import { getTabNames, getProjectNames } from '../utils/firestore';
 import Button from './Button';
-import { ProjectField } from './FormFields';
+import { DropdownSelector } from './FormFields';
 import { Type, notify } from '../components/Notifier';
 import NewProject from '../windows/NewProject';
 import NewTab from '../windows/NewTab'
@@ -17,17 +17,23 @@ export default function TabBar({
     const [showNewTab, setShowNewTab] = useState(false);
     const [showNewProject, setShowNewProject] = useState(false);
 
+    const [projectNames, setProjectNames] = useState([]);
+    const [tabNames, setTabNames] = useState([]);
+    const [activeTabs, setActiveTabs] = useState({});
+
     const closeNewProject = () => setShowNewProject(false);
-    const openNewProject = async (projectName) => {
+    const openNewProject = (projectName) => {
         setShowNewProject(false);
         setProjectNames((prevProjectNames) => [...prevProjectNames, projectName]);
         SetSelectedProject(projectName);
     };
-    
 
-    const [projectNames, setProjectNames] = useState([]);
-    const [tabNames, setTabNames] = useState([]);
-    const [activeTabs, setActiveTabs] = useState({});
+    const closeNewTab = () => setShowNewTab(false);
+    const openNewTab = (tabName) => {
+        setShowNewTab(false);
+        setTabNames((prevTabNames) => [...prevProjectNames, projectNames]);
+        SetSelectedTab(tabName);
+    }
 
     const initializeTabs = async () => {
         const projects = await getProjectNames(Email);
@@ -86,16 +92,17 @@ export default function TabBar({
                 </div>
                 <div className="flex pt-1 px-5 pb-1 space-x-6">
                     <Button text="New Project" onClick={() => setShowNewProject(true)} />
-                    <ProjectField
-                        projectNames={projectNames}
-                        selectedProject={SelectedProject}
-                        setSelectedProject={SetSelectedProject}
+                    <DropdownSelector
+                        label='Project'
+                        options={projectNames}
+                        selection={SelectedProject}
+                        setSelection={SetSelectedProject}
                         layout={'horizontal'}
                     />
                 </div>
             </div>
             <div>
-                {showNewTab && <NewTab />}
+                {showNewTab && <NewTab CancelTab={closeNewTab} OpenNewTab={openNewTab} Email={Email} />}
                 {showNewProject && <NewProject CancelProject={closeNewProject} OpenNewProject={openNewProject} Email={Email} />}
             </div>
         </>

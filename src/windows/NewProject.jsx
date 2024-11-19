@@ -68,13 +68,11 @@ export default function NewProject({ CancelProject, OpenNewProject, Email }) {
                 <DropdownFlex
                     options={contributors}
                     setOptions={setContributors}
-                    layout={'horizontal-multiple'}
                     label={'Contributors'}
                 />
                 <DropdownFlex
                     options={administrators}
                     setOptions={setAdministrators}
-                    layout={'horizontal-multiple'}
                     label={'Administrators'}
                 />
             </div>
