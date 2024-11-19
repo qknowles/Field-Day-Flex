@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Table from '../components/Table';
 import TabBar from '../components/TabBar';
 import PageWrapper from '../wrappers/PageWrapper';
-'import { fetchTabData, saveTabData } from '../api'; 
+
 
 export default function TablePage({ email }) {
     const [selectedProject, setSelectedProject] = useState(''); // Add project state
