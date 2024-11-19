@@ -26,20 +26,28 @@ export default function NewProject({ CancelProject, OpenNewProject, Email }) {
         }
 
         const finalContributors = Array.from(
-            new Set([...validContributors, ...validAdministrators]),
+            new Set([...validContributors, ...validAdministrators, Email]),
         );
 
-        const finalAdministrators = Array.from(
-            new Set([...validAdministrators]),
-        );
+        const finalAdministrators = Array.from(new Set([...validAdministrators]));
 
         const trimmedProjectName = projectName.trim();
-        
+
         const projectAlreadyExists = await projectExists(trimmedProjectName);
         if (!projectAlreadyExists) {
-            await createProject(trimmedProjectName, Email, finalContributors, finalAdministrators);
-            OpenNewProject(trimmedProjectName);
-            return;
+            const projectCreated = await createProject(
+                trimmedProjectName,
+                Email,
+                finalContributors,
+                finalAdministrators,
+            );
+            if (projectCreated) {
+                OpenNewProject(trimmedProjectName);
+                return;
+            } else {
+                notify('Error creating project');
+                return;
+            }
         } else {
             notify(Type.error, 'Project name already exists.');
         }

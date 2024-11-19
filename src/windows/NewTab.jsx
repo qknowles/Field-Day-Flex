@@ -3,14 +3,14 @@ import { DropdownFlex, DropdownSelector, YesNoSelector } from '../components/For
 import WindowWrapper from '../wrappers/WindowWrapper';
 import InputLabel from '../components/InputLabel';
 import { Type, notify } from '../components/Notifier';
-//import { tabExists, createTab } from '../utils/firestore';
+import { tabExists, createTab } from '../utils/firestore';
 import ColumnOptions from './ColumnOptions.jsx';
 
 export default function NewTab({ CancelTab, OpenNewTab, Email, SelectedProject }) {
     const [tabName, setTabName] = useState('');
     const [columnSettings, setColumnSettings] = useState([]);
     const [generateIdentifiers, setGenerateIdentifiers] = useState(false);
-    const [identifierDomain, setIdentifierDomain] = useState([SelectedProject]);
+    const [identifierDomain, setIdentifierDomain] = useState([]);
     const [possibleIdentifiers, setPossibleIdentifiers] = useState([]);
     const [identifierDimension, setIdentifierDimension] = useState([]);
     const [unwantedCodes, setUnwantedCodes] = useState([]);
@@ -34,7 +34,11 @@ export default function NewTab({ CancelTab, OpenNewTab, Email, SelectedProject }
         }
     }, [columnNames]);
 
-    const returnPossibleIdentifiers = (highestLetter, highestNumber, unwantedCodes) => {
+    useEffect(() => {
+        setIdentifierDimension([firstIdentifierDimension, secondIdentifierDimension]);
+    }, [firstIdentifierDimension, secondIdentifierDimension]);
+
+    const returnPossibleIdentifiers = (highestLetter, highestNumber, unwanted) => {
         const identifiers = [];
 
         for (
@@ -47,7 +51,7 @@ export default function NewTab({ CancelTab, OpenNewTab, Email, SelectedProject }
             for (let num = 1; num <= highestNumber; num++) {
                 const identifier = `${letter}${num}`;
 
-                if (!unwantedCodes.includes(identifier)) {
+                if (!unwanted.includes(identifier)) {
                     identifiers.push(identifier);
                 }
             }
@@ -59,7 +63,7 @@ export default function NewTab({ CancelTab, OpenNewTab, Email, SelectedProject }
         const codeRegex = /^[A-J](?:10|[1-9])$/;
 
         const filteredColumnNames = columnNames.filter((name) => name !== 'Add Here');
-        const filteredUnwantedCodes = unwantedCodes.filter((come) => code !== 'Add Here');
+        const filteredUnwantedCodes = unwantedCodes.filter((code) => code !== 'Add Here');
 
         const unwantedCodesNoSpace = filteredUnwantedCodes.map((code) =>
             code.replace(/\s+/g, '').toUpperCase(),
@@ -77,20 +81,37 @@ export default function NewTab({ CancelTab, OpenNewTab, Email, SelectedProject }
 
         const cleanedTabName = tabName.trim();
 
-        setIdentifierDomain([...identifierDomain, cleanedTabName]);
-        setPossibleIdentifiers(
-            returnPossibleIdentifiers(
-                firstIdentifierDimension,
-                secondIdentifierDimension,
-                unwantedCodesWithoutDuplicates,
-            ),
+        const finalPossibleIdentifiers = returnPossibleIdentifiers(
+            firstIdentifierDimension,
+            secondIdentifierDimension,
+            unwantedCodesWithoutDuplicates,
         );
-        setIdentifierDimension([firstIdentifierDimension, secondIdentifierDimension]);
 
         if (filteredColumnNames.length > 0) {
             setShowColumnOptions(true);
         } else {
-
+            const tabAlreadyExists = await tabExists(Email, SelectedProject, tabName);
+            if (!tabAlreadyExists) {
+                const tabCreated = await createTab(
+                    Email,
+                    SelectedProject,
+                    cleanedTabName,
+                    columnSettings,
+                    generateIdentifiers,
+                    identifierDomain,
+                    finalPossibleIdentifiers,
+                    identifierDimension,
+                    unwantedCodesWithoutDuplicates,
+                    utilizeUnwantedCodes,
+                );
+                if (tabCreated) {
+                    OpenNewTab(tabName);
+                    return;
+                } else {
+                    notify(Type.error, 'Error creating subject.');
+                    return;
+                }
+            }
         }
     };
 
