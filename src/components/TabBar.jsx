@@ -102,7 +102,7 @@ export default function TabBar({
                 </div>
             </div>
             <div>
-                {showNewTab && <NewTab CancelTab={closeNewTab} OpenNewTab={openNewTab} Email={Email} />}
+                {showNewTab && <NewTab CancelTab={closeNewTab} OpenNewTab={openNewTab} Email={Email} SelectedProject={SelectedProject} />}
                 {showNewProject && <NewProject CancelProject={closeNewProject} OpenNewProject={openNewProject} Email={Email} />}
             </div>
         </>

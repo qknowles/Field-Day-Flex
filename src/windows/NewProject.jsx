@@ -33,10 +33,12 @@ export default function NewProject({ CancelProject, OpenNewProject, Email }) {
             new Set([...validAdministrators]),
         );
 
-        const projectAlreadyExists = await projectExists(projectName);
+        const trimmedProjectName = projectName.trim();
+        
+        const projectAlreadyExists = await projectExists(trimmedProjectName);
         if (!projectAlreadyExists) {
-            await createProject(projectName, Email, finalContributors, finalAdministrators);
-            OpenNewProject(projectName);
+            await createProject(trimmedProjectName, Email, finalContributors, finalAdministrators);
+            OpenNewProject(trimmedProjectName);
             return;
         } else {
             notify(Type.error, 'Project name already exists.');
