@@ -4,6 +4,8 @@ import React from 'react';
 export default function InputLabel({ label, layout = 'horizontal', input }) {
     const containerClass = classNames('relative', {
         'flex flex-col': layout === 'vertical',
+        "flex justify-center": layout === "horizontal",
+        'flex items-center justify-start': layout === 'horizontal-start',
         'flex items-center justify-end': layout === 'horizontal-single',
         'flex items-start space-y-1': layout === 'horizontal-multiple', // For DropdownFlex
     });

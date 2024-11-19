@@ -13,7 +13,7 @@ import { motion } from "framer-motion";
 import { db } from "../utils/firebase";
 import React from 'react';
 
-export const DropdownFlex = ({ options, setOptions, layout, label }) => {
+export const DropdownFlex = ({ options, setOptions, label }) => {
     const [editingIndex, setEditingIndex] = useState(null);
     const [editingValue, setEditingValue] = useState('');
 
@@ -47,7 +47,7 @@ export const DropdownFlex = ({ options, setOptions, layout, label }) => {
     return (
         <InputLabel
             label={label}
-            layout={layout}
+            layout='horizontal-multiple'
             input={
                 <div className="space-y-2">
                     {options.map((opt, index) => (
@@ -92,7 +92,50 @@ export const DropdownFlex = ({ options, setOptions, layout, label }) => {
     );
 };
 
+export const DropdownSelector = ({ label, options, selection, setSelection, layout }) => {
+    return (
+        <InputLabel
+            label={label}
+            layout={layout}
+            input={<select
+                value={selection}
+                onChange={(e) => setSelection(e.target.value)}
+            >
+                {options.map((optionName) => (
+                    <option key={optionName} value={optionName}>{optionName}</option>
+                ))}
+            </select>}
+        />
+    );
+};
 
+export const YesNoSelector = ({ label, setSelection, layout }) => {
+    const options = ['Yes', 'No'];
+    const [display, setDisplay] = useState('No');
+    return (
+        <InputLabel
+            label={label}
+            layout={layout}
+            input={<select
+                value={display}
+                onChange={(e) => {
+                    if (e.target.value === 'Yes') {
+                        setDisplay('Yes');
+                        setSelection(true);
+                    } else{
+                        setDisplay('No');
+                        setSelection(false);
+                    }
+                    }
+                }
+            >
+                {options.map((optionName) => (
+                    <option key={optionName} value={optionName}>{optionName}</option>
+                ))}
+            </select>}
+        />
+    );
+};
 
 
 
@@ -129,24 +172,6 @@ export const YearField = ({ year, setYear, layout }) => {
             </select>} />
     );
 }
-
-export const ProjectField = ({ projectNames, project, setProject, layout }) => {
-    return (
-        <InputLabel
-            label='Project'
-            layout={layout}
-            input={<select
-                value={project}
-                onChange={(e) => setProject(e.target.value)}
-            >
-                {projectNames.map((projectName) => (
-                    <option key={projectName} value={projectName}>{projectName}</option>
-                ))}
-            </select>}
-        />
-    );
-};
-
 
 const DateField = ({ date, setDate, layout, disabled }) => {
     return (
