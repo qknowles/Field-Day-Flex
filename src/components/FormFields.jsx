@@ -17,9 +17,10 @@ export const DropdownFlex = ({ options, setOptions, label }) => {
     const [editingIndex, setEditingIndex] = useState(null);
     const [editingValue, setEditingValue] = useState('');
 
-    // Initialize options with "Add Here" at the top only once when the component mounts
     useEffect(() => {
-        setOptions(['Add Here']);
+        setOptions((prevOptions) => {
+            return ['Add Here', ...prevOptions.filter((opt) => opt !== 'Add Here')];
+        });
     }, []);
 
     const handleOptionChange = (index, newValue) => {
@@ -136,6 +137,42 @@ export const YesNoSelector = ({ label, setSelection, layout }) => {
         />
     );
 };
+
+export const RadioButtons = ({ layout, label, options, selectedOption, setSelectedOption }) => {
+    return (
+        <InputLabel
+            label={label}
+            layout={layout}
+            input={
+                <div className="space-y-2">
+                    {options.map((option) => (
+                        <div key={option} className="flex items-center space-x-2">
+                            <input
+                                type="radio"
+                                id={option}
+                                name={label}
+                                value={option}
+                                checked={selectedOption === option}
+                                onChange={(e) => setSelectedOption(e.target.value)}
+                                className="cursor-pointer"
+                            />
+                            <label htmlFor={option} className="cursor-pointer">
+                                {option}
+                            </label>
+                        </div>
+                    ))}
+                </div>
+            }
+        />
+    );
+};
+
+
+
+
+
+
+
 
 
 

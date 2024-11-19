@@ -87,6 +87,11 @@ export default function NewTab({ CancelTab, OpenNewTab, Email, SelectedProject }
             unwantedCodesWithoutDuplicates,
         );
 
+        setColumnNames(filteredColumnNames);
+        setTabName(cleanedTabName);
+        setPossibleIdentifiers(finalPossibleIdentifiers);
+        setUnwantedCodes(unwantedCodesWithoutDuplicates);
+
         if (filteredColumnNames.length > 0) {
             setShowColumnOptions(true);
         } else {
@@ -115,16 +120,25 @@ export default function NewTab({ CancelTab, OpenNewTab, Email, SelectedProject }
         }
     };
 
+    const closeColumnOptions = () => {
+        setShowColumnOptions(false);
+    };
+
     return (
         <>
             {showColumnOptions ? (
                 <ColumnOptions
                     ColumnNames={columnNames}
-                    SetColumnNames={setColumnNames}
-                    ColulmnSettings={columnSettings}
-                    SetColumnSettings={setColumnSettings}
-                    IdentifierDomain={identifierDomain}
-                    SetIdentifierDomain={setIdentifierDomain}
+                    CancelColumnOptions={closeColumnOptions}
+                    OpenNewTab={OpenNewTab}
+                    Email={Email}
+                    SelectedProject={SelectedProject}
+                    TabName={tabName}
+                    GenerateIdentifiers={generateIdentifiers}
+                    PossibleIdentifiers={possibleIdentifiers}
+                    IdentifierDimension={identifierDimension}
+                    UnwantedCodes={unwantedCodes}
+                    UtilizeUnwantedCodes={utilizeUnwantedCodes}
                 />
             ) : (
                 <WindowWrapper
