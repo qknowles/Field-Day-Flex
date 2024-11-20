@@ -2,7 +2,10 @@ import React, { useState, useEffect } from 'react';
 //import Table from '../components/Table';
 import TabBar from '../components/TabBar';
 import PageWrapper from '../wrappers/PageWrapper';
-
+import { LizardIcon } from '../assets/icons';
+import TableTools from '../wrappers/TableTools';
+import ColumnSelectorButton from '../components/ColumnSelectorButton';
+import { getDocsFromCollection, getCollectionName } from '../utils/firestore';
 
 export default function TablePage({ email }) {
     const [selectedProject, setSelectedProject] = useState(''); // Add project state
@@ -16,15 +19,21 @@ export default function TablePage({ email }) {
     useEffect(() => {
         if (selectedTab) {
             const loadTabData = async () => {
-                const data = await fetchTabData(selectedTab); // API call to fetch tab data
-                setColumns(data.columns);
-                setEntries(data.entries);
-                setLabels(Object.keys(data.columns));
-                setIsAdmin(data.isAdmin);
+                try {
+                    const collectionName = getCollectionName('live', selectedProject, selectedTab);
+                    const snapshot = await getDocsFromCollection(collectionName);
+                    if (snapshot) {
+                        setEntries(snapshot.docs);
+                        // TODO: Load column configuration
+                        setIsAdmin(true); // Temporary for testing
+                    }
+                } catch (error) {
+                    console.error('Error loading data:', error);
+                }
             };
             loadTabData();
         }
-    }, [selectedTab]);
+    }, [selectedTab, selectedProject]);
 
     // Add a new row
     const handleAddRow = () => {
@@ -45,40 +54,53 @@ export default function TablePage({ email }) {
 
     // Save changes to backend
     const handleSaveChanges = async () => {
-        await saveTabData(selectedTab, { columns, entries });
-        alert('Changes saved!');
+        try {
+            const collectionName = getCollectionName('live', selectedProject, selectedTab);
+            // TODO: Implement save functionality
+            console.log('Saving to collection:', collectionName);
+        } catch (error) {
+            console.error('Error saving data:', error);
+        }
+    };
+
+    const toggleColumn = (label) => {
+        setColumns(prev => ({
+            ...prev,
+            [label]: {
+                ...prev[label],
+                show: !prev[label]?.show
+            }
+        }));
     };
 
     return (
         <PageWrapper>
             <TabBar
                 email={email}
-                selectedProject={selectedProject} // Pass selectedProject
-                setSelectedProject={setSelectedProject} // Pass setSelectedProject
+                selectedProject={selectedProject}
+                setSelectedProject={setSelectedProject}
                 selectedTab={selectedTab}
                 setSelectedTab={setSelectedTab}
             />
             <div className="flex-grow bg-white dark:bg-neutral-950 p-4">
                 {selectedTab ? (
                     <>
-                        <Table
-                            name={selectedTab}
-                            labels={labels}
-                            columns={columns}
-                            entries={entries}
-                            setEntries={setEntries}
-                        />
-                        <div className="flex justify-end mt-4 space-x-2">
+                        <TableTools>
+                            <ColumnSelectorButton
+                                labels={labels}
+                                columns={columns}
+                                toggleColumn={toggleColumn}
+                            />
                             {isAdmin && (
                                 <>
                                     <button
-                                        className="px-4 py-2 bg-blue-500 text-white rounded"
+                                        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
                                         onClick={handleAddColumn}
                                     >
                                         Add Column
                                     </button>
                                     <button
-                                        className="px-4 py-2 bg-green-500 text-white rounded"
+                                        className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
                                         onClick={handleAddRow}
                                     >
                                         Add Row
@@ -86,16 +108,41 @@ export default function TablePage({ email }) {
                                 </>
                             )}
                             <button
-                                className="px-4 py-2 bg-gray-500 text-white rounded"
+                                className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
                                 onClick={handleSaveChanges}
                             >
                                 Save Changes
                             </button>
-                        </div>
+                        </TableTools>
+
+                        {/* Table will go here
+                        <Table
+                            name={selectedTab}
+                            labels={labels}
+                            columns={columns}
+                            entries={entries}
+                            setEntries={setEntries}
+                        />
+                        */}
+
+                        {/* Show empty state when no entries */}
+                        {entries.length === 0 && (
+                            <div className="flex flex-col items-center justify-center min-h-[400px]">
+                                <LizardIcon className="w-32 h-32 text-asu-maroon mb-6" />
+                                <h2 className="text-2xl font-semibold mb-4">No Data Yet</h2>
+                                <p className="text-gray-600 dark:text-gray-400 text-center mb-8">
+                                    Start adding data to your study subject using the controls above.
+                                </p>
+                            </div>
+                        )}
                     </>
                 ) : (
-                    <div className="text-center text-gray-500">
-                        Select a tab to display the table.
+                    <div className="flex flex-col items-center justify-center min-h-[400px]">
+                        <LizardIcon className="w-32 h-32 text-asu-maroon mb-6" />
+                        <h2 className="text-2xl font-semibold mb-4">Select a Tab</h2>
+                        <p className="text-gray-500 text-center">
+                            Select a tab to display the table.
+                        </p>
                     </div>
                 )}
             </div>
