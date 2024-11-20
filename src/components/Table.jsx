@@ -1,7 +1,7 @@
 // Table.js
 import React, { useState, useRef, useEffect } from 'react';
 import { TableEntry } from './TableEntry';
-
+import { TableHeading } from './TableHeading';
 import { tableBody } from '../utils/variants';
 import { getKey } from '../const/tableLabels';
 
