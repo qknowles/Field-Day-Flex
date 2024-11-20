@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import Table from '../components/Table';
+//import Table from '../components/Table';
 import TabBar from '../components/TabBar';
 import PageWrapper from '../wrappers/PageWrapper';
 
