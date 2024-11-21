@@ -2,7 +2,7 @@ import { LizardIcon } from '../assets/icons';
 import React, { useState } from 'react';
 import Button from './Button';
 
-export default function TopNav({ Email, SetEmail, SetAuthenticated }) {
+export default function TopNav({  Email, SetEmail, SetAuthenticated, hideMenu = false }) {
 
     const [menuOpen, setMenuOpen] = useState(false); // Hamburger menu state
 
@@ -13,26 +13,28 @@ export default function TopNav({ Email, SetEmail, SetAuthenticated }) {
             <nav className="py-2 flex justify-between">
                 <ul className="flex items-center space-x-5">
                     {/* Hamburger Menu */}
-                    <li className="relative">
-                        <button
-                            onClick={toggleMenu}
-                            aria-label="Toggle menu"
-                            className="p-2 focus:outline-none"
-                        >
-                            <div className="hamburger-line bg-white"></div>
-                            <div className="hamburger-line bg-white"></div>
-                            <div className="hamburger-line bg-white"></div>
-                        </button>
-                        {menuOpen && (
-                            <div className="hamburger-menu bg-white text-black absolute mt-2 rounded-md shadow-lg p-2">
-                                <ul>
-                                    <li className="p-2 hover:bg-red-700 rounded">Option 1</li>
-                                    <li className="p-2 hover:bg-red-700 rounded">Option 2</li>
-                                    <li className="p-2 hover:bg-red-700 rounded">Option 3</li>
-                                </ul>
-                            </div>
-                        )}
-                    </li>
+                    {!hideMenu && (
+                        <li className="relative">
+                            <button
+                                onClick={toggleMenu}
+                                aria-label="Toggle menu"
+                                className="p-2 focus:outline-none"
+                            >
+                                <div className="hamburger-line bg-white"></div>
+                                <div className="hamburger-line bg-white"></div>
+                                <div className="hamburger-line bg-white"></div>
+                            </button>
+                            {menuOpen && (
+                                <div className="hamburger-menu bg-white text-black absolute mt-2 rounded-md shadow-lg p-2">
+                                    <ul>
+                                        <li className="p-2 text-black border border-black hover:bg-grey-700 rounded mb-2">Option 1</li>
+                                        <li className="p-2 text-black border border-black hover:bg-grey-700 rounded mb-2">Option 2</li>
+                                        <li className="p-2 text-black border border-black hover:bg-grey-700 rounded">Option 3</li>
+                                    </ul>
+                                </div>
+                            )}
+                        </li>
+                    )}
                     <li>
                         <LizardIcon className="text-asu-maroon fill-current h-12 cursor-pointer" />
                     </li>

@@ -11,7 +11,12 @@ function App() {
     return (
         <div className="flex flex-col w-full min-h-screen text-neutral-800 dark:text-neutral-200 select-none">
             <Notifier />
-            <TopNav email={email} setEmail={setEmail} setAuthenticated={setAuthenticated} />
+            <TopNav
+                email={email}
+                setEmail={setEmail}
+                setAuthenticated={setAuthenticated}
+                hideMenu={!authenticated} 
+            />
             <div className="flex flex-grow">
                 {authenticated ? (
                     <TablePage Email={email}/>
