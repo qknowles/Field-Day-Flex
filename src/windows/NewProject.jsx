@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { DropdownFlex } from '../components/FormFields';
 import WindowWrapper from '../wrappers/WindowWrapper';
 import InputLabel from '../components/InputLabel';
-import { projectExists, createProject } from '../utils/firestore'
+import { projectExists, createProject } from '../utils/firestore';
 import { Type, notify } from '../components/Notifier';
 
 export default function NewProject({ CancelProject, OpenNewProject, Email }) {
@@ -12,27 +12,45 @@ export default function NewProject({ CancelProject, OpenNewProject, Email }) {
 
     const createClick = async () => {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        
-        const validContributors = contributors.filter(contrib => contrib !== 'Add Here');
-        const validAdministrators = administrators.filter(admin => admin !== 'Add Here');
-        
-        const allEmailsValid = validContributors.every(email => emailRegex.test(email)) &&
-                               validAdministrators.every(email => emailRegex.test(email));
+
+        const validContributors = contributors.filter((contrib) => contrib !== 'Add Here');
+        const validAdministrators = administrators.filter((admin) => admin !== 'Add Here');
+
+        const allEmailsValid =
+            validContributors.every((email) => emailRegex.test(email)) &&
+            validAdministrators.every((email) => emailRegex.test(email));
 
         if (!allEmailsValid) {
             notify(Type.error, 'One or more entries are not valid email addresses.');
             return;
         }
 
-        const projectAlreadyExists = await projectExists(projectName);
+        const finalContributors = Array.from(
+            new Set([...validContributors, ...validAdministrators, Email]),
+        );
+
+        const finalAdministrators = Array.from(new Set([...validAdministrators]));
+
+        const trimmedProjectName = projectName.trim();
+
+        const projectAlreadyExists = await projectExists(trimmedProjectName);
         if (!projectAlreadyExists) {
-            await createProject(projectName, Email, validContributors, validAdministrators)
-            OpenNewProject(projectName);
-            return;
+            const projectCreated = await createProject(
+                trimmedProjectName,
+                Email,
+                finalContributors,
+                finalAdministrators,
+            );
+            if (projectCreated) {
+                OpenNewProject(trimmedProjectName);
+                return;
+            } else {
+                notify('Error creating project');
+                return;
+            }
         } else {
             notify(Type.error, 'Project name already exists.');
         }
-        
     };
 
     return (
@@ -60,13 +78,11 @@ export default function NewProject({ CancelProject, OpenNewProject, Email }) {
                 <DropdownFlex
                     options={contributors}
                     setOptions={setContributors}
-                    layout={'horizontal-multiple'}
                     label={'Contributors'}
                 />
                 <DropdownFlex
                     options={administrators}
                     setOptions={setAdministrators}
-                    layout={'horizontal-multiple'}
                     label={'Administrators'}
                 />
             </div>
