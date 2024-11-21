@@ -8,7 +8,7 @@ import ColumnSelectorButton from '../components/ColumnSelectorButton';
 import { getDocsFromCollection, getCollectionName } from '../utils/firestore';
 
 export default function TablePage({ email }) {
-    const [selectedProject, setSelectedProject] = useState(''); // Add project state
+    const [selectedProject, setSelectedProject] = useState('');
     const [selectedTab, setSelectedTab] = useState('');
     const [columns, setColumns] = useState({});
     const [entries, setEntries] = useState([]);
@@ -17,7 +17,7 @@ export default function TablePage({ email }) {
 
     // Fetch data when a tab is selected
     useEffect(() => {
-        if (selectedTab) {
+        if (selectedTab && selectedProject) {
             const loadTabData = async () => {
                 try {
                     const collectionName = getCollectionName('live', selectedProject, selectedTab);
@@ -73,6 +73,90 @@ export default function TablePage({ email }) {
         }));
     };
 
+    const renderContent = () => {
+        // No project selected
+        if (!selectedProject) {
+            return (
+                <div className="flex flex-col items-center justify-center min-h-[400px]">
+                    <LizardIcon className="w-32 h-32 text-asu-maroon mb-6" />
+                    <h2 className="text-2xl font-semibold mb-4">Select a Project</h2>
+                    <p className="text-gray-500 text-center">
+                        Choose a project from the dropdown menu above to get started.
+                    </p>
+                </div>
+            );
+        }
+
+        // Project selected but no tab
+        if (!selectedTab) {
+            return (
+                <div className="flex flex-col items-center justify-center min-h-[400px]">
+                    <LizardIcon className="w-32 h-32 text-asu-maroon mb-6" />
+                    <h2 className="text-2xl font-semibold mb-4">Select a Tab</h2>
+                    <p className="text-gray-500 text-center">
+                        Select a tab to display the table.
+                    </p>
+                </div>
+            );
+        }
+
+        // Project and tab selected
+        return (
+            <>
+                <TableTools>
+                    <ColumnSelectorButton
+                        labels={labels}
+                        columns={columns}
+                        toggleColumn={toggleColumn}
+                    />
+                    {isAdmin && (
+                        <>
+                            <button
+                                className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                                onClick={handleAddColumn}
+                            >
+                                Add Column
+                            </button>
+                            <button
+                                className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
+                                onClick={handleAddRow}
+                            >
+                                Add Row
+                            </button>
+                        </>
+                    )}
+                    <button
+                        className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
+                        onClick={handleSaveChanges}
+                    >
+                        Save Changes
+                    </button>
+                </TableTools>
+
+                {/* Table will go here
+                <Table
+                    name={selectedTab}
+                    labels={labels}
+                    columns={columns}
+                    entries={entries}
+                    setEntries={setEntries}
+                />
+                */}
+
+                {/* Show empty state when no entries */}
+                {entries.length === 0 && (
+                    <div className="flex flex-col items-center justify-center min-h-[400px]">
+                        <LizardIcon className="w-32 h-32 text-asu-maroon mb-6" />
+                        <h2 className="text-2xl font-semibold mb-4">No Data Yet</h2>
+                        <p className="text-gray-600 dark:text-gray-400 text-center mb-8">
+                            Start adding data to your study subject using the controls above.
+                        </p>
+                    </div>
+                )}
+            </>
+        );
+    };
+
     return (
         <PageWrapper>
             <TabBar
@@ -83,68 +167,7 @@ export default function TablePage({ email }) {
                 setSelectedTab={setSelectedTab}
             />
             <div className="flex-grow bg-white dark:bg-neutral-950 p-4">
-                {selectedTab ? (
-                    <>
-                        <TableTools>
-                            <ColumnSelectorButton
-                                labels={labels}
-                                columns={columns}
-                                toggleColumn={toggleColumn}
-                            />
-                            {isAdmin && (
-                                <>
-                                    <button
-                                        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-                                        onClick={handleAddColumn}
-                                    >
-                                        Add Column
-                                    </button>
-                                    <button
-                                        className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
-                                        onClick={handleAddRow}
-                                    >
-                                        Add Row
-                                    </button>
-                                </>
-                            )}
-                            <button
-                                className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
-                                onClick={handleSaveChanges}
-                            >
-                                Save Changes
-                            </button>
-                        </TableTools>
-
-                        {/* Table will go here
-                        <Table
-                            name={selectedTab}
-                            labels={labels}
-                            columns={columns}
-                            entries={entries}
-                            setEntries={setEntries}
-                        />
-                        */}
-
-                        {/* Show empty state when no entries */}
-                        {entries.length === 0 && (
-                            <div className="flex flex-col items-center justify-center min-h-[400px]">
-                                <LizardIcon className="w-32 h-32 text-asu-maroon mb-6" />
-                                <h2 className="text-2xl font-semibold mb-4">No Data Yet</h2>
-                                <p className="text-gray-600 dark:text-gray-400 text-center mb-8">
-                                    Start adding data to your study subject using the controls above.
-                                </p>
-                            </div>
-                        )}
-                    </>
-                ) : (
-                    <div className="flex flex-col items-center justify-center min-h-[400px]">
-                        <LizardIcon className="w-32 h-32 text-asu-maroon mb-6" />
-                        <h2 className="text-2xl font-semibold mb-4">Select a Tab</h2>
-                        <p className="text-gray-500 text-center">
-                            Select a tab to display the table.
-                        </p>
-                    </div>
-                )}
+                {renderContent()}
             </div>
         </PageWrapper>
     );
