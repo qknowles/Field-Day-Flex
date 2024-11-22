@@ -63,15 +63,6 @@ export default function NewTab({ CancelTab, OpenNewTab, Email, SelectedProject }
         const codeRegex = /^[A-J](?:10|[1-9])$/;
 
         const filteredColumnNames = columnNames.filter((name) => name !== 'Add Here');
-        // This ensures that 'text' and 'number' will never occur in a column 
-        // because the first letter of every word is capitalized.
-        const capitalizedColumnNames = filteredColumnNames.map((name) =>
-            name
-                .split(' ')
-                .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-                .join(' '),
-        );
-
         const filteredUnwantedCodes = unwantedCodes.filter((code) => code !== 'Add Here');
 
         const unwantedCodesNoSpace = filteredUnwantedCodes.map((code) =>

@@ -22,11 +22,14 @@ export default function ColumnOptions({
     const [rightButtonClick, setRightButtonClick] = useState();
 
     const [columnIndex, setColumnIndex] = useState(0);
-    const [entryType, setEntryType] = useState('');
-    const [entryChoices, setEntryChoices] = useState([]);
-    const [identifierDomain, setIdentifierDomain] = useState(false);
-    const [domainList, setDomainList] = useState([]);
-    const [columnSettings, setColumnSettings] = useState([]);
+
+    const [dataType, setDataType] = useState(new Array(ColumnNames.length).fill(''));
+    const [entryOptions, setEntryOptions] = useState([]);
+    const [identifierDomain, setIdentifierDomain] = useState(
+        new Array(ColumnNames.length).fill(false),
+    );
+    const [requiredField, setRequiredField] = useState(new Array(ColumnNames.length).fill(false));
+    const [order, setOrder] = useState(Array.from({ length: ColumnNames.length }, (_, i) => i));
 
     useEffect(() => {
         if (columnIndex === 0) {
@@ -42,111 +45,46 @@ export default function ColumnOptions({
             setRightButtonText('Next Column');
             setRightButtonClick(() => goForward);
         }
-        console.log(domainList);
-    }, [columnIndex, entryType, identifierDomain]);
+    }, [columnIndex, dataType, identifierDomain]);
 
     const storeNewTab = () => {
-        if (validInputs) {
+        let inputType = '';
+        if (type === entryTypeOptions[0]) {
+            inputType = 'number';
+        } else if (type === entryTypeOptions[1]) {
+            inputType = 'text';
+        } else {
+            inputType = 'multiple choice';
         }
     };
 
     const goBackward = () => {
         setColumnIndex((prevIndex) => {
             const newIndex = prevIndex - 1;
-
-            const previousSettings = columnSettings[newIndex];
-            if (previousSettings) {
-                const [name, value] = Array.from(previousSettings.entries())[0];
-
-                if (value !== 'text' && value !== 'number') {
-                    setEntryType(entryTypeOptions[2]);
-                    setEntryChoices(Array.isArray(value) ? value : []);
-                } else if (value === 'text') {
-                    setEntryType(entryTypeOptions[1]);
-                    setEntryChoices([]);
-                } else if (value === 'number') {
-                    setEntryType(entryTypeOptions[0]);
-                    setEntryChoices([]);
-                }
-
-                setIdentifierDomain(domainList.includes(ColumnNames[newIndex]));
-
-            } else {
-                setEntryType('');
-                setEntryChoices([]);
-                setIdentifierDomain(false);
-            }
-
             return newIndex;
         });
     };
 
     const goForward = () => {
-        setColumnIndex((prevIndex) => {
-            const newIndex = prevIndex + 1;
-
-            if (columnSettings[newIndex]) {
-                const nextSettings = columnSettings[newIndex];
-                if (nextSettings) {
-                    const [name, value] = Array.from(nextSettings.entries())[0];
-
-                    if (value !== 'text' && value !== 'number') {
-                        setEntryType(entryTypeOptions[2]);
-                        setEntryChoices(Array.isArray(value) ? value : []);
-                    } else if (value === 'text') {
-                        setEntryType(entryTypeOptions[1]);
-                        setEntryChoices([]);
-                    } else if (value === 'number') {
-                        setEntryType(entryTypeOptions[0]);
-                        setEntryChoices([]);
-                    }
-                }
-                setIdentifierDomain(domainList.includes(ColumnNames[newIndex]));
-            } else {
-                if (validInputs()) {
-                    let keyValue = '';
-                    if (entryType === entryTypeOptions[0]) {
-                        keyValue = 'number';
-                    } else if (entryType === entryTypeOptions[1]) {
-                        keyValue = 'text';
-                    } else {
-                        keyValue = entryChoices;
-                    }
-
-                    const newColumnMap = new Map().set(ColumnNames[prevIndex], keyValue);
-                    setColumnSettings((prevSettings) => {
-                        const updatedSettings = [...prevSettings];
-                        updatedSettings[columnIndex] = newColumnMap;
-                        return updatedSettings;
-                    });
-
-                    if (identifierDomain) {
-                        setDomainList((previousNames) => {
-                            if (!previousNames.includes(ColumnNames[prevIndex])) {
-                                return [...previousNames, ColumnNames[prevIndex]];
-                            }
-                            return previousNames;
-                        });
-                    }
-                    setEntryType('');
-                    setIdentifierDomain(false);
-                }
-            }
-            return newIndex;
-        });
+        if (validInputs()) {
+            setColumnIndex((prevIndex) => {
+                const newIndex = prevIndex + 1;
+                return newIndex;
+            });
+        }
     };
 
     const validInputs = () => {
-        if (!entryTypeOptions.includes(entryType)) {
+        if (!entryTypeOptions.includes(dataType[columnIndex])) {
             notify(Type.error, 'Must first select an entry type.');
             return false;
         } else {
-            if (entryType === entryTypeOptions[2]) {
-                if (!entryChoices) {
+            if (dataType[columnIndex] === entryTypeOptions[2]) {
+                if (!entryOptions[columnIndex]) {
                     notify(Type.error, 'Must include entry options for multiple choice entry.');
                     return false;
                 }
-                if (entryChoices.length !== new Set(entryChoices).size) {
+                if (entryOptions[columnIndex].length !== new Set(entryOptions[columnIndex]).size) {
                     notify(Type.error, 'Entry choices must not contain duplicates.');
                     return false;
                 }
@@ -156,6 +94,30 @@ export default function ColumnOptions({
     };
 
     const entryTypeOptions = ['Numerical Entry', 'Text Entry', 'Multiple Choice Entry'];
+
+    const setDataTypeHelper = (type) => {
+        setDataType((previousState) => {
+            const updatedState = [...previousState];
+            updatedState[columnIndex] = type;
+            return updatedState;
+        });
+    };
+
+    const setEntryOptionsHelper = (option) => {
+        setEntryOptions((previousState) => {
+            const updatedState = [...previousState];
+            updatedState[columnIndex] = option;
+            return updatedState;
+        });
+    };
+
+    const setIdentifierDomainHelper = (selection) => {
+        setIdentifierDomain((previousState) => {
+            const updatedState = [...previousState];
+            updatedState[columnIndex] = selection;
+            return updatedState;
+        });
+    };
 
     return (
         <WindowWrapper
@@ -174,21 +136,21 @@ export default function ColumnOptions({
                 <RadioButtons
                     layout="horizontal"
                     options={entryTypeOptions}
-                    selectedOption={entryType}
-                    setSelectedOption={setEntryType}
+                    selectedOption={dataType[columnIndex]}
+                    setSelectedOption={setDataTypeHelper}
                 />
-                {entryType === entryTypeOptions[2] && (
+                {dataType === entryTypeOptions[2] && (
                     <DropdownFlex
-                        options={entryChoices}
-                        setOptions={setEntryChoices}
+                        options={entryOptions[columnIndex]}
+                        setOptions={setEntryOptionsHelper}
                         label={'Entry Choices'}
                     />
                 )}
                 <YesNoSelector
                     label="Add Column to Identifier Domain"
                     layout="horizontal-start"
-                    selection={identifierDomain}
-                    setSelection={setIdentifierDomain}
+                    selection={identifierDomain[columnIndex]}
+                    setSelection={setIdentifierDomainHelper}
                 />
             </div>
         </WindowWrapper>
