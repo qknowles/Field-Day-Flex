@@ -25,13 +25,13 @@ export default function TopNav({  Email, SetEmail, SetAuthenticated, hideMenu = 
                                 <div className="hamburger-line bg-white"></div>
                             </button>
                             {menuOpen && (
-                                <div className="hamburger-menu bg-white text-black absolute mt-2 rounded-md shadow-lg p-2">
-                                    <ul>
-                                        <li className="p-2 text-black border border-black hover:bg-grey-700 rounded mb-2">Option 1</li>
-                                        <li className="p-2 text-black border border-black hover:bg-grey-700 rounded mb-2">Option 2</li>
-                                        <li className="p-2 text-black border border-black hover:bg-grey-700 rounded">Option 3</li>
-                                    </ul>
-                                </div>
+                               <div className="hamburger-menu text-black absolute mt-2 rounded-md shadow-lg p-2 dark:bg-neutral-700">
+                               <ul>
+                                   <Button className="mb-2 w-full text-center hover:bg-maroon-dark" text="Manage Account"/>
+                                   <Button className="mb-2 w-full text-center" text="Memberships"/>
+                                   <Button className="w-full text-center" text="Manage Project"/>
+                               </ul>
+                           </div>
                             )}
                         </li>
                     )}
