@@ -26,18 +26,28 @@ export default function NewProject({ CancelProject, OpenNewProject, Email }) {
         }
 
         const finalContributors = Array.from(
-            new Set([...validContributors, ...validAdministrators]),
+            new Set([...validContributors, ...validAdministrators, Email]),
         );
 
-        const finalAdministrators = Array.from(
-            new Set([...validAdministrators]),
-        );
+        const finalAdministrators = Array.from(new Set([...validAdministrators]));
 
-        const projectAlreadyExists = await projectExists(projectName);
+        const trimmedProjectName = projectName.trim();
+
+        const projectAlreadyExists = await projectExists(trimmedProjectName);
         if (!projectAlreadyExists) {
-            await createProject(projectName, Email, finalContributors, finalAdministrators);
-            OpenNewProject(projectName);
-            return;
+            const projectCreated = await createProject(
+                trimmedProjectName,
+                Email,
+                finalContributors,
+                finalAdministrators,
+            );
+            if (projectCreated) {
+                OpenNewProject(trimmedProjectName);
+                return;
+            } else {
+                notify('Error creating project');
+                return;
+            }
         } else {
             notify(Type.error, 'Project name already exists.');
         }
@@ -68,13 +78,11 @@ export default function NewProject({ CancelProject, OpenNewProject, Email }) {
                 <DropdownFlex
                     options={contributors}
                     setOptions={setContributors}
-                    layout={'horizontal-multiple'}
                     label={'Contributors'}
                 />
                 <DropdownFlex
                     options={administrators}
                     setOptions={setAdministrators}
-                    layout={'horizontal-multiple'}
                     label={'Administrators'}
                 />
             </div>

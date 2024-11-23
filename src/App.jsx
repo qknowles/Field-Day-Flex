@@ -8,7 +8,7 @@ function App() {
     const [authenticated, setAuthenticated] = useState(false);
     const [email, setEmail] = useState('');
 
-    return (
+     return (
         <div className="flex flex-col w-full min-h-screen text-neutral-800 dark:text-neutral-200 select-none">
             <Notifier />
             <TopNav
