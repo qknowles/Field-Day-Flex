@@ -1,6 +1,7 @@
 import { LizardIcon } from '../assets/icons';
 import React from 'react';
 import Button from './Button';
+import AccountSettings from '../windows/AccountSettings.jsx';
 
 export default function TopNav({ Email, SetEmail, SetAuthenticated }) {
     return (
@@ -27,13 +28,18 @@ export default function TopNav({ Email, SetEmail, SetAuthenticated }) {
 }
 
 function UserController({ email, setEmail, setAuthenticated }) {
+    const [showAccountSettings, setShowAccountSettings] = React.useState(false);
+
+    const openAccountSettings = () => setShowAccountSettings(true);
+    const closeAccountSettings = () => setShowAccountSettings(false);
+
     return (
         email && (
             <div className="flex items-center space-x-5">
                 <Button
                     text= {email}
                     onClick={() => {
-                        console.log("From button onclick: ", email); // now to make the modal for this button instead
+                        openAccountSettings();
                     }}
                 />
                 <Button
@@ -43,6 +49,13 @@ function UserController({ email, setEmail, setAuthenticated }) {
                         setEmail(false);
                     }}
                 />
+                {showAccountSettings && (
+                    <AccountSettings
+                        CloseAccountSettings={closeAccountSettings}
+                        emailProp = {email}
+                        nameProp = "Implement this ya bum"
+                    />
+                )}
             </div>
         )
     );
