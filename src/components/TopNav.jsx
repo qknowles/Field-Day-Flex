@@ -53,7 +53,6 @@ function UserController({ email, setEmail, setAuthenticated }) {
                     <AccountSettings
                         CloseAccountSettings={closeAccountSettings}
                         emailProp = {email}
-                        nameProp = "Implement this ya bum"
                     />
                 )}
             </div>

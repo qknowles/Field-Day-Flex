@@ -16,6 +16,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { Type } from '../components/Notifier';
+import { meta as user } from 'eslint-plugin-react/lib/rules/jsx-props-no-spread-multi.js';
 
 export const accountExists = async (email) => {
     const usersRef = collection(db, 'Users');
@@ -212,16 +213,6 @@ export const createTab = async (
     }
 };
 
-
-
-
-
-
-
-
-
-
-
 export const getArthropodLabels = async () => {
     const snapshot = await getDocs(
         query(collection(db, 'AnswerSet'), where('set_name', '==', 'ArthropodSpecies')),
@@ -261,8 +252,10 @@ const updateDocInCollection = async (collectionName, docId, data) => {
     try {
         await updateDoc(doc(db, collectionName, docId), data);
         console.log('Document successfully updated!');
+        return true;
     } catch (error) {
         console.error('Error updating document:', error);
+        return false;
     }
 };
 
@@ -455,6 +448,11 @@ export const uploadNewSession = async (sessionData, project, environment) => {
         return false;
     }
 };
+
+export const getUserName = async (email) => {
+    const user = await getDocs(query(collection(db, 'Users'), where('email', '==', email)));
+    return user.docs[0].data().name;
+}
 
 export const uploadNewEntry = async (entryData, project, environment) => {
     const now = new Date();
