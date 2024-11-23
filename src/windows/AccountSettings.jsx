@@ -9,7 +9,7 @@ export default function AccountSettings({CloseAccountSettings, emailProp}) {
     const [password, setPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
-    const [name, setName] = useState(getUserName(emailProp));
+    const [name, setName] = useState('');
     const [email, setEmail] = useState(emailProp);
 
     async function saveChanges() {
