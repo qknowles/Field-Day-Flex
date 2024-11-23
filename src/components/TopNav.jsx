@@ -30,7 +30,12 @@ function UserController({ email, setEmail, setAuthenticated }) {
     return (
         email && (
             <div className="flex items-center space-x-5">
-                <div>{email}</div>
+                <Button
+                    text= {email}
+                    onClick={() => {
+                        console.log("From button onclick: ", email); // now to make the modal for this button instead
+                    }}
+                />
                 <Button
                     text="Logout"
                     onClick={() => {
