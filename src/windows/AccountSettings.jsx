@@ -76,7 +76,7 @@ export default function AccountSettings({CloseAccountSettings, emailProp}) {
             header="Account Settings"
             onLeftButton={() => {CloseAccountSettings()}}
             onRightButton={() => {saveChanges()}}
-            leftButtonText="Cancel"
+            leftButtonText="Back"
             rightButtonText="Save Changes"
         >
             <div className="flex flex-col space-y-4">
