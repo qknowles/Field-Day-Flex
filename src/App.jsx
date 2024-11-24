@@ -12,7 +12,7 @@ function App() {
         <div className="flex flex-col w-full min-h-screen text-neutral-800 dark:text-neutral-200 select-none">
             <Notifier />
             <TopNav
-                email={email}
+                Email={email}
                 setEmail={setEmail}
                 setAuthenticated={setAuthenticated}
                 hideMenu={!authenticated} 
