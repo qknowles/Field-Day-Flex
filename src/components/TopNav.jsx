@@ -1,16 +1,18 @@
 import { LizardIcon } from '../assets/icons';
 import React, { useState } from 'react';
 import Button from './Button';
+import AccountSettings from '../windows/AccountSettings.jsx';
 
 export default function TopNav({ Email, SetEmail, SetAuthenticated, hideMenu = false }) {
     const [menuOpen, setMenuOpen] = useState(false); // Hamburger menu state
     const [modalContent, setModalContent] = useState(null); // Modal content state
 
+
     const toggleMenu = () => setMenuOpen((prev) => !prev);
 
-    // Function to handle button clicks and display modal
+    // Function to handle button clicks and display modal with custom content
     const handleButtonClick = (content) => {
-        setModalContent(content);
+        setModalContent(content); // Set the content to be displayed in the modal
     };
 
     // Function to close modal
@@ -39,19 +41,28 @@ export default function TopNav({ Email, SetEmail, SetAuthenticated, hideMenu = f
                                     <ul>
                                         <button
                                             className="flex rounded-md p-1.5 text-white whitespace-nowrap bg-asu-maroon border-2 border-transparent items-center mb-2 w-full"
-                                            onClick={() => handleButtonClick('Manage Account')}
+                                            onClick={() =>
+                                                handleButtonClick(<AccountSettings
+                                                    emailProp={Email}
+                                                    CloseAccountSettings={closeModal}
+                                                />)
+                                            }
                                         >
                                             Manage Account
                                         </button>
                                         <button
                                             className="flex rounded-md p-1.5 text-white whitespace-nowrap bg-asu-maroon border-2 border-transparent items-center mb-2 w-full"
-                                            onClick={() => handleButtonClick('Memberships')}
+                                            onClick={() =>
+                                                handleButtonClick(<Memberships />)
+                                            }
                                         >
                                             Memberships
                                         </button>
                                         <button
                                             className="flex rounded-md p-1.5 text-white whitespace-nowrap bg-asu-maroon border-2 border-transparent items-center w-full"
-                                            onClick={() => handleButtonClick('Manage Project')}
+                                            onClick={() =>
+                                                handleButtonClick(<ManageProject />)
+                                            }
                                         >
                                             Manage Project
                                         </button>
@@ -80,7 +91,7 @@ export default function TopNav({ Email, SetEmail, SetAuthenticated, hideMenu = f
             {modalContent && (
                 <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
                     <div className="bg-white dark:bg-neutral-700 text-black dark:text-white p-5 rounded-lg shadow-lg">
-                        <p>{modalContent}: Implement logic here</p>
+                        {modalContent} {/* Render the custom modal content */}
                         <button
                             onClick={closeModal}
                             className="flex rounded-md p-1.5 text-white whitespace-nowrap bg-asu-maroon border-2 border-transparent items-center mb-2"
@@ -111,4 +122,12 @@ function UserController({ email, setEmail, setAuthenticated }) {
             </div>
         )
     );
+}
+
+function Memberships() {
+    return <div>Memberships Content</div>;
+}
+
+function ManageProject() {
+    return <div>Manage Project Content</div>;
 }
