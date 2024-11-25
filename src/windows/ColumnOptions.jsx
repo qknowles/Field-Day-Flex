@@ -3,6 +3,7 @@ import { DropdownFlex, RadioButtons, YesNoSelector } from '../components/FormFie
 import WindowWrapper from '../wrappers/WindowWrapper';
 import InputLabel from '../components/InputLabel';
 import { Type, notify } from '../components/Notifier';
+import { tabExists, createTab } from '../utils/firestore';
 
 export default function ColumnOptions({
     ColumnNames,
@@ -22,11 +23,17 @@ export default function ColumnOptions({
     const [rightButtonClick, setRightButtonClick] = useState();
 
     const [columnIndex, setColumnIndex] = useState(0);
-    const [entryType, setEntryType] = useState('');
-    const [entryChoices, setEntryChoices] = useState([]);
-    const [identifierDomain, setIdentifierDomain] = useState(false);
-    const [domainList, setDomainList] = useState([]);
-    const [columnSettings, setColumnSettings] = useState([]);
+    const [tempEntryOptions, setTempEntryOptions] = useState([]);
+
+    const [dataType, setDataType] = useState(new Array(ColumnNames.length).fill(''));
+    const [entryOptions, setEntryOptions] = useState(() =>
+        Array.from({ length: ColumnNames.length }, () => []),
+    );
+    const [identifierDomain, setIdentifierDomain] = useState(
+        new Array(ColumnNames.length).fill(false),
+    );
+    const [requiredField, setRequiredField] = useState(new Array(ColumnNames.length).fill(false));
+    const [order, setOrder] = useState(Array.from({ length: ColumnNames.length }, (_, i) => i));
 
     useEffect(() => {
         if (columnIndex === 0) {
@@ -42,111 +49,68 @@ export default function ColumnOptions({
             setRightButtonText('Next Column');
             setRightButtonClick(() => goForward);
         }
-        console.log(domainList);
-    }, [columnIndex, entryType, identifierDomain]);
 
-    const storeNewTab = () => {
-        if (validInputs) {
+        setEntryOptionsHelper(tempEntryOptions);
+    }, [columnIndex, dataType, tempEntryOptions, identifierDomain, requiredField]);
+
+    const storeNewTab = async () => {
+        if (validInputs()) {
+            const tabAlreadyExists = await tabExists(Email, SelectedProject, TabName);
+            if (!tabAlreadyExists) {
+                const tabCreated = await createTab(
+                    Email,
+                    SelectedProject,
+                    TabName,
+                    GenerateIdentifiers,
+                    PossibleIdentifiers,
+                    IdentifierDimension,
+                    UnwantedCodes,
+                    UtilizeUnwantedCodes,
+                    ColumnNames,
+                    dataType,
+                    entryOptions,
+                    identifierDomain,
+                    requiredField,
+                    order,
+                );
+                if (tabCreated) {
+                    OpenNewTab(TabName);
+                    return;
+                } else {
+                    notify(Type.error, 'Error creating subject.');
+                    return;
+                }
+            }
         }
     };
 
     const goBackward = () => {
         setColumnIndex((prevIndex) => {
             const newIndex = prevIndex - 1;
-
-            const previousSettings = columnSettings[newIndex];
-            if (previousSettings) {
-                const [name, value] = Array.from(previousSettings.entries())[0];
-
-                if (value !== 'text' && value !== 'number') {
-                    setEntryType(entryTypeOptions[2]);
-                    setEntryChoices(Array.isArray(value) ? value : []);
-                } else if (value === 'text') {
-                    setEntryType(entryTypeOptions[1]);
-                    setEntryChoices([]);
-                } else if (value === 'number') {
-                    setEntryType(entryTypeOptions[0]);
-                    setEntryChoices([]);
-                }
-
-                setIdentifierDomain(domainList.includes(ColumnNames[newIndex]));
-
-            } else {
-                setEntryType('');
-                setEntryChoices([]);
-                setIdentifierDomain(false);
-            }
-
             return newIndex;
         });
     };
 
     const goForward = () => {
-        setColumnIndex((prevIndex) => {
-            const newIndex = prevIndex + 1;
-
-            if (columnSettings[newIndex]) {
-                const nextSettings = columnSettings[newIndex];
-                if (nextSettings) {
-                    const [name, value] = Array.from(nextSettings.entries())[0];
-
-                    if (value !== 'text' && value !== 'number') {
-                        setEntryType(entryTypeOptions[2]);
-                        setEntryChoices(Array.isArray(value) ? value : []);
-                    } else if (value === 'text') {
-                        setEntryType(entryTypeOptions[1]);
-                        setEntryChoices([]);
-                    } else if (value === 'number') {
-                        setEntryType(entryTypeOptions[0]);
-                        setEntryChoices([]);
-                    }
-                }
-                setIdentifierDomain(domainList.includes(ColumnNames[newIndex]));
-            } else {
-                if (validInputs()) {
-                    let keyValue = '';
-                    if (entryType === entryTypeOptions[0]) {
-                        keyValue = 'number';
-                    } else if (entryType === entryTypeOptions[1]) {
-                        keyValue = 'text';
-                    } else {
-                        keyValue = entryChoices;
-                    }
-
-                    const newColumnMap = new Map().set(ColumnNames[prevIndex], keyValue);
-                    setColumnSettings((prevSettings) => {
-                        const updatedSettings = [...prevSettings];
-                        updatedSettings[columnIndex] = newColumnMap;
-                        return updatedSettings;
-                    });
-
-                    if (identifierDomain) {
-                        setDomainList((previousNames) => {
-                            if (!previousNames.includes(ColumnNames[prevIndex])) {
-                                return [...previousNames, ColumnNames[prevIndex]];
-                            }
-                            return previousNames;
-                        });
-                    }
-                    setEntryType('');
-                    setIdentifierDomain(false);
-                }
-            }
-            return newIndex;
-        });
+        if (validInputs()) {
+            setColumnIndex((prevIndex) => {
+                const newIndex = prevIndex + 1;
+                return newIndex;
+            });
+        }
     };
 
     const validInputs = () => {
-        if (!entryTypeOptions.includes(entryType)) {
+        if (!entryTypeOptions.includes(dataType[columnIndex])) {
             notify(Type.error, 'Must first select an entry type.');
             return false;
         } else {
-            if (entryType === entryTypeOptions[2]) {
-                if (!entryChoices) {
+            if (dataType[columnIndex] === entryTypeOptions[3]) {
+                if (!entryOptions[columnIndex]) {
                     notify(Type.error, 'Must include entry options for multiple choice entry.');
                     return false;
                 }
-                if (entryChoices.length !== new Set(entryChoices).size) {
+                if (entryOptions[columnIndex].length !== new Set(entryOptions[columnIndex]).size) {
                     notify(Type.error, 'Entry choices must not contain duplicates.');
                     return false;
                 }
@@ -155,7 +119,44 @@ export default function ColumnOptions({
         return true;
     };
 
-    const entryTypeOptions = ['Numerical Entry', 'Text Entry', 'Multiple Choice Entry'];
+    const entryTypeOptions = [
+        'number',
+        'text',
+        'date',
+        'multiple choice',
+    ];
+
+    const setDataTypeHelper = (type) => {
+        setDataType((previousState) => {
+            const updatedState = [...previousState];
+            updatedState[columnIndex] = type;
+            return updatedState;
+        });
+    };
+
+    const setEntryOptionsHelper = (options) => {
+        setEntryOptions((previousState) => {
+            const updatedState = [...previousState];
+            updatedState[columnIndex] = options;
+            return updatedState;
+        });
+    };
+
+    const setIdentifierDomainHelper = (selection) => {
+        setIdentifierDomain((previousState) => {
+            const updatedState = [...previousState];
+            updatedState[columnIndex] = selection;
+            return updatedState;
+        });
+    };
+
+    const setRequiredFieldHelper = (selection) => {
+        setRequiredField((previousState) => {
+            const updatedState = [...previousState];
+            updatedState[columnIndex] = selection;
+            return updatedState;
+        });
+    };
 
     return (
         <WindowWrapper
@@ -171,24 +172,31 @@ export default function ColumnOptions({
                     layout="horizontal-single"
                     input={<input disabled={true} value={ColumnNames[columnIndex]} />}
                 />
+                <span className='text-sm'>Data Entry Type:</span>
                 <RadioButtons
                     layout="horizontal"
                     options={entryTypeOptions}
-                    selectedOption={entryType}
-                    setSelectedOption={setEntryType}
+                    selectedOption={dataType[columnIndex]}
+                    setSelectedOption={setDataTypeHelper}
                 />
-                {entryType === entryTypeOptions[2] && (
+                {dataType[columnIndex] === entryTypeOptions[3] && (
                     <DropdownFlex
-                        options={entryChoices}
-                        setOptions={setEntryChoices}
+                        options={entryOptions[columnIndex]}
+                        setOptions={setTempEntryOptions}
                         label={'Entry Choices'}
                     />
                 )}
                 <YesNoSelector
-                    label="Add Column to Identifier Domain"
+                    label="Make column a required field"
                     layout="horizontal-start"
-                    selection={identifierDomain}
-                    setSelection={setIdentifierDomain}
+                    selection={requiredField[columnIndex]}
+                    setSelection={setRequiredFieldHelper}
+                />
+                <YesNoSelector
+                    label="Include column in entry ID domain"
+                    layout="horizontal-start"
+                    selection={identifierDomain[columnIndex]}
+                    setSelection={setIdentifierDomainHelper}
                 />
             </div>
         </WindowWrapper>
