@@ -72,7 +72,7 @@ export const verifyPassword = async (email, hashedPassword) => {
 
 export const createAccount = async (name, email, hashedPassword) => {
     try {
-        const userRef = collection(db, 'Users',);
+        const userRef = collection(db, 'Users');
         await addDoc(userRef, {
             name: name,
             email: email,
