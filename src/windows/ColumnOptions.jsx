@@ -3,6 +3,7 @@ import { DropdownFlex, RadioButtons, YesNoSelector } from '../components/FormFie
 import WindowWrapper from '../wrappers/WindowWrapper';
 import InputLabel from '../components/InputLabel';
 import { Type, notify } from '../components/Notifier';
+import { tabExists, createTab } from '../utils/firestore';
 
 export default function ColumnOptions({
     ColumnNames,
@@ -22,9 +23,12 @@ export default function ColumnOptions({
     const [rightButtonClick, setRightButtonClick] = useState();
 
     const [columnIndex, setColumnIndex] = useState(0);
+    const [tempEntryOptions, setTempEntryOptions] = useState([]);
 
     const [dataType, setDataType] = useState(new Array(ColumnNames.length).fill(''));
-    const [entryOptions, setEntryOptions] = useState([]);
+    const [entryOptions, setEntryOptions] = useState(() =>
+        Array.from({ length: ColumnNames.length }, () => []),
+    );
     const [identifierDomain, setIdentifierDomain] = useState(
         new Array(ColumnNames.length).fill(false),
     );
@@ -45,16 +49,38 @@ export default function ColumnOptions({
             setRightButtonText('Next Column');
             setRightButtonClick(() => goForward);
         }
-    }, [columnIndex, dataType, identifierDomain]);
 
-    const storeNewTab = () => {
-        let inputType = '';
-        if (type === entryTypeOptions[0]) {
-            inputType = 'number';
-        } else if (type === entryTypeOptions[1]) {
-            inputType = 'text';
-        } else {
-            inputType = 'multiple choice';
+        setEntryOptionsHelper(tempEntryOptions);
+    }, [columnIndex, dataType, tempEntryOptions, identifierDomain, requiredField]);
+
+    const storeNewTab = async () => {
+        if (validInputs()) {
+            const tabAlreadyExists = await tabExists(Email, SelectedProject, TabName);
+            if (!tabAlreadyExists) {
+                const tabCreated = await createTab(
+                    Email,
+                    SelectedProject,
+                    TabName,
+                    GenerateIdentifiers,
+                    PossibleIdentifiers,
+                    IdentifierDimension,
+                    UnwantedCodes,
+                    UtilizeUnwantedCodes,
+                    ColumnNames,
+                    dataType,
+                    entryOptions,
+                    identifierDomain,
+                    requiredField,
+                    order,
+                );
+                if (tabCreated) {
+                    OpenNewTab(TabName);
+                    return;
+                } else {
+                    notify(Type.error, 'Error creating subject.');
+                    return;
+                }
+            }
         }
     };
 
@@ -79,7 +105,7 @@ export default function ColumnOptions({
             notify(Type.error, 'Must first select an entry type.');
             return false;
         } else {
-            if (dataType[columnIndex] === entryTypeOptions[2]) {
+            if (dataType[columnIndex] === entryTypeOptions[3]) {
                 if (!entryOptions[columnIndex]) {
                     notify(Type.error, 'Must include entry options for multiple choice entry.');
                     return false;
@@ -93,7 +119,12 @@ export default function ColumnOptions({
         return true;
     };
 
-    const entryTypeOptions = ['Numerical Entry', 'Text Entry', 'Multiple Choice Entry'];
+    const entryTypeOptions = [
+        'number',
+        'text',
+        'date',
+        'multiple choice',
+    ];
 
     const setDataTypeHelper = (type) => {
         setDataType((previousState) => {
@@ -103,16 +134,24 @@ export default function ColumnOptions({
         });
     };
 
-    const setEntryOptionsHelper = (option) => {
+    const setEntryOptionsHelper = (options) => {
         setEntryOptions((previousState) => {
             const updatedState = [...previousState];
-            updatedState[columnIndex] = option;
+            updatedState[columnIndex] = options;
             return updatedState;
         });
     };
 
     const setIdentifierDomainHelper = (selection) => {
         setIdentifierDomain((previousState) => {
+            const updatedState = [...previousState];
+            updatedState[columnIndex] = selection;
+            return updatedState;
+        });
+    };
+
+    const setRequiredFieldHelper = (selection) => {
+        setRequiredField((previousState) => {
             const updatedState = [...previousState];
             updatedState[columnIndex] = selection;
             return updatedState;
@@ -133,21 +172,28 @@ export default function ColumnOptions({
                     layout="horizontal-single"
                     input={<input disabled={true} value={ColumnNames[columnIndex]} />}
                 />
+                <span className='text-sm'>Data Entry Type:</span>
                 <RadioButtons
                     layout="horizontal"
                     options={entryTypeOptions}
                     selectedOption={dataType[columnIndex]}
                     setSelectedOption={setDataTypeHelper}
                 />
-                {dataType === entryTypeOptions[2] && (
+                {dataType[columnIndex] === entryTypeOptions[3] && (
                     <DropdownFlex
                         options={entryOptions[columnIndex]}
-                        setOptions={setEntryOptionsHelper}
+                        setOptions={setTempEntryOptions}
                         label={'Entry Choices'}
                     />
                 )}
                 <YesNoSelector
-                    label="Add Column to Identifier Domain"
+                    label="Make column a required field"
+                    layout="horizontal-start"
+                    selection={requiredField[columnIndex]}
+                    setSelection={setRequiredFieldHelper}
+                />
+                <YesNoSelector
+                    label="Include column in entry ID domain"
                     layout="horizontal-start"
                     selection={identifierDomain[columnIndex]}
                     setSelection={setIdentifierDomainHelper}

@@ -3,10 +3,9 @@ import React, { useState } from 'react';
 import Button from './Button';
 import AccountSettings from '../windows/AccountSettings.jsx';
 
-export default function TopNav({ Email, SetEmail, SetAuthenticated, hideMenu = false }) {
+export default function TopNav({ Email, SetEmail, SetAuthenticated, HideMenu = false }) {
     const [menuOpen, setMenuOpen] = useState(false); // Hamburger menu state
     const [modalContent, setModalContent] = useState(null); // Modal content state
-
 
     const toggleMenu = () => setMenuOpen((prev) => !prev);
 
@@ -25,7 +24,7 @@ export default function TopNav({ Email, SetEmail, SetAuthenticated, hideMenu = f
             <nav className="py-2 flex justify-between">
                 <ul className="flex items-center space-x-5">
                     {/* Hamburger Menu */}
-                    {!hideMenu && (
+                    {!HideMenu && (
                         <li className="relative">
                             <button
                                 onClick={toggleMenu}
@@ -42,27 +41,25 @@ export default function TopNav({ Email, SetEmail, SetAuthenticated, hideMenu = f
                                         <button
                                             className="flex rounded-md p-1.5 text-white whitespace-nowrap bg-asu-maroon border-2 border-transparent items-center mb-2 w-full"
                                             onClick={() =>
-                                                handleButtonClick(<AccountSettings
-                                                    emailProp={Email}
-                                                    CloseAccountSettings={closeModal}
-                                                />)
+                                                handleButtonClick(
+                                                    <AccountSettings
+                                                        emailProp={Email}
+                                                        CloseAccountSettings={closeModal}
+                                                    />,
+                                                )
                                             }
                                         >
                                             Manage Account
                                         </button>
                                         <button
                                             className="flex rounded-md p-1.5 text-white whitespace-nowrap bg-asu-maroon border-2 border-transparent items-center mb-2 w-full"
-                                            onClick={() =>
-                                                handleButtonClick(<Memberships />)
-                                            }
+                                            onClick={() => handleButtonClick(<Memberships />)}
                                         >
                                             Memberships
                                         </button>
                                         <button
                                             className="flex rounded-md p-1.5 text-white whitespace-nowrap bg-asu-maroon border-2 border-transparent items-center w-full"
-                                            onClick={() =>
-                                                handleButtonClick(<ManageProject />)
-                                            }
+                                            onClick={() => handleButtonClick(<ManageProject />)}
                                         >
                                             Manage Project
                                         </button>
@@ -84,7 +81,11 @@ export default function TopNav({ Email, SetEmail, SetAuthenticated, hideMenu = f
                         </p>
                     </li>
                 </ul>
-                <UserController email={Email} setEmail={SetEmail} setAuthenticated={SetAuthenticated} />
+                <UserController
+                    email={Email}
+                    setEmail={SetEmail}
+                    setAuthenticated={SetAuthenticated}
+                />
             </nav>
 
             {/* Modal */}
