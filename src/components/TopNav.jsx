@@ -2,6 +2,8 @@ import { LizardIcon } from '../assets/icons';
 import React, { useState } from 'react';
 import Button from './Button';
 import AccountSettings from '../windows/AccountSettings.jsx';
+import ProjectSettings from '../windows/ProjectSettings.jsx';
+import { getCurrentProject } from '../pages/TablePage.jsx';
 
 export default function TopNav({ Email, SetEmail, SetAuthenticated, HideMenu = false }) {
     const [menuOpen, setMenuOpen] = useState(false); // Hamburger menu state
@@ -59,7 +61,11 @@ export default function TopNav({ Email, SetEmail, SetAuthenticated, HideMenu = f
                                         </button>
                                         <button
                                             className="flex rounded-md p-1.5 text-white whitespace-nowrap bg-asu-maroon border-2 border-transparent items-center w-full"
-                                            onClick={() => handleButtonClick(<ManageProject />)}
+                                            onClick={() => handleButtonClick(
+                                                <ProjectSettings
+                                                    projectNameProp = {getCurrentProject}
+                                                    CloseProjectSettings= {closeModal}
+                                                />)}
                                         >
                                             Manage Project
                                         </button>
