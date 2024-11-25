@@ -164,13 +164,17 @@ export const createTab = async (
     Email,
     SelectedProject,
     tabName,
-    columnSettings,
     generateIdentifiers,
-    identifierDomain,
     possibleIdentifiers,
     identifierDimension,
     unwantedCodes,
-    utilizeUnwantedCodes
+    utilizeUnwantedCodes,
+    columnNames,
+    columnDataTypes,
+    columnEntryOptions,
+    columnIdentifierDomains,
+    columnRequiredFields,
+    columnOrder,
 ) => {
     try {
         const projectRef = collection(db, 'Projects');
@@ -188,15 +192,13 @@ export const createTab = async (
 
         if (!tabSnapshot.empty) {
             console.log('A tab with this name already exists.');
-            return;
+            return false;
         }
 
         const tabRef = doc(tabsRef, tabName);
         await setDoc(tabRef, {
             tab_name: tabName,
-            columns: columnSettings,
             generate_unique_identifier: generateIdentifiers,
-            identifier_domain: identifierDomain,
             possible_identifiers: possibleIdentifiers,
             identifier_dimension: identifierDimension,
             unwanted_codes: unwantedCodes,
@@ -204,7 +206,18 @@ export const createTab = async (
             created_at: new Date(),
         });
 
-        console.log('returning true');
+        const columnsRef = collection(tabRef, 'Columns');
+        for (let i = 0; i < columnNames.length; i++) {
+            await addDoc(columnsRef, {
+                name: columnNames[i],
+                data_type: columnDataTypes[i],
+                entry_options: columnEntryOptions[i],
+                identifier_domain: columnIdentifierDomains[i],
+                required_field: columnRequiredFields[i],
+                order: columnOrder[i],
+            });
+        }
+
         return true;
 
     } catch (error) {
@@ -212,6 +225,7 @@ export const createTab = async (
         return false;
     }
 };
+
 
 export const getArthropodLabels = async () => {
     const snapshot = await getDocs(
