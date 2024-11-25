@@ -36,8 +36,8 @@ export const projectExists = async (projectName) => {
 
 export const createProject = async (projectName, email, contributors, administrators) => {
     try {
-        const projectRef = doc(db, 'Projects', projectName);
-        await setDoc(projectRef, {
+        const projectsCollection = collection(db, 'Projects');
+        await addDoc(projectsCollection, {
             project_name: projectName,
             owners: [email],
             contributors: contributors,
@@ -72,8 +72,8 @@ export const verifyPassword = async (email, hashedPassword) => {
 
 export const createAccount = async (name, email, hashedPassword) => {
     try {
-        const userRef = doc(db, 'Users', email);
-        await setDoc(userRef, {
+        const userRef = collection(db, 'Users',);
+        await addDoc(userRef, {
             name: name,
             email: email,
             password: hashedPassword,
