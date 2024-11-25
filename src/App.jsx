@@ -8,18 +8,18 @@ function App() {
     const [authenticated, setAuthenticated] = useState(false);
     const [email, setEmail] = useState('');
 
-     return (
+    return (
         <div className="flex flex-col w-full min-h-screen text-neutral-800 dark:text-neutral-200 select-none">
             <Notifier />
             <TopNav
                 Email={email}
-                setEmail={setEmail}
-                setAuthenticated={setAuthenticated}
-                hideMenu={!authenticated} 
+                SetEmail={setEmail}
+                SetAuthenticated={setAuthenticated}
+                hideMenu={!authenticated}
             />
             <div className="flex flex-grow">
                 {authenticated ? (
-                    <TablePage Email={email}/>
+                    <TablePage Email={email} />
                 ) : (
                     <HomePage SetAuthenticated={setAuthenticated} SetEmail={setEmail} />
                 )}
@@ -29,4 +29,3 @@ function App() {
 }
 
 export default App;
-
