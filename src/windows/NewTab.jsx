@@ -8,9 +8,7 @@ import ColumnOptions from './ColumnOptions.jsx';
 
 export default function NewTab({ CancelTab, OpenNewTab, Email, SelectedProject }) {
     const [tabName, setTabName] = useState('');
-    const [columnSettings, setColumnSettings] = useState([]);
     const [generateIdentifiers, setGenerateIdentifiers] = useState(false);
-    const [identifierDomain, setIdentifierDomain] = useState([]);
     const [possibleIdentifiers, setPossibleIdentifiers] = useState([]);
     const [identifierDimension, setIdentifierDimension] = useState([]);
     const [unwantedCodes, setUnwantedCodes] = useState([]);
@@ -35,7 +33,9 @@ export default function NewTab({ CancelTab, OpenNewTab, Email, SelectedProject }
     }, [columnNames]);
 
     useEffect(() => {
-        setIdentifierDimension([firstIdentifierDimension, secondIdentifierDimension]);
+        if (generateIdentifiers) {
+            setIdentifierDimension([firstIdentifierDimension, secondIdentifierDimension]);
+        }
     }, [firstIdentifierDimension, secondIdentifierDimension]);
 
     const returnPossibleIdentifiers = (highestLetter, highestNumber, unwanted) => {
@@ -110,7 +110,6 @@ export default function NewTab({ CancelTab, OpenNewTab, Email, SelectedProject }
                     SelectedProject,
                     cleanedTabName,
                     generateIdentifiers,
-                    identifierDomain,
                     finalPossibleIdentifiers,
                     identifierDimension,
                     unwantedCodesWithoutDuplicates,
