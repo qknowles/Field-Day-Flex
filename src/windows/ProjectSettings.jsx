@@ -93,9 +93,9 @@ export default function ProjectSettings({ projectNameProp = "NoNamePassed", Clos
                                 <DropdownSelector
                                     options={["Owner", "Admin", "Contributor"]}
                                     selection={member.role}
-                                    onChange={(role) => {
+                                    setSelection={(newRole) => {
                                         const updatedMembers = [...members];
-                                        updatedMembers[index].role = role;
+                                        updatedMembers[index].role = newRole;
                                         setMembers(updatedMembers);
                                     }}
                                 />
