@@ -16,6 +16,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { Type } from '../components/Notifier';
+import { meta as user } from 'eslint-plugin-react/lib/rules/jsx-props-no-spread-multi.js';
 
 export const accountExists = async (email) => {
     const usersRef = collection(db, 'Users');
@@ -163,13 +164,17 @@ export const createTab = async (
     Email,
     SelectedProject,
     tabName,
-    columnSettings,
     generateIdentifiers,
-    identifierDomain,
     possibleIdentifiers,
     identifierDimension,
     unwantedCodes,
-    utilizeUnwantedCodes
+    utilizeUnwantedCodes,
+    columnNames,
+    columnDataTypes,
+    columnEntryOptions,
+    columnIdentifierDomains,
+    columnRequiredFields,
+    columnOrder,
 ) => {
     try {
         const projectRef = collection(db, 'Projects');
@@ -187,15 +192,13 @@ export const createTab = async (
 
         if (!tabSnapshot.empty) {
             console.log('A tab with this name already exists.');
-            return;
+            return false;
         }
 
         const tabRef = doc(tabsRef, tabName);
         await setDoc(tabRef, {
             tab_name: tabName,
-            columns: columnSettings,
             generate_unique_identifier: generateIdentifiers,
-            identifier_domain: identifierDomain,
             possible_identifiers: possibleIdentifiers,
             identifier_dimension: identifierDimension,
             unwanted_codes: unwantedCodes,
@@ -203,7 +206,18 @@ export const createTab = async (
             created_at: new Date(),
         });
 
-        console.log('returning true');
+        const columnsRef = collection(tabRef, 'Columns');
+        for (let i = 0; i < columnNames.length; i++) {
+            await addDoc(columnsRef, {
+                name: columnNames[i],
+                data_type: columnDataTypes[i],
+                entry_options: columnEntryOptions[i],
+                identifier_domain: columnIdentifierDomains[i],
+                required_field: columnRequiredFields[i],
+                order: columnOrder[i],
+            });
+        }
+
         return true;
 
     } catch (error) {
@@ -211,15 +225,6 @@ export const createTab = async (
         return false;
     }
 };
-
-
-
-
-
-
-
-
-
 
 
 export const getArthropodLabels = async () => {
@@ -261,8 +266,10 @@ const updateDocInCollection = async (collectionName, docId, data) => {
     try {
         await updateDoc(doc(db, collectionName, docId), data);
         console.log('Document successfully updated!');
+        return true;
     } catch (error) {
         console.error('Error updating document:', error);
+        return false;
     }
 };
 
@@ -455,6 +462,11 @@ export const uploadNewSession = async (sessionData, project, environment) => {
         return false;
     }
 };
+
+export const getUserName = async (email) => {
+    const user = await getDocs(query(collection(db, 'Users'), where('email', '==', email)));
+    return user.docs[0].data().name;
+}
 
 export const uploadNewEntry = async (entryData, project, environment) => {
     const now = new Date();

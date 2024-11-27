@@ -69,4 +69,12 @@
     .speciesColumn {
         @apply min-w-[100px] whitespace-nowrap overflow-visible;
     }
+    .hamburger-line {
+        width: 24px;
+        height: 3px;
+        margin: 4px 0;
+        transition: background-color 0.3s ease-in-out;
+        background-color: white
+    }
+    
 }

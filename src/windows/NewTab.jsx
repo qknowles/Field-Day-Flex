@@ -63,15 +63,6 @@ export default function NewTab({ CancelTab, OpenNewTab, Email, SelectedProject }
         const codeRegex = /^[A-J](?:10|[1-9])$/;
 
         const filteredColumnNames = columnNames.filter((name) => name !== 'Add Here');
-        // This ensures that 'text' and 'number' will never occur in a column 
-        // because the first letter of every word is capitalized.
-        const capitalizedColumnNames = filteredColumnNames.map((name) =>
-            name
-                .split(' ')
-                .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-                .join(' '),
-        );
-
         const filteredUnwantedCodes = unwantedCodes.filter((code) => code !== 'Add Here');
 
         const unwantedCodesNoSpace = filteredUnwantedCodes.map((code) =>
@@ -79,7 +70,6 @@ export default function NewTab({ CancelTab, OpenNewTab, Email, SelectedProject }
         );
         const unwantedCodesWithoutDuplicates = Array.from(new Set([...unwantedCodesNoSpace]));
         const allCodesValid = unwantedCodesWithoutDuplicates.every((code) => codeRegex.test(code));
-
         if (!allCodesValid) {
             notify(
                 Type.error,
@@ -88,13 +78,22 @@ export default function NewTab({ CancelTab, OpenNewTab, Email, SelectedProject }
             return;
         }
 
+        const uniqueColumnNames = Array.from(new Set(filteredColumnNames));
+        if (uniqueColumnNames.length !== filteredColumnNames.length) {
+            notify(Type.error, 'Duplicate column names are not allowed.');
+            return;
+        }
+
         const cleanedTabName = tabName.trim();
 
-        const finalPossibleIdentifiers = returnPossibleIdentifiers(
-            firstIdentifierDimension,
-            secondIdentifierDimension,
-            unwantedCodesWithoutDuplicates,
-        );
+        let finalPossibleIdentifiers = [];
+        if (generateIdentifiers) {
+            finalPossibleIdentifiers = returnPossibleIdentifiers(
+                firstIdentifierDimension,
+                secondIdentifierDimension,
+                unwantedCodesWithoutDuplicates,
+            );
+        }
 
         setColumnNames(filteredColumnNames);
         setTabName(cleanedTabName);
@@ -110,7 +109,6 @@ export default function NewTab({ CancelTab, OpenNewTab, Email, SelectedProject }
                     Email,
                     SelectedProject,
                     cleanedTabName,
-                    columnSettings,
                     generateIdentifiers,
                     identifierDomain,
                     finalPossibleIdentifiers,

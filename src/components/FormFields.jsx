@@ -29,15 +29,15 @@ export const DropdownFlex = ({ options, setOptions, label }) => {
         setOptions((prevOptions) => {
             return ['Add Here', ...prevOptions.filter((opt) => opt !== 'Add Here')];
         });
-    }, []);
+    }, [setOptions]);
 
     const handleOptionChange = (index, newValue) => {
         setOptions((prevOptions) => {
             const updatedOptions = [...prevOptions];
             if (newValue.trim() === '') {
-                updatedOptions.splice(index, 1); // Remove option if empty
+                updatedOptions.splice(index, 1);
             } else if (index === 0 && newValue !== 'Add Here') {
-                updatedOptions.push(newValue); // Append to the end
+                updatedOptions.push(newValue);
             } else {
                 updatedOptions[index] = newValue;
             }
@@ -50,6 +50,15 @@ export const DropdownFlex = ({ options, setOptions, label }) => {
         if (editingIndex !== null) {
             handleOptionChange(editingIndex, editingValue);
             setEditingIndex(null);
+        }
+    };
+
+    const handleInputClick = (index, opt) => {
+        setEditingIndex(index);
+        if (opt === 'Add Here') {
+            setEditingValue('');
+        } else {
+            setEditingValue(opt);
         }
     };
 
@@ -79,14 +88,11 @@ export const DropdownFlex = ({ options, setOptions, label }) => {
                                 />
                             ) : (
                                 <span
-                                    onClick={() => {
-                                        setEditingIndex(index);
-                                        setEditingValue(opt);
-                                    }}
+                                    onClick={() => handleInputClick(index, opt)}
                                     className={classNames(
                                         'cursor-pointer px-2 pb-1 transition duration-150 rounded',
                                         opt === 'Add Here'
-                                            ? 'border border-gray-300 hover:bg-gray-800' // Border only for "Add Here"
+                                            ? 'border border-gray-300 hover:bg-gray-800'
                                             : 'px-4 pb-1 bg-asu-maroon text-white hover:bg-opacity-80',
                                     )}
                                 >
@@ -100,6 +106,7 @@ export const DropdownFlex = ({ options, setOptions, label }) => {
         />
     );
 };
+
 
 export const DropdownSelector = ({ label, options, selection, setSelection, layout }) => {
     return (
