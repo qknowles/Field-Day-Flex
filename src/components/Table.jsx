@@ -1,9 +1,10 @@
 // Table.js
 import React, { useState, useRef, useEffect } from 'react';
-import { TableEntry } from './TableEntry';
-import { TableHeading } from './TableHeading';
+import TabBar from '../components/TabBar';
+//import { TableEntry } from './TableEntry';
+//import { TableHeading } from './TableHeading';
 import { tableBody } from '../utils/variants';
-import { getKey } from '../const/tableLabels';
+//import { getKey } from '../const/tableLabels';
 
 export const Table = ({ labels, columns, entries, name, setEntries }) => {
     const [sortedColumn, setSortedColumn] = useState(null);
