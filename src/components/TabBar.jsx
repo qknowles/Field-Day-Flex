@@ -37,6 +37,7 @@ export default function TabBar({
 
     const initializeTabs = async () => {
         const projects = await getProjectNames(Email);
+        console.log("PROJECTS", projects);
         setProjectNames(projects);
 
         if (projects.length > 0) {

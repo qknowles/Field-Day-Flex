@@ -16,7 +16,6 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { Type } from '../components/Notifier';
-import { meta as user } from 'eslint-plugin-react/lib/rules/jsx-props-no-spread-multi.js';
 
 export const accountExists = async (email) => {
     const usersRef = collection(db, 'Users');
@@ -122,21 +121,48 @@ export const createAccount = async (name, email, hashedPassword) => {
 export const getProjectNames = async (email) => {
     try {
         const projectsRef = collection(db, 'Projects');
-
-        const contributorQuery = query(projectsRef, where('contributors', 'array-contains', email));
-        const contributorSnapshot = await getDocs(contributorQuery);
-
+        'owners'
+        const combinedQuery = query(
+            projectsRef,
+            or(
+                where('contributors', 'array-contains', email),
+                where('admins', 'array-contains', email),
+                where('owners', 'array-contains', email)
+            )
+        );
+        const projectSnapshot = await getDocs(combinedQuery);
         const projectNames = Array.from(new Set(
-            contributorSnapshot.docs.map((doc) => doc.data().project_name).filter((name) => name)
+            projectSnapshot.docs.map((doc) => doc.data().project_name).filter((name) => name)
         ));
-
         return projectNames;
-
     } catch (error) {
         console.error('Error retrieving project names:', error);
         return [];
     }
 };
+
+export async function addMemberToProject(projectId, field, newMemberEmail) {
+    const isValid = ["contributors", "admins", "owners"].some(
+        (validField) => validField.toLowerCase() === field.toLowerCase())
+
+    console.log("isValid:", isValid, field);
+    if (!["contributors", "admins", "owners"].includes(field)) {
+        console.error(`Invalid field: ${field}. Must be 'contributors', 'admins', or 'owners'.`);
+        return;
+    }
+
+    const projectRef = doc(db, "Projects", projectId);
+
+    try {
+        await updateDoc(projectRef, {
+            [field]: arrayUnion(newMemberEmail),
+        });
+
+        console.log(`Successfully added ${newMemberEmail} to ${field}.`);
+    } catch (error) {
+        console.error(`Error updating ${field}:`, error);
+    }
+}
 
 export const getTabNames = async (email, projectName) => {
     try {
