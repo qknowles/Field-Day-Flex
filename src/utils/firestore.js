@@ -16,6 +16,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { Type } from '../components/Notifier';
+import { meta as user } from 'eslint-plugin-react/lib/rules/jsx-props-no-spread-multi.js';
 
 export const accountExists = async (email) => {
     const usersRef = collection(db, 'Users');
@@ -91,23 +92,11 @@ export const getProjectNames = async (email) => {
     try {
         const projectsRef = collection(db, 'Projects');
 
-        const ownerQuery = query(projectsRef, where('owners', 'array-contains', email));
-        const ownerSnapshot = await getDocs(ownerQuery);
-
         const contributorQuery = query(projectsRef, where('contributors', 'array-contains', email));
         const contributorSnapshot = await getDocs(contributorQuery);
 
-        const adminQuery = query(projectsRef, where('admins', 'array-contains', email));
-        const adminSnapshot = await getDocs(adminQuery);
-
-        const allProjectDocs = [
-            ...ownerSnapshot.docs,
-            ...contributorSnapshot.docs,
-            ...adminSnapshot.docs,
-        ];
-
         const projectNames = Array.from(new Set(
-            allProjectDocs.map((doc) => doc.data().project_name).filter((name) => name)
+            contributorSnapshot.docs.map((doc) => doc.data().project_name).filter((name) => name)
         ));
 
         return projectNames;
@@ -148,9 +137,94 @@ export const getTabNames = async (email, projectName) => {
     }
 };
 
+export const tabExists = async (Email, SelectedProject, tabName) => {
+    try {
+        const projectRef = collection(db, 'Projects');
+        const projectsQuery = query(
+            projectRef,
+            where('project_name', '==', SelectedProject),
+            where('contributors', 'array-contains', Email)
+        );
+        const projectSnapshot = await getDocs(projectsQuery);
 
+        const projectDoc = projectSnapshot.docs[0];
+        const tabsRef = collection(projectDoc.ref, 'Tabs');
+        const tabQuery = query(tabsRef, where('tab_name', '==', tabName));
+        const tabSnapshot = await getDocs(tabQuery);
 
+        return !tabSnapshot.empty;
 
+    } catch (error) {
+        console.error('Error checking if tab exists:', error);
+        return false;
+    }
+};
+
+export const createTab = async (
+    Email,
+    SelectedProject,
+    tabName,
+    generateIdentifiers,
+    possibleIdentifiers,
+    identifierDimension,
+    unwantedCodes,
+    utilizeUnwantedCodes,
+    columnNames,
+    columnDataTypes,
+    columnEntryOptions,
+    columnIdentifierDomains,
+    columnRequiredFields,
+    columnOrder,
+) => {
+    try {
+        const projectRef = collection(db, 'Projects');
+        const projectsQuery = query(
+            projectRef,
+            where('project_name', '==', SelectedProject),
+            where('contributors', 'array-contains', Email)
+        );
+        const projectSnapshot = await getDocs(projectsQuery);
+        const projectDoc = projectSnapshot.docs[0];
+
+        const tabsRef = collection(projectDoc.ref, 'Tabs');
+        const tabQuery = query(tabsRef, where('tab_name', '==', tabName));
+        const tabSnapshot = await getDocs(tabQuery);
+
+        if (!tabSnapshot.empty) {
+            console.log('A tab with this name already exists.');
+            return false;
+        }
+
+        const tabRef = doc(tabsRef, tabName);
+        await setDoc(tabRef, {
+            tab_name: tabName,
+            generate_unique_identifier: generateIdentifiers,
+            possible_identifiers: possibleIdentifiers,
+            identifier_dimension: identifierDimension,
+            unwanted_codes: unwantedCodes,
+            utilize_unwanted: utilizeUnwantedCodes,
+            created_at: new Date(),
+        });
+
+        const columnsRef = collection(tabRef, 'Columns');
+        for (let i = 0; i < columnNames.length; i++) {
+            await addDoc(columnsRef, {
+                name: columnNames[i],
+                data_type: columnDataTypes[i],
+                entry_options: columnEntryOptions[i],
+                identifier_domain: columnIdentifierDomains[i],
+                required_field: columnRequiredFields[i],
+                order: columnOrder[i],
+            });
+        }
+
+        return true;
+
+    } catch (error) {
+        console.error('Error creating tab:', error);
+        return false;
+    }
+};
 
 
 export const getArthropodLabels = async () => {
@@ -192,8 +266,10 @@ const updateDocInCollection = async (collectionName, docId, data) => {
     try {
         await updateDoc(doc(db, collectionName, docId), data);
         console.log('Document successfully updated!');
+        return true;
     } catch (error) {
         console.error('Error updating document:', error);
+        return false;
     }
 };
 
@@ -386,6 +462,11 @@ export const uploadNewSession = async (sessionData, project, environment) => {
         return false;
     }
 };
+
+export const getUserName = async (email) => {
+    const user = await getDocs(query(collection(db, 'Users'), where('email', '==', email)));
+    return user.docs[0].data().name;
+}
 
 export const uploadNewEntry = async (entryData, project, environment) => {
     const now = new Date();

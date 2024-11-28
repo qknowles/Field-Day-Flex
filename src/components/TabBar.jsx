@@ -31,7 +31,7 @@ export default function TabBar({
     const closeNewTab = () => setShowNewTab(false);
     const openNewTab = (tabName) => {
         setShowNewTab(false);
-        setTabNames((prevTabNames) => [...prevProjectNames, projectNames]);
+        setTabNames((prevTabNames) => [...prevTabNames, tabName]);
         SetSelectedTab(tabName);
     }
 
@@ -40,7 +40,7 @@ export default function TabBar({
         setProjectNames(projects);
 
         if (projects.length > 0) {
-            const defaultProject = projects[0];
+            const defaultProject = SelectedProject || projects[0];
             SetSelectedProject(defaultProject);
 
             const tabs = await getTabNames(Email, defaultProject);
@@ -102,7 +102,7 @@ export default function TabBar({
                 </div>
             </div>
             <div>
-                {showNewTab && <NewTab CancelTab={closeNewTab} OpenNewTab={openNewTab} Email={Email} />}
+                {showNewTab && <NewTab CancelTab={closeNewTab} OpenNewTab={openNewTab} Email={Email} SelectedProject={SelectedProject} />}
                 {showNewProject && <NewProject CancelProject={closeNewProject} OpenNewProject={openNewProject} Email={Email} />}
             </div>
         </>
