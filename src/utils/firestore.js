@@ -34,6 +34,37 @@ export const projectExists = async (projectName) => {
     return !userSnapshot.empty;
 };
 
+export const getProjectFields = async (projectName, fields) => {
+    try {
+        const projectRef = collection(db, 'Projects');
+        const projectQuery = query(
+            projectRef,
+            where('project_name', '==', projectName)
+        );
+
+        const projectSnapshot = await getDocs(projectQuery);
+
+        if (projectSnapshot.empty) {
+            console.error(`Project "${projectName}" not found.`);
+            return null;
+        }
+
+        // assuming a unique project_name
+        const projectData = projectSnapshot.docs[0].data();
+
+        const selectedFields = fields.reduce((result, field) => {
+            if (field in projectData) {
+                result[field] = projectData[field];
+            }
+            return result;
+        }, {});
+        return selectedFields;
+    } catch (error) {
+        console.error('Error retrieving project fields:', error);
+        throw error;
+    }
+};
+
 export const createProject = async (projectName, email, contributors, administrators) => {
     try {
         const projectRef = doc(db, 'Projects', projectName);
