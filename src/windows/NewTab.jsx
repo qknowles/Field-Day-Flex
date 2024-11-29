@@ -116,6 +116,7 @@ export default function NewTab({ CancelTab, OpenNewTab, Email, SelectedProject }
                     utilizeUnwantedCodes,
                 );
                 if (tabCreated) {
+                    notify(Type.success, `Tab created.`);
                     OpenNewTab(tabName);
                     return;
                 } else {

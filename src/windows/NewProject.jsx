@@ -42,6 +42,7 @@ export default function NewProject({ CancelProject, OpenNewProject, Email }) {
                 finalAdministrators,
             );
             if (projectCreated) {
+                notify(Type.success, `Created new project.`);
                 OpenNewProject(trimmedProjectName);
                 return;
             } else {
