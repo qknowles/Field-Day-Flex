@@ -79,6 +79,7 @@ export default function ColumnOptions({
                     order,
                 );
                 if (tabCreated) {
+                    notify(Type.success, `Tab created.`);
                     OpenNewTab(TabName);
                     return;
                 } else {
