@@ -299,7 +299,7 @@ export const addEntry = async (projectName, tabName, email, newEntry) => {
 
         const entriesRef = collection(tabDoc.ref, 'Entries');
         await addDoc(entriesRef, {
-            ...newEntry,
+            entry_data: newEntry,
             entry_date: new Date(),
             deleted: false,
             entry_number: entryNumber,
@@ -343,4 +343,3 @@ export const getUserName = async (email) => {
     const user = await getDocs(query(collection(db, 'Users'), where('email', '==', email)));
     return user.docs[0].data().name;
 }
-
