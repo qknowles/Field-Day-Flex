@@ -11,37 +11,38 @@ export default function Table({ Email, SelectedProject, SelectedTab }) {
     useEffect(() => {
         const loadData = async () => {
             if (!SelectedProject || !SelectedTab) return;
-
             try {
                 setLoading(true);
+                console.log('Loading data for:', SelectedProject, SelectedTab);
                 
                 // First get columns to know structure
                 const columnsRef = collection(db, `Projects/${SelectedProject}/Tabs/${SelectedTab}/Columns`);
                 const columnsSnapshot = await getDocs(columnsRef);
+                console.log('Columns data:', columnsSnapshot.docs.map(d => d.data()));
+                
                 const columnsData = columnsSnapshot.docs
                     .map(doc => ({...doc.data(), id: doc.id}))
-                    .sort((a, b) => a.order - b.order); // Sort by order field
+                    .sort((a, b) => a.order - b.order);
                 setColumns(columnsData);
-
+    
                 // Then get entries
                 const entriesRef = collection(db, `Projects/${SelectedProject}/Tabs/${SelectedTab}/Entries`);
                 const entriesSnapshot = await getDocs(entriesRef);
+                console.log('Entries data:', entriesSnapshot.docs.map(d => d.data()));
+                
                 const entriesData = entriesSnapshot.docs.map(doc => ({
                     id: doc.id,
                     ...doc.data()
                 }));
                 setEntries(entriesData);
-
             } catch (error) {
                 console.error('Error loading table data:', error);
             } finally {
                 setLoading(false);
             }
         };
-
         loadData();
     }, [SelectedProject, SelectedTab]);
-
     if (loading) {
         return <div>Loading...</div>;
     }
