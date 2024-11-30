@@ -339,6 +339,59 @@ export const updateDocInCollection = async (collectionName, docId, data) => {
     }
 };
 
+export const getEntriesForTab = async (projectName, tabName, email) => {
+    try {
+        // Step 1: Query the project
+        const projectRef = collection(db, 'Projects');
+        const projectQuery = query(
+            projectRef,
+            where('project_name', '==', projectName),
+            where('contributors', 'array-contains', email)
+        );
+        const projectSnapshot = await getDocs(projectQuery);
+
+        if (projectSnapshot.empty) {
+            console.error('No matching project found for the given name and email.');
+            return [];
+        }
+
+        const projectDoc = projectSnapshot.docs[0]; // Get the project document
+
+        // Step 2: Query the tab
+        const tabsRef = collection(projectDoc.ref, 'Tabs');
+        const tabQuery = query(tabsRef, where('tab_name', '==', tabName));
+        const tabSnapshot = await getDocs(tabQuery);
+
+        if (tabSnapshot.empty) {
+            console.error('No matching tab found in the specified project.');
+            return [];
+        }
+
+        const tabDoc = tabSnapshot.docs[0]; // Get the tab document
+
+        // Step 3: Query the entries
+        const entriesRef = collection(tabDoc.ref, 'Entries');
+        const entriesSnapshot = await getDocs(entriesRef);
+
+        if (entriesSnapshot.empty) {
+            console.warn('No entries found for the specified tab.');
+            return [];
+        }
+
+        // Step 4: Map the entry documents into an array
+        const entries = entriesSnapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+        }));
+
+        return entries;
+
+    } catch (error) {
+        console.error('Error retrieving entries for the tab:', error);
+        return [];
+    }
+};
+
 export const getUserName = async (email) => {
     const user = await getDocs(query(collection(db, 'Users'), where('email', '==', email)));
     return user.docs[0].data().name;

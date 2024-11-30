@@ -1,16 +1,11 @@
 import React, { useState } from 'react';
 import TabBar from '../components/TabBar';
-import Table from '../components/Table';
+import DataViewer from '../components/DataViewer';
 import PageWrapper from '../wrappers/PageWrapper';
 import { LizardIcon } from '../assets/icons';
-
-// Import all window components
 import NewProject from '../windows/NewProject';
 import NewTab from '../windows/NewTab';
 import NewEntry from '../windows/NewEntry';
-import ManageProject from '../windows/ManageProject';
-import AccountSettings from '../windows/AccountSettings';
-import MembershipWindow from '../windows/MembershipWindow';
 
 const NoProjectDisplay = () => (
     <div className="w-full text-center">
@@ -51,104 +46,59 @@ const NoTabsDisplay = () => (
 );
 
 export default function TablePage({ Email }) {
-    // Tab and project selection state
-    const [selectedTab, setSelectedTab] = useState('');
     const [selectedProject, setSelectedProject] = useState('');
-
-    // Window visibility states
+    const [selectedTab, setSelectedTab] = useState('');
     const [showNewProject, setShowNewProject] = useState(false);
     const [showNewTab, setShowNewTab] = useState(false);
-    const [showNewEntry, setShowNewEntry] = useState(false);
-    const [showManageProject, setShowManageProject] = useState(false);
-    const [showAccountSettings, setShowAccountSettings] = useState(false);
-    const [showMemberships, setShowMemberships] = useState(false);
-
-    // Window open/close handlers
-    const handleNewProject = (projectName) => {
-        setShowNewProject(false);
-        setSelectedProject(projectName);
-    };
-
-    const handleNewTab = (tabName) => {
-        setShowNewTab(false);
-        setSelectedTab(tabName);
-    };
 
     return (
         <PageWrapper>
-            {/* TabBar Component */}
+            {/* Tab Navigation */}
             <TabBar
                 Email={Email}
-                SelectedTab={selectedTab}
-                SetSelectedTab={setSelectedTab}
                 SelectedProject={selectedProject}
                 SetSelectedProject={setSelectedProject}
+                SelectedTab={selectedTab}
+                SetSelectedTab={setSelectedTab}
                 OnNewProject={() => setShowNewProject(true)}
                 OnNewTab={() => setShowNewTab(true)}
             />
-            
-            {/* Main Content Area */}
+
+            {/* Content Area */}
             <div className="flex-grow bg-white dark:bg-neutral-950">
                 {!selectedProject ? (
                     <NoProjectDisplay />
                 ) : !selectedTab ? (
                     <NoTabsDisplay />
                 ) : (
-                    <Table 
+                    <DataViewer
                         Email={Email}
                         SelectedProject={selectedProject}
                         SelectedTab={selectedTab}
-                        OnNewEntry={() => setShowNewEntry(true)}
                     />
                 )}
             </div>
 
-            {/* Window Overlays */}
+            {/* Modals */}
             {showNewProject && (
-                <NewProject 
+                <NewProject
                     CancelProject={() => setShowNewProject(false)}
-                    OpenNewProject={handleNewProject}
+                    OpenNewProject={(projectName) => {
+                        setShowNewProject(false);
+                        setSelectedProject(projectName);
+                    }}
                     Email={Email}
                 />
             )}
-
             {showNewTab && (
                 <NewTab
                     CancelTab={() => setShowNewTab(false)}
-                    OpenNewTab={handleNewTab}
+                    OpenNewTab={(tabName) => {
+                        setShowNewTab(false);
+                        setSelectedTab(tabName);
+                    }}
                     Email={Email}
                     SelectedProject={selectedProject}
-                />
-            )}
-
-            {showNewEntry && (
-                <NewEntry
-                    CloseNewEntry={() => setShowNewEntry(false)}
-                    ProjectName={selectedProject}
-                    TabName={selectedTab}
-                    Email={Email}
-                />
-            )}
-
-            {showManageProject && (
-                <ManageProject
-                    CloseManageProject={() => setShowManageProject(false)}
-                    ProjectName={selectedProject}
-                    Email={Email}
-                />
-            )}
-
-            {showAccountSettings && (
-                <AccountSettings
-                    CloseAccountSettings={() => setShowAccountSettings(false)}
-                    emailProp={Email}
-                />
-            )}
-
-            {showMemberships && (
-                <MembershipWindow
-                    CancelMemberships={() => setShowMemberships(false)}
-                    Email={Email}
                 />
             )}
         </PageWrapper>
