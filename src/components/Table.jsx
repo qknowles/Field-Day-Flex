@@ -1,82 +1,100 @@
 import React, { useEffect, useState } from 'react';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../utils/firebase';
+import { motion, AnimatePresence } from 'framer-motion';
+import { tableBody } from '../utils/variants';
+//import { TableEntry } from './TableEntry';
+import { getColumnsCollection } from '../utils/firestore';
+import { Type, notify } from '../components/Notifier';
 
-export default function Table({ Email, SelectedProject, SelectedTab }) {
+const Table = ({ Email, SelectedProject, SelectedTab, OnNewEntry }) => {
     const [columns, setColumns] = useState([]);
     const [entries, setEntries] = useState([]);
+    const [shownColumns, setShownColumns] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // Load columns and entries when project/tab changes
     useEffect(() => {
         const loadData = async () => {
             if (!SelectedProject || !SelectedTab) return;
             try {
                 setLoading(true);
-                console.log('Loading data for:', SelectedProject, SelectedTab);
+                console.log('Loading data for:', SelectedTab);
                 
-                // First get columns to know structure
-                const columnsRef = collection(db, `Projects/${SelectedProject}/Tabs/${SelectedTab}/Columns`);
-                const columnsSnapshot = await getDocs(columnsRef);
-                console.log('Columns data:', columnsSnapshot.docs.map(d => d.data()));
-                
-                const columnsData = columnsSnapshot.docs
-                    .map(doc => ({...doc.data(), id: doc.id}))
-                    .sort((a, b) => a.order - b.order);
-                setColumns(columnsData);
-    
-                // Then get entries
-                const entriesRef = collection(db, `Projects/${SelectedProject}/Tabs/${SelectedTab}/Entries`);
-                const entriesSnapshot = await getDocs(entriesRef);
-                console.log('Entries data:', entriesSnapshot.docs.map(d => d.data()));
-                
-                const entriesData = entriesSnapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
-                setEntries(entriesData);
+                const columnsData = await getColumnsCollection(SelectedProject, SelectedTab, Email);
+                if (columnsData) {
+                    setColumns(columnsData);
+                    setShownColumns(columnsData.map(col => col.name));
+                }
+
             } catch (error) {
                 console.error('Error loading table data:', error);
+                notify(Type.error, 'Failed to load table data');
             } finally {
                 setLoading(false);
             }
         };
+
         loadData();
-    }, [SelectedProject, SelectedTab]);
+    }, [SelectedProject, SelectedTab, Email]);
+
+    const removeEntry = (entryId) => {
+        setEntries(prev => prev.filter(entry => entry.id !== entryId));
+    };
+
     if (loading) {
-        return <div>Loading...</div>;
+        return <div className="p-4 text-center">Loading...</div>;
+    }
+
+    if (columns.length === 0) {
+        return <div className="p-4 text-center">No columns defined for this table.</div>;
     }
 
     return (
         <div className="overflow-x-auto">
             <table className="w-full border-collapse">
                 <thead>
-                    <tr>
+                    <tr className="bg-gray-100 dark:bg-gray-800">
+                        <th className="p-2 text-left border-b font-semibold">Actions</th>
                         {columns.map(column => (
-                            <th 
-                                key={column.id}
-                                className="p-2 text-left border-b font-semibold"
-                            >
-                                {column.column_name}
-                            </th>
+                            shownColumns.includes(column.name) && (
+                                <th 
+                                    key={column.id}
+                                    className="p-2 text-left border-b font-semibold"
+                                >
+                                    {column.name}
+                                </th>
+                            )
                         ))}
                     </tr>
                 </thead>
-                <tbody>
-                    {entries.map(entry => (
-                        <tr key={entry.id}>
-                            {columns.map(column => (
-                                <td 
-                                    key={`${entry.id}-${column.id}`}
-                                    className="p-2 border-b"
-                                >
-                                    {entry.entry_data[column.column_name] || 'N/A'}
-                                </td>
-                            ))}
+                <motion.tbody
+                    variants={tableBody}
+                    initial="hidden"
+                    animate="visible"
+                >
+                    <AnimatePresence>
+                        {entries.map((entry, index) => (
+                            <TableEntry
+                                key={entry.id}
+                                entrySnapshot={entry}
+                                shownColumns={shownColumns}
+                                removeEntry={removeEntry}
+                                index={index}
+                            />
+                        ))}
+                    </AnimatePresence>
+                    {entries.length === 0 && (
+                        <tr>
+                            <td 
+                                colSpan={shownColumns.length + 1}
+                                className="p-4 text-center text-gray-500"
+                            >
+                                No entries found
+                            </td>
                         </tr>
-                    ))}
-                </tbody>
+                    )}
+                </motion.tbody>
             </table>
         </div>
     );
-}
+};
+
+export default Table;
