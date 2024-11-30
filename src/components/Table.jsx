@@ -1,7 +1,14 @@
 import React, { useState } from 'react';
 
 const Table = ({ Email, SelectedProject, SelectedTab, entries, columns, onEdit, onDelete }) => {
-    const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+    const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' }); 
+
+    const handleSort = (key) => {
+        setSortConfig((prev) => ({
+            key,
+            direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc',
+        }));
+    };
 
     // Sort entries based on the current sorting configuration
     const sortedEntries = [...entries].sort((a, b) => {
@@ -13,14 +20,6 @@ const Table = ({ Email, SelectedProject, SelectedTab, entries, columns, onEdit, 
         }
         return bValue.localeCompare(aValue);
     });
-
-    // Handle column sorting
-    const handleSort = (key) => {
-        setSortConfig((prev) => ({
-            key,
-            direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc',
-        }));
-    };
 
     // Sort columns by the `order` field
     const sortedColumns = [...columns].sort((a, b) => a.order - b.order);
@@ -50,10 +49,10 @@ const Table = ({ Email, SelectedProject, SelectedTab, entries, columns, onEdit, 
                     {sortedEntries.map((entry) => (
                         <tr key={entry.id}>
                             <td className="p-2">
-                                <button className="btn btn-edit" onClick={() => onEdit(entry)}>
+                                <button className="btn btn-edit" onClick={() => onEdit?.(entry)}>
                                     Edit
                                 </button>
-                                <button className="btn btn-delete ml-2" onClick={() => onDelete(entry.id)}>
+                                <button className="btn btn-delete ml-2" onClick={() => onDelete?.(entry.id)}>
                                     Delete
                                 </button>
                             </td>
