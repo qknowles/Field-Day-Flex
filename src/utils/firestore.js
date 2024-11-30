@@ -221,50 +221,60 @@ export const createTab = async (
 
 export const getColumnsCollection = async (projectName, tabName, email) => {
     try {
+        console.log('Fetching columns for project:', projectName, 'and tab:', tabName);
+
+        // Query the Projects collection
         const projectRef = collection(db, 'Projects');
-        const projectsQuery = query(
+        const projectQuery = query(
             projectRef,
             where('project_name', '==', projectName),
             where('contributors', 'array-contains', email)
         );
-        const projectSnapshot = await getDocs(projectsQuery);
+        const projectSnapshot = await getDocs(projectQuery);
 
         if (projectSnapshot.empty) {
-            console.error('No matching project found for the given name and email.');
-            return null;
+            console.error('No matching project found for:', projectName);
+            return [];
         }
 
-        const projectDoc = projectSnapshot.docs[0];
+        const projectDoc = projectSnapshot.docs[0]; // Get the project document
+
+        // Query the Tabs subcollection
         const tabsRef = collection(projectDoc.ref, 'Tabs');
-        const tabsQuery = query(tabsRef, where('tab_name', '==', tabName));
-        const tabSnapshot = await getDocs(tabsQuery);
+        const tabQuery = query(tabsRef, where('tab_name', '==', tabName));
+        const tabSnapshot = await getDocs(tabQuery);
 
         if (tabSnapshot.empty) {
-            console.error('No matching tab found in the specified project.');
-            return null;
+            console.error('No matching tab found for:', tabName);
+            return [];
         }
 
-        const tabDoc = tabSnapshot.docs[0];
+        const tabDoc = tabSnapshot.docs[0]; // Get the tab document
+
+        // Query the Columns subcollection
         const columnsRef = collection(tabDoc.ref, 'Columns');
         const columnsSnapshot = await getDocs(columnsRef);
 
         if (columnsSnapshot.empty) {
-            console.error('No columns found in the specified tab.');
+            console.warn('No columns found in the specified tab:', tabName);
             return [];
         }
 
+        // Map the column documents into an array
         const columns = columnsSnapshot.docs.map((doc) => ({
             id: doc.id,
             ...doc.data(),
         }));
 
+        console.log('Fetched columns:', columns);
         return columns;
 
     } catch (error) {
-        console.error('Error retrieving columns collection:', error);
-        return null;
+        console.error('Error in getColumnsCollection:', error);
+        return [];
     }
 };
+
 
 export const addEntry = async (projectName, tabName, email, newEntry) => {
     try {
@@ -327,7 +337,49 @@ export const addDocToCollection = async (collectionName, data) => {
         console.error('Error adding document:', error);
     }
 };
+export const getEntriesForTab = async (projectName, tabName, email) => {
+    try {
+        // Get project reference
+        const projectRef = collection(db, 'Projects');
+        const projectQuery = query(
+            projectRef,
+            where('project_name', '==', projectName),
+            where('contributors', 'array-contains', email)
+        );
+        const projectSnapshot = await getDocs(projectQuery);
 
+        if (projectSnapshot.empty) {
+            throw new Error('Project not found');
+        }
+
+        const projectDoc = projectSnapshot.docs[0];
+
+        // Get tab reference
+        const tabsRef = collection(projectDoc.ref, 'Tabs');
+        const tabQuery = query(tabsRef, where('tab_name', '==', tabName));
+        const tabSnapshot = await getDocs(tabQuery);
+
+        if (tabSnapshot.empty) {
+            throw new Error('Tab not found');
+        }
+
+        const tabDoc = tabSnapshot.docs[0];
+
+        // Get entries
+        const entriesRef = collection(tabDoc.ref, 'Entries');
+        const entriesSnapshot = await getDocs(entriesRef);
+
+        return entriesSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            entry_date: doc.data().entry_date?.toDate?.() || doc.data().entry_date
+        }));
+
+    } catch (error) {
+        console.error('Error fetching entries:', error);
+        throw error;
+    }
+};
 export const updateDocInCollection = async (collectionName, docId, data) => {
     try {
         await updateDoc(doc(db, collectionName, docId), data);
@@ -336,6 +388,85 @@ export const updateDocInCollection = async (collectionName, docId, data) => {
     } catch (error) {
         console.error('Error updating document:', error);
         return false;
+    }
+};
+
+export const getCollectionName = async (environment, projectName, tableName) => {
+    try {
+        // First get project doc ID
+        const projectRef = collection(db, 'Projects');
+        const projectQuery = query(projectRef, where('project_name', '==', projectName));
+        const projectSnapshot = await getDocs(projectQuery);
+        
+        if (projectSnapshot.empty) {
+            throw new Error('Project not found');
+        }
+
+        const projectDoc = projectSnapshot.docs[0];
+
+        // Then get tab doc ID
+        const tabsRef = collection(projectDoc.ref, 'Tabs');
+        const tabQuery = query(tabsRef, where('tab_name', '==', tableName));
+        const tabSnapshot = await getDocs(tabQuery);
+
+        if (tabSnapshot.empty) {
+            throw new Error('Tab not found');
+        }
+
+        const tabDoc = tabSnapshot.docs[0];
+
+        // Return the full path
+        return `Projects/${projectDoc.id}/Tabs/${tabDoc.id}/Columns`;
+    } catch (error) {
+        console.error('Error in getCollectionName:', error);
+        throw error;
+    }
+};
+export const getDocsFromCollection = async (projectName, tabName, constraints = []) => {
+    try {
+        if (!projectName || !tabName) {
+            throw new Error('projectName or tabName is missing');
+        }
+
+        const projectRef = collection(db, 'Projects');
+        const projectQuery = query(projectRef, where('project_name', '==', projectName));
+        const projectSnapshot = await getDocs(projectQuery);
+
+        if (projectSnapshot.empty) {
+            console.error('No matching project found:', projectName);
+            return [];
+        }
+
+        const projectDoc = projectSnapshot.docs[0];
+        const tabsRef = collection(projectDoc.ref, 'Tabs');
+        const tabQuery = query(tabsRef, where('tab_name', '==', tabName));
+        const tabSnapshot = await getDocs(tabQuery);
+
+        if (tabSnapshot.empty) {
+            console.error('No matching tab found:', tabName);
+            return [];
+        }
+
+        const tabDoc = tabSnapshot.docs[0];
+        const columnsRef = collection(tabDoc.ref, 'Columns');
+        const queryConstraints = query(columnsRef, ...constraints);
+        const columnsSnapshot = await getDocs(queryConstraints);
+
+        if (columnsSnapshot.empty) {
+            console.warn('No columns found in the specified tab:', tabName);
+            return [];
+        }
+
+        const columns = columnsSnapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+        }));
+
+        console.log('Fetched columns:', columns);
+        return columns;
+    } catch (error) {
+        console.error('Error in getDocsFromCollection:', error);
+        return [];
     }
 };
 
