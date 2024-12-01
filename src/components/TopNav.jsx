@@ -96,7 +96,8 @@ export default function TopNav({ Email, SetEmail, SetAuthenticated, HideMenu = f
 
             {/* Modal */}
             {modalContent && (
-                <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+                <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50"
+                    style={{ zIndex: 9999 }}>
                     <div className="bg-white dark:bg-neutral-700 text-black dark:text-white p-5 rounded-lg shadow-lg">
                         {modalContent} {/* Render the custom modal content */}
                         <button
