@@ -141,6 +141,29 @@ export const getProjectNames = async (email) => {
     }
 };
 
+export const getDocumentIdByProjectName = async (projectName) => {
+    try {
+        const projectQuery = query(
+            collection(db, "Projects"),
+            where("project_name", "==", projectName)
+        );
+
+        const querySnapshot = await getDocs(projectQuery);
+
+        if (!querySnapshot.empty) {
+            const docId = querySnapshot.docs[0].id;
+            console.log(`Document ID for project_name "${projectName}": ${docId}`);
+            return docId;
+        } else {
+            console.log(`No document found with project_name "${projectName}"`);
+            return null;
+        }
+    } catch (error) {
+        console.error("Error fetching document ID:", error);
+        return null;
+    }
+};
+
 export async function addMemberToProject(projectId, field, newMemberEmail) {
     const isValid = ["contributors", "admins", "owners"].some(
         (validField) => validField.toLowerCase() === field.toLowerCase())

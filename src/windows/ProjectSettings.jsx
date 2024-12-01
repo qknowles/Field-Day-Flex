@@ -3,7 +3,12 @@ import WindowWrapper from '../wrappers/WindowWrapper.jsx';
 import InputLabel from '../components/InputLabel.jsx';
 import { DropdownSelector } from '../components/FormFields.jsx';
 import { AiFillDelete } from 'react-icons/ai';
-import { getProjectFields, updateDocInCollection, addMemberToProject } from '../utils/firestore.js';
+import {
+    getProjectFields,
+    updateDocInCollection,
+    addMemberToProject,
+    getDocumentIdByProjectName
+} from '../utils/firestore.js';
 import Button from '../components/Button.jsx';
 import { notify, Type } from '../components/Notifier.jsx';
 
@@ -62,16 +67,17 @@ export default function ProjectSettings({ projectNameProp = "NoNamePassed", Clos
     }
 
     // Save button (rightButton in WindowWrapper) only used for project name. everything else is real time
-    function saveChanges() {
-        notify(Type.error, "saveChanges TBD - ask Quinten or Evan about state of DB")
+    async function saveChanges() {
+        let docId = await getDocumentIdByProjectName(`${projectNameProp}`)
+        notify(Type.success, docId);
         // console.log('projectNameProp:', projectNameProp);
         // console.log('projectName:', projectName);
-        // updateDocInCollection('Projects', projectNameProp(), {project_name: `${projectName}`});
+        updateDocInCollection('Projects', docId, {project_name: `${projectName}`});
     }
 
     return (
         <WindowWrapper
-            header={`Manage ${projectNameProp()} Project`}
+            header={`Manage ${projectNameProp} Project`}
             onLeftButton={() => { CloseProjectSettings() }}
             onRightButton={() => { saveChanges() }}
             leftButtonText="Cancel"
