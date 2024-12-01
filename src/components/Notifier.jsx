@@ -33,7 +33,14 @@ const notify = (type, text) => {
 
 function Notifier() {
     return (
-        <Toaster  position="bottom-center" />
+        <Toaster
+            position="bottom-center"
+            toastOptions={{
+                style: {
+                    zIndex: 1000
+                }
+            }}
+        />
     );
 }
 
