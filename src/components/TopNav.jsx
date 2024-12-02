@@ -2,7 +2,7 @@ import { LizardIcon } from '../assets/icons';
 import React, { useState } from 'react';
 import Button from './Button';
 import AccountSettings from '../windows/AccountSettings.jsx';
-
+import MembershipsWindow from '../windows/MembershipWindow';
 export default function TopNav({ Email, SetEmail, SetAuthenticated, HideMenu = false }) {
     const [menuOpen, setMenuOpen] = useState(false); // Hamburger menu state
     const [modalContent, setModalContent] = useState(null); // Modal content state
@@ -50,13 +50,18 @@ export default function TopNav({ Email, SetEmail, SetAuthenticated, HideMenu = f
                                             }
                                         >
                                             Manage Account
-                                        </button>
-                                        <button
-                                            className="flex rounded-md p-1.5 text-white whitespace-nowrap bg-asu-maroon border-2 border-transparent items-center mb-2 w-full"
-                                            onClick={() => handleButtonClick(<Memberships />)}
-                                        >
-                                            Memberships
-                                        </button>
+                                            </button>
+                                            <button
+    className="flex rounded-md p-1.5 text-white whitespace-nowrap bg-asu-maroon border-2 border-transparent items-center mb-2 w-full"
+    onClick={() => handleButtonClick(
+        <MembershipsWindow
+            Email={Email}
+            CancelMemberships={closeModal}
+        />
+    )}
+>
+    Memberships
+</button>
                                         <button
                                             className="flex rounded-md p-1.5 text-white whitespace-nowrap bg-asu-maroon border-2 border-transparent items-center w-full"
                                             onClick={() => handleButtonClick(<ManageProject />)}

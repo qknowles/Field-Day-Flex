@@ -3,6 +3,9 @@ import WindowWrapper from '../wrappers/WindowWrapper';
 import { Type, notify } from '../components/Notifier';
 import { getProjectNames } from '../utils/firestore';
 import Button from '../components/Button';
+import { Authenticator } from '../utils/authenticator';
+
+const auth = new Authenticator();
 
 export default function MembershipsWindow({ CancelMemberships, Email }) {
     const [projects, setProjects] = useState([]);
