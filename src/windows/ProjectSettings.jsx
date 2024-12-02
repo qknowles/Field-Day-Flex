@@ -81,7 +81,7 @@ export default function ProjectSettings({ projectNameProp = "NoNamePassed", Clos
             notify(Type.error, "Please select a role.");
             return;
         }
-        await addMemberToProject(projectName, newMemberSelectedRole.toLowerCase() + "s", newMemberEmail);
+        await addMemberToProject(documentId, newMemberSelectedRole.toLowerCase() + "s", newMemberEmail);
         await fetchProjectData();
     }
 
@@ -90,6 +90,40 @@ export default function ProjectSettings({ projectNameProp = "NoNamePassed", Clos
         await fetchProjectData();
         updateProjectName(`${projectName}`);
     }
+
+    async function removeMember(email, role) {
+        if(role === "Owner") {
+            notify(Type.error, "Cannot remove an owner from the project.");
+            return;
+        }
+        try {
+            // Map the role to the appropriate Firestore field
+            const field = role.toLowerCase() + "s"; // "Contributor" -> "contributors", "Admin" -> "admins", etc.
+
+            // Get the current list of members in the field
+            const updatedFieldMembers = members
+                .filter((member) => !(member.email === email && member.role === role)) // Remove the matching member
+                .filter((member) => member.role.toLowerCase() + "s" === field) // Filter only those in the same role field
+                .map((member) => member.email); // Only keep the email
+
+            // Update Firestore
+            const updateData = {
+                [field]: updatedFieldMembers,
+            };
+            await updateDocInCollection("Projects", documentId, updateData);
+
+            // Update local state
+            setMembers((prevMembers) =>
+                prevMembers.filter((member) => !(member.email === email && member.role === role))
+            );
+
+            notify(Type.success, `${email} has been successfully removed as a ${role}.`);
+        } catch (err) {
+            console.error(`Error removing member: ${email}`, err);
+            notify(Type.error, `Failed to remove ${email}.`);
+        }
+    }
+
 
     // Component depends on the docID ... we do nothing until that promise resolves.
     if (!documentId) {
@@ -175,7 +209,7 @@ export default function ProjectSettings({ projectNameProp = "NoNamePassed", Clos
                                     className="text-red-500 font-bold"
                                     onClick={() => {
                                         console.log("Calling remove member")
-                                        //removeMember(member.email, member.role)
+                                        removeMember(member.email, member.role)
                                     }}
                                 >
                                     <AiFillDelete />
