@@ -1,5 +1,6 @@
 import {
     addDoc,
+    getDoc,
     collection,
     deleteDoc,
     doc,
@@ -33,30 +34,31 @@ export const projectExists = async (projectName) => {
     return !userSnapshot.empty;
 };
 
-export const getProjectFields = async (projectName, fields) => {
+export const getProjectFields = async (documentId, fields) => {
     try {
-        const projectRef = collection(db, 'Projects');
-        const projectQuery = query(
-            projectRef,
-            where('project_name', '==', projectName)
-        );
+        // Reference the document directly by its ID
+        console.log('Fetching project fields for document ID:', documentId);
+        const projectDocRef = doc(db, 'Projects', documentId);
 
-        const projectSnapshot = await getDocs(projectQuery);
+        // Fetch the document
+        const projectDoc = await getDoc(projectDocRef);
 
-        if (projectSnapshot.empty) {
-            console.error(`Project "${projectName}" not found.`);
+        if (!projectDoc.exists()) {
+            console.error(`Project with ID "${documentId}" not found.`);
             return null;
         }
 
-        // assuming a unique project_name
-        const projectData = projectSnapshot.docs[0].data();
+        // Get the document data
+        const projectData = projectDoc.data();
 
+        // Extract and return the requested fields
         const selectedFields = fields.reduce((result, field) => {
             if (field in projectData) {
                 result[field] = projectData[field];
             }
             return result;
         }, {});
+
         return selectedFields;
     } catch (error) {
         console.error('Error retrieving project fields:', error);
@@ -152,7 +154,6 @@ export const getDocumentIdByProjectName = async (projectName) => {
 
         if (!querySnapshot.empty) {
             const docId = querySnapshot.docs[0].id;
-            console.log(`Document ID for project_name "${projectName}": ${docId}`);
             return docId;
         } else {
             console.log(`No document found with project_name "${projectName}"`);
@@ -168,7 +169,6 @@ export async function addMemberToProject(projectId, field, newMemberEmail) {
     const isValid = ["contributors", "admins", "owners"].some(
         (validField) => validField.toLowerCase() === field.toLowerCase())
 
-    console.log("isValid:", isValid, field);
     if (!["contributors", "admins", "owners"].includes(field)) {
         console.error(`Invalid field: ${field}. Must be 'contributors', 'admins', or 'owners'.`);
         return;
@@ -181,7 +181,6 @@ export async function addMemberToProject(projectId, field, newMemberEmail) {
             [field]: arrayUnion(newMemberEmail),
         });
 
-        console.log(`Successfully added ${newMemberEmail} to ${field}.`);
     } catch (error) {
         console.error(`Error updating ${field}:`, error);
     }

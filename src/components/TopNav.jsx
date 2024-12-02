@@ -4,6 +4,7 @@ import Button from './Button';
 import AccountSettings from '../windows/AccountSettings.jsx';
 import ProjectSettings from '../windows/ProjectSettings.jsx';
 import { getCurrentProject } from '../pages/TablePage.jsx';
+import { getDocumentIdByProjectName } from '../utils/firestore.js';
 
 export default function TopNav({ Email, SetEmail, SetAuthenticated, HideMenu = false }) {
     const [menuOpen, setMenuOpen] = useState(false); // Hamburger menu state
@@ -63,7 +64,7 @@ export default function TopNav({ Email, SetEmail, SetAuthenticated, HideMenu = f
                                             className="flex rounded-md p-1.5 text-white whitespace-nowrap bg-asu-maroon border-2 border-transparent items-center w-full"
                                             onClick={() => handleButtonClick(
                                                 <ProjectSettings
-                                                    projectNameProp = {getCurrentProject}
+                                                    projectNameProp = {getCurrentProject()}
                                                     CloseProjectSettings= {closeModal}
                                                 />)}
                                         >
@@ -97,7 +98,7 @@ export default function TopNav({ Email, SetEmail, SetAuthenticated, HideMenu = f
             {/* Modal */}
             {modalContent && (
                 <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50"
-                    style={{ zIndex: 9999 }}>
+                    style={{ zIndex: 999 }}>
                     <div className="bg-white dark:bg-neutral-700 text-black dark:text-white p-5 rounded-lg shadow-lg">
                         {modalContent} {/* Render the custom modal content */}
                         <button

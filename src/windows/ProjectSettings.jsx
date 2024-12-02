@@ -11,68 +11,89 @@ import {
 } from '../utils/firestore.js';
 import Button from '../components/Button.jsx';
 import { notify, Type } from '../components/Notifier.jsx';
+import { updateProjectName } from '../components/TabBar.jsx';
 
 export default function ProjectSettings({ projectNameProp = "NoNamePassed", CloseProjectSettings }) {
+    const [documentId, setDocumentId] = useState(null); // Start with null, indicating it's unresolved
     const [projectName, setProjectName] = useState(projectNameProp);
     const [newMemberSelectedRole, setNewMemberSelectedRole] = useState('Select Role');
     const [newMemberEmail, setNewMemberEmail] = useState('');
     const [members, setMembers] = useState([
-        // this should never occur but might as well have some sort of "handling"
         { email: "There is no project selected!", role: "Contributor" },
-        { email: "Does the project exist in the DB?", role: "Owner"}
+        { email: "Does the project exist in the DB?", role: "Owner" }
     ]);
 
     useEffect(() => {
-        fetchProjectData();
-    }, []); // no deps; run once! also save the DB from excess reads
+        // Fetch document ID on mount
+        const fetchDocumentId = async () => {
+            try {
+                const docId = await getDocumentIdByProjectName(projectNameProp);
+                setDocumentId(docId);
+            } catch (err) {
+                console.error(`Error fetching docId for project ${projectNameProp}`, err);
+            }
+        };
+
+        fetchDocumentId();
+    }, [projectNameProp]);
+
+    // on component mount we fetch everything.. but we need docId first.
+    useEffect(() => {
+        if (documentId) {
+            fetchProjectData();
+        }
+    }, [documentId]); // we run this whenever docId gets resolved from the promise
 
     const fetchProjectData = async () => {
-        let members = await getProjectFields(projectName, ['contributors', 'admins', 'owners']);
-        console.log(members);
-        if(members) {
-            const {contributors = [], admins = [], owners = [] } = members;
-            const updatedMembers = [
-                ...contributors.map(email => ({email, role: "Contributor"})),
-                ...admins.map(email => ({email, role: "Admin"})),
-                ...owners.map(email => ({email, role: "Owner"})),
-            ]
-            // Sort by role first, then by email
-            // sort: returns negative if a comes before b, positive if a after b, and 0 if equal.
-            updatedMembers.sort((a, b) => {
-                const rolePriority = { Owner: 1, Admin: 2, Contributor: 3 };
+        try {
+            const membersData = await getProjectFields(documentId, ['contributors', 'admins', 'owners']);
 
-                if (rolePriority[a.role] !== rolePriority[b.role]) {
-                    return rolePriority[a.role] - rolePriority[b.role];
-                }
+            if (membersData) {
+                const { contributors = [], admins = [], owners = [] } = membersData;
+                const updatedMembers = [
+                    ...contributors.map(email => ({ email, role: "Contributor" })),
+                    ...admins.map(email => ({ email, role: "Admin" })),
+                    ...owners.map(email => ({ email, role: "Owner" })),
+                ];
 
-                // if roles are the same, compare emails alphabetically
-                return a.email.localeCompare(b.email);
-            });
-            setMembers(updatedMembers);
+                updatedMembers.sort((a, b) => {
+                    const rolePriority = { Owner: 1, Admin: 2, Contributor: 3 };
+
+                    if (rolePriority[a.role] !== rolePriority[b.role]) {
+                        return rolePriority[a.role] - rolePriority[b.role];
+                    }
+                    return a.email.localeCompare(b.email);
+                });
+
+                setMembers(updatedMembers);
+            }
+        } catch (err) {
+            console.error("Error fetching project data:", err);
         }
-    }
+    };
 
     async function addMember() {
-        if(!newMemberEmail || newMemberEmail.length === 0) {
-            notify(Type.error, "Please enter member email.")
-        }
-        if(newMemberSelectedRole === 'Select Role') {
-            notify(Type.error, "Please select a role.")
+        if (!newMemberEmail || newMemberEmail.length === 0) {
+            notify(Type.error, "Please enter member email.");
             return;
         }
-        // roles defined here are "Contributor", "Admin", and "Owner"
-        // in the DB these roles are defined as "Contributors", "Admins", and "Owners"... so we need the s.
+        if (newMemberSelectedRole === 'Select Role') {
+            notify(Type.error, "Please select a role.");
+            return;
+        }
         await addMemberToProject(projectName, newMemberSelectedRole.toLowerCase() + "s", newMemberEmail);
-        await fetchProjectData(); // update the component with new data.
+        await fetchProjectData();
     }
 
-    // Save button (rightButton in WindowWrapper) only used for project name. everything else is real time
     async function saveChanges() {
-        let docId = await getDocumentIdByProjectName(`${projectNameProp}`)
-        notify(Type.success, docId);
-        // console.log('projectNameProp:', projectNameProp);
-        // console.log('projectName:', projectName);
-        updateDocInCollection('Projects', docId, {project_name: `${projectName}`});
+        await updateDocInCollection('Projects', documentId, { project_name: `${projectName}` });
+        await fetchProjectData();
+        updateProjectName(`${projectName}`);
+    }
+
+    // Component depends on the docID ... we do nothing until that promise resolves.
+    if (!documentId) {
+        return <div>Loading project settings...</div>;
     }
 
     return (
@@ -113,7 +134,7 @@ export default function ProjectSettings({ projectNameProp = "NoNamePassed", Clos
                             />
                         }
                     />
-                    <br/>
+                    <br />
                     <InputLabel
                         label="Member Role"
                         layout="horizontal-single"
@@ -123,25 +144,22 @@ export default function ProjectSettings({ projectNameProp = "NoNamePassed", Clos
                                 value={newMemberSelectedRole}
                                 onChange={(e) => {
                                     setNewMemberSelectedRole(e.target.value);
-                                    console.log("Selected role:", e.target.value);
                                 }}
                             >
-                                {/* Dropdown Options */}
                                 <option value="Select Role">Select Role</option>
                                 <option value="Contributor">Contributor</option>
                                 <option value="Admin">Admin</option>
                                 <option value="Owner">Owner</option>
                             </select>
                         }
-                    /> <br/>
+                    /> <br />
                     <div className="flex justify-end mt-4">
                         <Button
                             text="Add member"
-                            onClick={() => {addMember()}}
+                            onClick={() => { addMember() }}
                         />
                     </div>
                 </div>
-
 
                 {/* Members List */}
                 <div>
@@ -156,9 +174,8 @@ export default function ProjectSettings({ projectNameProp = "NoNamePassed", Clos
                                 <button
                                     className="text-red-500 font-bold"
                                     onClick={() => {
-                                        // TODO: DELETE FROM DB
-                                        notify(Type.error, "not implemented; ask quinten or evan about state of DB");
-                                        console.log("Delete button clicked!");
+                                        console.log("Calling remove member")
+                                        //removeMember(member.email, member.role)
                                     }}
                                 >
                                     <AiFillDelete />
@@ -184,3 +201,4 @@ export default function ProjectSettings({ projectNameProp = "NoNamePassed", Clos
         </WindowWrapper>
     );
 }
+
