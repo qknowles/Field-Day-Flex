@@ -469,7 +469,39 @@ export const getDocsFromCollection = async (projectName, tabName, constraints = 
         return [];
     }
 };
+export const editMemberships = async (email, projectName) => {
+    try {
+        const projectRef = collection(db, 'Projects');
+        const projectQuery = query(projectRef, where('project_name', '==', projectName));
+        const projectSnapshot = await getDocs(projectQuery);
 
+        if (projectSnapshot.empty) {
+            return false;
+        }
+
+        const projectDoc = projectSnapshot.docs[0];
+        const projectData = projectDoc.data();
+
+        // Check if user is owner
+        if (projectData.owners.includes(email)) {
+            return false; // Can't remove owners
+        }
+
+        // Remove user from contributors and admins
+        const updatedContributors = projectData.contributors.filter(c => c !== email);
+        const updatedAdmins = projectData.admins.filter(a => a !== email);
+
+        await updateDoc(projectDoc.ref, {
+            contributors: updatedContributors,
+            admins: updatedAdmins
+        });
+
+        return true;
+    } catch (error) {
+        console.error('Error editing memberships:', error);
+        return false;
+    }
+};
 export const getUserName = async (email) => {
     const user = await getDocs(query(collection(db, 'Users'), where('email', '==', email)));
     return user.docs[0].data().name;
