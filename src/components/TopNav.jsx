@@ -57,18 +57,18 @@ export default function TopNav({ Email, SetEmail, SetAuthenticated, HideMenu = f
 
 
                                             <button
-        className="flex rounded-md p-1.5 text-white whitespace-nowrap bg-asu-maroon border-2 border-transparent items-center mb-2 w-full"
-        onClick={() => handleButtonClick(
-            <ManageMembership
-                Email={Email}
-                CancelMemberships={closeModal}
-                setCurrentWindow={setCurrentWindow}
-                userProjectData={[]} // Pass empty array as default
-            />
-        )}
-    >
-        Memberships
-    </button>
+    className="flex rounded-md p-1.5 text-white whitespace-nowrap bg-asu-maroon border-2 border-transparent items-center mb-2 w-full"
+    onClick={() => handleButtonClick(
+        <ManageMembership
+            Email={Email}
+            CancelMemberships={closeModal}
+            setCurrentWindow={setCurrentWindow}
+            
+        />
+    )}
+>
+    Memberships
+</button>
                                         <button
                                             className="flex rounded-md p-1.5 text-white whitespace-nowrap bg-asu-maroon border-2 border-transparent items-center w-full"
                                             onClick={() => handleButtonClick(<ManageProject />)}

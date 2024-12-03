@@ -1,29 +1,35 @@
-import React from 'react';
-import { editMemberships } from '../utils/firestore';
+import React, { useState, useEffect } from 'react';
+import { editMemberships, getProjectNames } from '../utils/firestore';
 import Button from '../components/Button';
-
 import WindowWrapper from '../wrappers/WindowWrapper';
 import { Type, notify } from '../components/Notifier';
 
-
-
-export default function  ManageMembership({ 
+export default function ManageMembership({ 
     Email,
     CancelMemberships,
-    setCurrentWindow,
-    userProjectData = [] // Provide default empty array
+    setCurrentWindow
 }) {
+    const [userProjectData, setUserProjectData] = useState([]);
+
+    useEffect(() => {
+        const loadProjects = async () => {
+            const projects = await getProjectNames(Email);
+            setUserProjectData(projects);
+        };
+        loadProjects();
+    }, [Email]);
+
     const handleLeaveProject = async (project) => {
-        try {
-            const success = await editMemberships(Email, project);
-            if (success) {
-                notify(Type.success, `Left project: ${project}`);
+        const success = await editMemberships(Email, project);
+        if (success) {
+            notify(Type.success, `Left project: ${project}`);
+            const updatedProjects = await getProjectNames(Email);
+            setUserProjectData(updatedProjects);
+            if(updatedProjects.length === 0) {
                 setCurrentWindow('HomePage');
-            } else {
-                notify(Type.error, 'Could not leave project');
             }
-        } catch (error) {
-            notify(Type.error, 'Error leaving project');
+        } else {
+            notify(Type.error, 'Could not leave project. Project owners cannot leave their projects.');
         }
     };
 
@@ -34,7 +40,7 @@ export default function  ManageMembership({
             leftButtonText="Close"
         >
             <div className="flex flex-col space-y-4 p-4">
-                {(userProjectData || []).length === 0 ? (
+                {userProjectData.length === 0 ? (
                     <p className="text-center">You are not a member of any projects</p>
                 ) : (
                     userProjectData.map((project) => (
