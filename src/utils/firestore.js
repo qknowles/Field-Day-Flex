@@ -469,41 +469,34 @@ export const getDocsFromCollection = async (projectName, tabName, constraints = 
         return [];
     }
 };
-export const editMemberships = async ({ email, projectName, action }) => {
+export const editMemberships = async (email, projectName) => {
     try {
         const projectRef = collection(db, 'Projects');
         const projectQuery = query(projectRef, where('project_name', '==', projectName));
         const projectSnapshot = await getDocs(projectQuery);
 
         if (projectSnapshot.empty) {
-            console.error('Project not found');
             return false;
         }
 
         const projectDoc = projectSnapshot.docs[0];
         const projectData = projectDoc.data();
 
-        if (action === 'remove') {
-            // Remove user from contributors and admins
-            const updatedContributors = projectData.contributors.filter(c => c !== email);
-            const updatedAdmins = projectData.admins.filter(a => a !== email);
-
-            // Check if user is the owner
-            if (projectData.owners.includes(email)) {
-                notify(Type.error, 'Project owners cannot leave their project');
-                return false;
-            }
-
-            // Update project document
-            await updateDoc(projectDoc.ref, {
-                contributors: updatedContributors,
-                admins: updatedAdmins
-            });
-
-            return true;
+        // Check if user is owner
+        if (projectData.owners.includes(email)) {
+            return false; // Can't remove owners
         }
 
-        return false;
+        // Remove user from contributors and admins
+        const updatedContributors = projectData.contributors.filter(c => c !== email);
+        const updatedAdmins = projectData.admins.filter(a => a !== email);
+
+        await updateDoc(projectDoc.ref, {
+            contributors: updatedContributors,
+            admins: updatedAdmins
+        });
+
+        return true;
     } catch (error) {
         console.error('Error editing memberships:', error);
         return false;
