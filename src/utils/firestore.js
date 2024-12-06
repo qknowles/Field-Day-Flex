@@ -478,6 +478,69 @@ export const updateDocInCollection = async (collectionName, docId, data) => {
     }
 };
 
+export const updateEmailInProjects = async (oldEmail, newEmail) => {
+    try {
+        const projectsRef = collection(db, 'Projects');
+        const projectSnapshots = await getDocs(projectsRef);
+
+        for (const projectDoc of projectSnapshots.docs) {
+            const projectData = projectDoc.data();
+            const updatedData = {};
+
+            if (projectData.contributors && projectData.contributors.includes(oldEmail)) {
+                updatedData.contributors = projectData.contributors.map((email) =>
+                    email === oldEmail ? newEmail : email
+                );
+            }
+            if (projectData.admins && projectData.admins.includes(oldEmail)) {
+                updatedData.admins = projectData.admins.map((email) =>
+                    email === oldEmail ? newEmail : email
+                );
+            }
+            if (projectData.owners && projectData.owners.includes(oldEmail)) {
+                updatedData.owners = projectData.owners.map((email) =>
+                    email === oldEmail ? newEmail : email
+                );
+            }
+            if (Object.keys(updatedData).length > 0) {
+                const projectRef = doc(db, 'Projects', projectDoc.id);
+                await updateDoc(projectRef, updatedData);
+                console.log(`Updated project: ${projectDoc.id}`);
+            } else {
+                console.log(`No updates needed for project: ${projectDoc.id}`);
+            }
+        }
+
+        console.log('Email update completed across all projects.');
+        return true;
+    } catch (error) {
+        console.error('Error updating email in projects:', error);
+        return false;
+    }
+};
+
+export async function getDocumentIdByUserName(userEmail) {
+    try {
+        const userQuery = query(
+            collection(db, "Users"),
+            where("email", "==", userEmail)
+        );
+
+        const querySnapshot = await getDocs(userQuery);
+
+        if (!querySnapshot.empty) {
+            const docId = querySnapshot.docs[0].id;
+            return docId;
+        } else {
+            console.log(`No document found with email "${userEmail}"`);
+            return null;
+        }
+    } catch (error) {
+        console.error("Error fetching document ID:", error);
+        return null;
+    }
+}
+
 export const getCollectionName = async (environment, projectName, tableName) => {
     try {
         // First get project doc ID
@@ -558,6 +621,7 @@ export const getDocsFromCollection = async (projectName, tabName, constraints = 
 };
 
 export const getUserName = async (email) => {
+    console.log("in getUserName", email)
     const user = await getDocs(query(collection(db, 'Users'), where('email', '==', email)));
-    return user.docs[0].data().name;
+    return user.docs[0].data().name || "null";
 }
