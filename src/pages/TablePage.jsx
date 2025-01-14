@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import TabBar from '../components/TabBar';
 import DataViewer from '../components/DataViewer';
 import PageWrapper from '../wrappers/PageWrapper';
 import { LizardIcon } from '../assets/icons';
 import NewProject from '../windows/NewProject';
 import NewTab from '../windows/NewTab';
-import NewEntry from '../windows/NewEntry';
 
 const NoProjectDisplay = () => (
     <div className="w-full text-center">
@@ -45,8 +44,20 @@ const NoTabsDisplay = () => (
     </div>
 );
 
+/**
+ * Quick and dirty way to get the Current Project to TopNav for ProjectSettings.jsx
+ * @type {string}
+ */
+let currentProject = "null";
+export function getCurrentProject() {
+    return currentProject;
+}
+
 export default function TablePage({ Email }) {
     const [selectedProject, setSelectedProject] = useState('');
+    useEffect(() => {
+        currentProject = selectedProject;
+    }, [selectedProject]);
     const [selectedTab, setSelectedTab] = useState('');
     const [showNewProject, setShowNewProject] = useState(false);
     const [showNewTab, setShowNewTab] = useState(false);

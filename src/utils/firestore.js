@@ -1,14 +1,22 @@
 import {
     addDoc,
+    getDoc,
     collection,
+    deleteDoc,
     doc,
     getDocs,
     query,
     updateDoc,
+    orderBy,
+    arrayUnion,
     setDoc,
     where,
+    writeBatch,
+    or,
+    getCountFromServer,
 } from 'firebase/firestore';
 import { db } from './firebase';
+import { Type } from '../components/Notifier';
 
 export const accountExists = async (email) => {
     const usersRef = collection(db, 'Users');
@@ -24,6 +32,38 @@ export const projectExists = async (projectName) => {
     const userSnapshot = await getDocs(projectQuery);
 
     return !userSnapshot.empty;
+};
+
+export const getProjectFields = async (documentId, fields) => {
+    try {
+        // Reference the document directly by its ID
+        console.log('Fetching project fields for document ID:', documentId);
+        const projectDocRef = doc(db, 'Projects', documentId);
+
+        // Fetch the document
+        const projectDoc = await getDoc(projectDocRef);
+
+        if (!projectDoc.exists()) {
+            console.error(`Project with ID "${documentId}" not found.`);
+            return null;
+        }
+
+        // Get the document data
+        const projectData = projectDoc.data();
+
+        // Extract and return the requested fields
+        const selectedFields = fields.reduce((result, field) => {
+            if (field in projectData) {
+                result[field] = projectData[field];
+            }
+            return result;
+        }, {});
+
+        return selectedFields;
+    } catch (error) {
+        console.error('Error retrieving project fields:', error);
+        throw error;
+    }
 };
 
 export const createProject = async (projectName, email, contributors, administrators) => {
@@ -83,21 +123,68 @@ export const createAccount = async (name, email, hashedPassword) => {
 export const getProjectNames = async (email) => {
     try {
         const projectsRef = collection(db, 'Projects');
-
-        const contributorQuery = query(projectsRef, where('contributors', 'array-contains', email));
-        const contributorSnapshot = await getDocs(contributorQuery);
-
+        'owners'
+        const combinedQuery = query(
+            projectsRef,
+            or(
+                where('contributors', 'array-contains', email),
+                where('admins', 'array-contains', email),
+                where('owners', 'array-contains', email)
+            )
+        );
+        const projectSnapshot = await getDocs(combinedQuery);
         const projectNames = Array.from(new Set(
-            contributorSnapshot.docs.map((doc) => doc.data().project_name).filter((name) => name)
+            projectSnapshot.docs.map((doc) => doc.data().project_name).filter((name) => name)
         ));
-
         return projectNames;
-
     } catch (error) {
         console.error('Error retrieving project names:', error);
         return [];
     }
 };
+
+export const getDocumentIdByProjectName = async (projectName) => {
+    try {
+        const projectQuery = query(
+            collection(db, "Projects"),
+            where("project_name", "==", projectName)
+        );
+
+        const querySnapshot = await getDocs(projectQuery);
+
+        if (!querySnapshot.empty) {
+            const docId = querySnapshot.docs[0].id;
+            return docId;
+        } else {
+            console.log(`No document found with project_name "${projectName}"`);
+            return null;
+        }
+    } catch (error) {
+        console.error("Error fetching document ID:", error);
+        return null;
+    }
+};
+
+export async function addMemberToProject(projectId, field, newMemberEmail) {
+    const isValid = ["contributors", "admins", "owners"].some(
+        (validField) => validField.toLowerCase() === field.toLowerCase())
+
+    if (!["contributors", "admins", "owners"].includes(field)) {
+        console.error(`Invalid field: ${field}. Must be 'contributors', 'admins', or 'owners'.`);
+        return;
+    }
+
+    const projectRef = doc(db, "Projects", projectId);
+
+    try {
+        await updateDoc(projectRef, {
+            [field]: arrayUnion(newMemberEmail),
+        });
+
+    } catch (error) {
+        console.error(`Error updating ${field}:`, error);
+    }
+}
 
 export const getTabNames = async (email, projectName) => {
     try {
@@ -391,13 +478,76 @@ export const updateDocInCollection = async (collectionName, docId, data) => {
     }
 };
 
+export const updateEmailInProjects = async (oldEmail, newEmail) => {
+    try {
+        const projectsRef = collection(db, 'Projects');
+        const projectSnapshots = await getDocs(projectsRef);
+
+        for (const projectDoc of projectSnapshots.docs) {
+            const projectData = projectDoc.data();
+            const updatedData = {};
+
+            if (projectData.contributors && projectData.contributors.includes(oldEmail)) {
+                updatedData.contributors = projectData.contributors.map((email) =>
+                    email === oldEmail ? newEmail : email
+                );
+            }
+            if (projectData.admins && projectData.admins.includes(oldEmail)) {
+                updatedData.admins = projectData.admins.map((email) =>
+                    email === oldEmail ? newEmail : email
+                );
+            }
+            if (projectData.owners && projectData.owners.includes(oldEmail)) {
+                updatedData.owners = projectData.owners.map((email) =>
+                    email === oldEmail ? newEmail : email
+                );
+            }
+            if (Object.keys(updatedData).length > 0) {
+                const projectRef = doc(db, 'Projects', projectDoc.id);
+                await updateDoc(projectRef, updatedData);
+                console.log(`Updated project: ${projectDoc.id}`);
+            } else {
+                console.log(`No updates needed for project: ${projectDoc.id}`);
+            }
+        }
+
+        console.log('Email update completed across all projects.');
+        return true;
+    } catch (error) {
+        console.error('Error updating email in projects:', error);
+        return false;
+    }
+};
+
+export async function getDocumentIdByUserName(userEmail) {
+    try {
+        const userQuery = query(
+            collection(db, "Users"),
+            where("email", "==", userEmail)
+        );
+
+        const querySnapshot = await getDocs(userQuery);
+
+        if (!querySnapshot.empty) {
+            const docId = querySnapshot.docs[0].id;
+            return docId;
+        } else {
+            console.log(`No document found with email "${userEmail}"`);
+            return null;
+        }
+    } catch (error) {
+        console.error("Error fetching document ID:", error);
+        return null;
+    }
+}
+
 export const getCollectionName = async (environment, projectName, tableName) => {
     try {
         // First get project doc ID
         const projectRef = collection(db, 'Projects');
         const projectQuery = query(projectRef, where('project_name', '==', projectName));
         const projectSnapshot = await getDocs(projectQuery);
-        
+
         if (projectSnapshot.empty) {
             throw new Error('Project not found');
         }
@@ -503,6 +653,7 @@ export const editMemberships = async (email, projectName) => {
     }
 };
 export const getUserName = async (email) => {
+    console.log("in getUserName", email)
     const user = await getDocs(query(collection(db, 'Users'), where('email', '==', email)));
-    return user.docs[0].data().name;
+    return user.docs[0].data().name || "null";
 }
