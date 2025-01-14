@@ -19,7 +19,7 @@ function App() {
                 Email={email}
                 SetEmail={setEmail}
                 SetAuthenticated={setAuthenticated}
-                hideMenu={!authenticated}
+                Authenticated={authenticated}
             />
             <div className="flex flex-grow">
                 {authenticated ? (
