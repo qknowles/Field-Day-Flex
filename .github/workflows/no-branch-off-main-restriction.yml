@@ -12,7 +12,7 @@ jobs:
       - name: Check base branch
         run: |
           BASE_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-          if [[ "$BASE_BRANCH" == "US-375_Task-386_no-branch-off-main" ]]; then
+          if [[ "$BASE_BRANCH" == "main" ]]; then
             echo "Branches cannot be created off 'main'.
             exit 1
           fi
