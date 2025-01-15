@@ -1,6 +1,5 @@
 import {
     addDoc,
-    getDoc,
     collection,
     deleteDoc,
     doc,
@@ -17,6 +16,7 @@ import {
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { Type } from '../components/Notifier';
+import { meta as user } from 'eslint-plugin-react/lib/rules/jsx-props-no-spread-multi.js';
 
 export const accountExists = async (email) => {
     const usersRef = collection(db, 'Users');
@@ -34,42 +34,10 @@ export const projectExists = async (projectName) => {
     return !userSnapshot.empty;
 };
 
-export const getProjectFields = async (documentId, fields) => {
-    try {
-        // Reference the document directly by its ID
-        console.log('Fetching project fields for document ID:', documentId);
-        const projectDocRef = doc(db, 'Projects', documentId);
-
-        // Fetch the document
-        const projectDoc = await getDoc(projectDocRef);
-
-        if (!projectDoc.exists()) {
-            console.error(`Project with ID "${documentId}" not found.`);
-            return null;
-        }
-
-        // Get the document data
-        const projectData = projectDoc.data();
-
-        // Extract and return the requested fields
-        const selectedFields = fields.reduce((result, field) => {
-            if (field in projectData) {
-                result[field] = projectData[field];
-            }
-            return result;
-        }, {});
-
-        return selectedFields;
-    } catch (error) {
-        console.error('Error retrieving project fields:', error);
-        throw error;
-    }
-};
-
 export const createProject = async (projectName, email, contributors, administrators) => {
     try {
-        const projectsCollection = collection(db, 'Projects');
-        await addDoc(projectsCollection, {
+        const projectRef = doc(db, 'Projects', projectName);
+        await setDoc(projectRef, {
             project_name: projectName,
             owners: [email],
             contributors: contributors,
@@ -104,8 +72,8 @@ export const verifyPassword = async (email, hashedPassword) => {
 
 export const createAccount = async (name, email, hashedPassword) => {
     try {
-        const userRef = collection(db, 'Users');
-        await addDoc(userRef, {
+        const userRef = doc(db, 'Users', email);
+        await setDoc(userRef, {
             name: name,
             email: email,
             password: hashedPassword,
@@ -123,68 +91,21 @@ export const createAccount = async (name, email, hashedPassword) => {
 export const getProjectNames = async (email) => {
     try {
         const projectsRef = collection(db, 'Projects');
-        'owners'
-        const combinedQuery = query(
-            projectsRef,
-            or(
-                where('contributors', 'array-contains', email),
-                where('admins', 'array-contains', email),
-                where('owners', 'array-contains', email)
-            )
-        );
-        const projectSnapshot = await getDocs(combinedQuery);
+
+        const contributorQuery = query(projectsRef, where('contributors', 'array-contains', email));
+        const contributorSnapshot = await getDocs(contributorQuery);
+
         const projectNames = Array.from(new Set(
-            projectSnapshot.docs.map((doc) => doc.data().project_name).filter((name) => name)
+            contributorSnapshot.docs.map((doc) => doc.data().project_name).filter((name) => name)
         ));
+
         return projectNames;
+
     } catch (error) {
         console.error('Error retrieving project names:', error);
         return [];
     }
 };
-
-export const getDocumentIdByProjectName = async (projectName) => {
-    try {
-        const projectQuery = query(
-            collection(db, "Projects"),
-            where("project_name", "==", projectName)
-        );
-
-        const querySnapshot = await getDocs(projectQuery);
-
-        if (!querySnapshot.empty) {
-            const docId = querySnapshot.docs[0].id;
-            return docId;
-        } else {
-            console.log(`No document found with project_name "${projectName}"`);
-            return null;
-        }
-    } catch (error) {
-        console.error("Error fetching document ID:", error);
-        return null;
-    }
-};
-
-export async function addMemberToProject(projectId, field, newMemberEmail) {
-    const isValid = ["contributors", "admins", "owners"].some(
-        (validField) => validField.toLowerCase() === field.toLowerCase())
-
-    if (!["contributors", "admins", "owners"].includes(field)) {
-        console.error(`Invalid field: ${field}. Must be 'contributors', 'admins', or 'owners'.`);
-        return;
-    }
-
-    const projectRef = doc(db, "Projects", projectId);
-
-    try {
-        await updateDoc(projectRef, {
-            [field]: arrayUnion(newMemberEmail),
-        });
-
-    } catch (error) {
-        console.error(`Error updating ${field}:`, error);
-    }
-}
 
 export const getTabNames = async (email, projectName) => {
     try {
@@ -248,12 +169,12 @@ export const createTab = async (
     identifierDimension,
     unwantedCodes,
     utilizeUnwantedCodes,
-    columnNames = [],
-    columnDataTypes = [],
-    columnEntryOptions = [],
-    columnIdentifierDomains = [],
-    columnRequiredFields = [],
-    columnOrder = [],
+    columnNames,
+    columnDataTypes,
+    columnEntryOptions,
+    columnIdentifierDomains,
+    columnRequiredFields,
+    columnOrder,
 ) => {
     try {
         const projectRef = collection(db, 'Projects');
@@ -283,7 +204,6 @@ export const createTab = async (
             unwanted_codes: unwantedCodes,
             utilize_unwanted: utilizeUnwantedCodes,
             created_at: new Date(),
-            next_entry: 1,
         });
 
         const columnsRef = collection(tabRef, 'Columns');
@@ -306,117 +226,34 @@ export const createTab = async (
     }
 };
 
-export const getColumnsCollection = async (projectName, tabName, email) => {
+
+export const getArthropodLabels = async () => {
+    const snapshot = await getDocs(
+        query(collection(db, 'AnswerSet'), where('set_name', '==', 'ArthropodSpecies')),
+    );
+
+    const answers = snapshot.docs[0]?.data().answers || [];
+
+    // Sort the answers by the 'primary' field alphabetically
+    return answers.map((ans) => ans.primary).sort((a, b) => a.localeCompare(b));
+};
+
+const getDocsFromCollection = async (collectionName, constraints = []) => {
+    if (!Array.isArray(constraints)) constraints = [constraints];
     try {
-        console.log('Fetching columns for project:', projectName, 'and tab:', tabName);
-
-        // Query the Projects collection
-        const projectRef = collection(db, 'Projects');
-        const projectQuery = query(
-            projectRef,
-            where('project_name', '==', projectName),
-            where('contributors', 'array-contains', email)
+        const currentQuery = query(
+            collection(db, collectionName),
+            orderBy('dateTime', 'desc'),
+            ...constraints,
         );
-        const projectSnapshot = await getDocs(projectQuery);
-
-        if (projectSnapshot.empty) {
-            console.error('No matching project found for:', projectName);
-            return [];
-        }
-
-        const projectDoc = projectSnapshot.docs[0]; // Get the project document
-
-        // Query the Tabs subcollection
-        const tabsRef = collection(projectDoc.ref, 'Tabs');
-        const tabQuery = query(tabsRef, where('tab_name', '==', tabName));
-        const tabSnapshot = await getDocs(tabQuery);
-
-        if (tabSnapshot.empty) {
-            console.error('No matching tab found for:', tabName);
-            return [];
-        }
-
-        const tabDoc = tabSnapshot.docs[0]; // Get the tab document
-
-        // Query the Columns subcollection
-        const columnsRef = collection(tabDoc.ref, 'Columns');
-        const columnsSnapshot = await getDocs(columnsRef);
-
-        if (columnsSnapshot.empty) {
-            console.warn('No columns found in the specified tab:', tabName);
-            return [];
-        }
-
-        // Map the column documents into an array
-        const columns = columnsSnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-        }));
-
-        console.log('Fetched columns:', columns);
-        return columns;
-
+        return await getDocs(currentQuery);
     } catch (error) {
-        console.error('Error in getColumnsCollection:', error);
-        return [];
+        console.error('Error loading entries:', error);
+        return null;
     }
 };
 
-
-export const addEntry = async (projectName, tabName, email, newEntry) => {
-    try {
-        const projectRef = collection(db, 'Projects');
-        const projectsQuery = query(
-            projectRef,
-            where('project_name', '==', projectName),
-            where('contributors', 'array-contains', email)
-        );
-        const projectSnapshot = await getDocs(projectsQuery);
-
-        if (projectSnapshot.empty) {
-            console.error('No matching project found for the given name and email.');
-            return false;
-        }
-
-        const projectDoc = projectSnapshot.docs[0];
-
-        const tabsRef = collection(projectDoc.ref, 'Tabs');
-        const tabsQuery = query(tabsRef, where('tab_name', '==', tabName));
-        const tabSnapshot = await getDocs(tabsQuery);
-
-        if (tabSnapshot.empty) {
-            console.error('No matching tab found in the specified project.');
-            return false;
-        }
-
-        const tabDoc = tabSnapshot.docs[0];
-        const tabData = tabDoc.data();
-
-        const entryNumber = tabData.next_entry_number;
-
-        const entriesRef = collection(tabDoc.ref, 'Entries');
-        await addDoc(entriesRef, {
-            entry_data: newEntry,
-            entry_date: new Date(),
-            deleted: false,
-            entry_number: entryNumber,
-        });
-
-        const tabRef = doc(tabsRef, tabDoc.id);
-        await updateDoc(tabRef, {
-            next_entry_number: entryNumber + 1,
-        });
-
-        console.log('Entry added successfully.');
-        return true;
-
-    } catch (error) {
-        console.error('Error adding entry:', error);
-        return false;
-    }
-};
-
-export const addDocToCollection = async (collectionName, data) => {
+const addDocToCollection = async (collectionName, data) => {
     try {
         const docRef = await addDoc(collection(db, collectionName), data);
         console.log(`Document written to collection: ${collectionName} with ID: ${docRef.id}`);
@@ -424,50 +261,8 @@ export const addDocToCollection = async (collectionName, data) => {
         console.error('Error adding document:', error);
     }
 };
-export const getEntriesForTab = async (projectName, tabName, email) => {
-    try {
-        // Get project reference
-        const projectRef = collection(db, 'Projects');
-        const projectQuery = query(
-            projectRef,
-            where('project_name', '==', projectName),
-            where('contributors', 'array-contains', email)
-        );
-        const projectSnapshot = await getDocs(projectQuery);
 
-        if (projectSnapshot.empty) {
-            throw new Error('Project not found');
-        }
-
-        const projectDoc = projectSnapshot.docs[0];
-
-        // Get tab reference
-        const tabsRef = collection(projectDoc.ref, 'Tabs');
-        const tabQuery = query(tabsRef, where('tab_name', '==', tabName));
-        const tabSnapshot = await getDocs(tabQuery);
-
-        if (tabSnapshot.empty) {
-            throw new Error('Tab not found');
-        }
-
-        const tabDoc = tabSnapshot.docs[0];
-
-        // Get entries
-        const entriesRef = collection(tabDoc.ref, 'Entries');
-        const entriesSnapshot = await getDocs(entriesRef);
-
-        return entriesSnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-            entry_date: doc.data().entry_date?.toDate?.() || doc.data().entry_date
-        }));
-
-    } catch (error) {
-        console.error('Error fetching entries:', error);
-        throw error;
-    }
-};
-export const updateDocInCollection = async (collectionName, docId, data) => {
+const updateDocInCollection = async (collectionName, docId, data) => {
     try {
         await updateDoc(doc(db, collectionName, docId), data);
         console.log('Document successfully updated!');
@@ -478,182 +273,255 @@ export const updateDocInCollection = async (collectionName, docId, data) => {
     }
 };
 
-export const updateEmailInProjects = async (oldEmail, newEmail) => {
+const deleteDocFromCollection = async (collectionName, docId) => {
     try {
-        const projectsRef = collection(db, 'Projects');
-        const projectSnapshots = await getDocs(projectsRef);
-
-        for (const projectDoc of projectSnapshots.docs) {
-            const projectData = projectDoc.data();
-            const updatedData = {};
-
-            if (projectData.contributors && projectData.contributors.includes(oldEmail)) {
-                updatedData.contributors = projectData.contributors.map((email) =>
-                    email === oldEmail ? newEmail : email
-                );
-            }
-            if (projectData.admins && projectData.admins.includes(oldEmail)) {
-                updatedData.admins = projectData.admins.map((email) =>
-                    email === oldEmail ? newEmail : email
-                );
-            }
-            if (projectData.owners && projectData.owners.includes(oldEmail)) {
-                updatedData.owners = projectData.owners.map((email) =>
-                    email === oldEmail ? newEmail : email
-                );
-            }
-            if (Object.keys(updatedData).length > 0) {
-                const projectRef = doc(db, 'Projects', projectDoc.id);
-                await updateDoc(projectRef, updatedData);
-                console.log(`Updated project: ${projectDoc.id}`);
-            } else {
-                console.log(`No updates needed for project: ${projectDoc.id}`);
-            }
-        }
-
-        console.log('Email update completed across all projects.');
-        return true;
+        await deleteDoc(doc(db, collectionName, docId));
+        console.log('Document successfully deleted!');
     } catch (error) {
-        console.error('Error updating email in projects:', error);
-        return false;
+        console.error('Error removing document:', error);
     }
 };
 
-export async function getDocumentIdByUserName(userEmail) {
+const getCollectionName = (environment, projectName, tableName) => {
+    return `${environment === 'test' ? 'Test' : ''}${projectName}${tableName === 'Session' ? 'Session' : 'Data'}`;
+};
+
+const getCollectionNameFromDoc = (snapshot) => snapshot?.ref.parent.id;
+
+const deleteDocumentFromFirestore = async (entrySnapshot, deleteMsg) => {
+    let response = [];
     try {
-        const userQuery = query(
-            collection(db, "Users"),
-            where("email", "==", userEmail)
-        );
-
-        const querySnapshot = await getDocs(userQuery);
-
-        if (!querySnapshot.empty) {
-            const docId = querySnapshot.docs[0].id;
-            return docId;
-        } else {
-            console.log(`No document found with email "${userEmail}"`);
-            return null;
-        }
-    } catch (error) {
-        console.error("Error fetching document ID:", error);
-        return null;
+        await deleteDoc(doc(db, entrySnapshot.ref.parent.id, entrySnapshot.id));
+        response = [Type.success, deleteMsg || 'Document successfully deleted!'];
+    } catch (e) {
+        response = [Type.error, `Error deleting document: ${e}`];
     }
-}
+    if (entrySnapshot.data().taxa === 'Lizard') updateLizardMetadata('delete', { entrySnapshot });
+    return response;
+};
 
-export const getCollectionName = async (environment, projectName, tableName) => {
+const updateLizardMetadata = async (operation, operationDataObject) => {
+    const lizardDoc = doc(db, 'Metadata', 'LizardData');
+    const { entrySnapshot } = operationDataObject;
     try {
-        // First get project doc ID
-        const projectRef = collection(db, 'Projects');
-        const projectQuery = query(projectRef, where('project_name', '==', projectName));
-        const projectSnapshot = await getDocs(projectQuery);
-
-        if (projectSnapshot.empty) {
-            throw new Error('Project not found');
+        if (operation === 'update') {
+            await updateDoc(lizardDoc, { lastEditTime: operationDataObject.lastEditTime });
+        } else if (operation === 'delete') {
+            await updateDoc(lizardDoc, {
+                deletedEntries: arrayUnion({
+                    entryId: entrySnapshot.id,
+                    collectionId: entrySnapshot.ref.parent.id,
+                }),
+            });
         }
-
-        const projectDoc = projectSnapshot.docs[0];
-
-        // Then get tab doc ID
-        const tabsRef = collection(projectDoc.ref, 'Tabs');
-        const tabQuery = query(tabsRef, where('tab_name', '==', tableName));
-        const tabSnapshot = await getDocs(tabQuery);
-
-        if (tabSnapshot.empty) {
-            throw new Error('Tab not found');
-        }
-
-        const tabDoc = tabSnapshot.docs[0];
-
-        // Return the full path
-        return `Projects/${projectDoc.id}/Tabs/${tabDoc.id}/Columns`;
-    } catch (error) {
-        console.error('Error in getCollectionName:', error);
-        throw error;
+        console.log(`Sent ${operation} to the PWA`);
+    } catch (e) {
+        console.error(`Error sending ${operation} to PWA: ${e}`);
     }
 };
-export const getDocsFromCollection = async (projectName, tabName, constraints = []) => {
-    try {
-        if (!projectName || !tabName) {
-            throw new Error('projectName or tabName is missing');
-        }
 
-        const projectRef = collection(db, 'Projects');
-        const projectQuery = query(projectRef, where('project_name', '==', projectName));
-        const projectSnapshot = await getDocs(projectQuery);
-
-        if (projectSnapshot.empty) {
-            console.error('No matching project found:', projectName);
-            return [];
-        }
-
-        const projectDoc = projectSnapshot.docs[0];
-        const tabsRef = collection(projectDoc.ref, 'Tabs');
-        const tabQuery = query(tabsRef, where('tab_name', '==', tabName));
-        const tabSnapshot = await getDocs(tabQuery);
-
-        if (tabSnapshot.empty) {
-            console.error('No matching tab found:', tabName);
-            return [];
-        }
-
-        const tabDoc = tabSnapshot.docs[0];
-        const columnsRef = collection(tabDoc.ref, 'Columns');
-        const queryConstraints = query(columnsRef, ...constraints);
-        const columnsSnapshot = await getDocs(queryConstraints);
-
-        if (columnsSnapshot.empty) {
-            console.warn('No columns found in the specified tab:', tabName);
-            return [];
-        }
-
-        const columns = columnsSnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-        }));
-
-        console.log('Fetched columns:', columns);
-        return columns;
-    } catch (error) {
-        console.error('Error in getDocsFromCollection:', error);
-        return [];
+const pushEntryChangesToFirestore = async (entrySnapshot, entryData, editMsg) => {
+    if (entryData.taxa === 'Lizard') {
+        const lastEditTime = new Date().getTime();
+        entryData.lastEdit = lastEditTime;
+        updateLizardMetadata('update', { lastEditTime });
     }
-};
-export const editMemberships = async (email, projectName) => {
-    try {
-        const projectRef = collection(db, 'Projects');
-        const projectQuery = query(projectRef, where('project_name', '==', projectName));
-        const projectSnapshot = await getDocs(projectQuery);
-
-        if (projectSnapshot.empty) {
-            return false;
+    let response = [];
+    if (entryData.dateTime) {
+        const newDate = new Date(entryData.dateTime);
+        if (!isNaN(newDate)) {
+            entryData.year = newDate.getFullYear();
         }
-
-        const projectDoc = projectSnapshot.docs[0];
-        const projectData = projectDoc.data();
-
-        // Check if user is owner
-        if (projectData.owners.includes(email)) {
-            return false; // Can't remove owners
-        }
-
-        // Remove user from contributors and admins
-        const updatedContributors = projectData.contributors.filter(c => c !== email);
-        const updatedAdmins = projectData.admins.filter(a => a !== email);
-
-        await updateDoc(projectDoc.ref, {
-            contributors: updatedContributors,
-            admins: updatedAdmins
+    }
+    await setDoc(doc(db, entrySnapshot.ref.parent.id, entrySnapshot.id), entryData)
+        .then(() => {
+            response = [Type.success, editMsg || 'Changes successfully written to database!'];
+        })
+        .catch((e) => {
+            response = [Type.error, `Error writing changes to database: ${e}`];
         });
+    return response;
+};
 
+const editSessionAndItsEntries = async (sessionSnapshot, sessionData) => {
+    const collectionId = sessionSnapshot.ref.parent.id.slice(0, -7);
+    const entriesQuery = query(
+        collection(db, `${collectionId}Data`),
+        sessionSnapshot.data().sessionId
+            ? where('sessionId', '==', sessionSnapshot.data().sessionId)
+            : where('sessionDateTime', '==', sessionSnapshot.data().dateTime),
+    );
+    const entries = await getDocs(entriesQuery);
+    const batch = writeBatch(db);
+    entries.docs.forEach((entry) => {
+        batch.update(doc(db, entry.ref.parent.id, entry.id), {
+            dateTime: sessionData.dateTime,
+            sessionDateTime: sessionData.dateTime,
+        });
+    });
+    await batch.commit();
+    return pushEntryChangesToFirestore(
+        sessionSnapshot,
+        sessionData,
+        `Session ${entries.size ? `and its ${entries.size} entries` : ''} successfully changed`,
+    );
+};
+
+export const getSessionEntryCount = async (sessionSnapshot) => {
+    const collectionId = sessionSnapshot.ref.parent.id.slice(0, -7);
+    const snapshot = await getCountFromServer(
+        query(
+            collection(db, `${collectionId}Data`),
+            where('sessionDateTime', '==', sessionSnapshot.data().dateTime),
+        ),
+    );
+    return snapshot.data().count;
+};
+
+const deleteSessionAndItsEntries = async (sessionSnapshot) => {
+    const collectionId = sessionSnapshot.ref.parent.id.slice(0, -7);
+    const entries = await getDocs(
+        query(
+            collection(db, `${collectionId}Data`),
+            where('sessionDateTime', '==', sessionSnapshot.data().dateTime),
+        ),
+    );
+    const deletePromises = entries.docs.map((entry) => deleteDocumentFromFirestore(entry));
+    await Promise.all(deletePromises);
+    return deleteDocumentFromFirestore(
+        sessionSnapshot,
+        `Session ${entries.size ? `and its ${entries.size} entries` : ''} successfully deleted`,
+    );
+};
+
+const startEntryOperation = async (operationName, operationData) => {
+    operationData.setEntryUIState('viewing');
+    if (operationName.includes('delete')) operationData.removeEntryFromUI();
+    if (operationName === 'uploadEntryEdits') {
+        return pushEntryChangesToFirestore(operationData.entrySnapshot, operationData.entryData);
+    } else if (operationName === 'deleteEntry') {
+        return deleteDocumentFromFirestore(operationData.entrySnapshot);
+    } else if (operationName === 'deleteSession') {
+        return deleteSessionAndItsEntries(operationData.entrySnapshot);
+    } else if (operationName === 'uploadSessionEdits') {
+        return editSessionAndItsEntries(operationData.entrySnapshot, operationData.entryData);
+    } else {
+        return [Type.error, 'Unknown error occurred'];
+    }
+};
+
+const getAnswerSetOptions = async (setName) => {
+    const answerSet = await getDocs(
+        query(collection(db, 'AnswerSet'), where('set_name', '==', setName)),
+    );
+    return answerSet.docs.flatMap((doc) => doc.data().answers.map((answer) => answer.primary));
+};
+
+export const getSitesForProject = (projectName) => getAnswerSetOptions(`${projectName}Sites`);
+export const getArraysForSite = (projectName, siteName) =>
+    getAnswerSetOptions(`${projectName}${siteName}Array`);
+export const getTrapStatuses = () => getAnswerSetOptions('trap statuses');
+export const getFenceTraps = () => getAnswerSetOptions('Fence Traps');
+export const getSexes = () => getAnswerSetOptions('Sexes');
+
+const getSessionsByProjectAndYear = async (environment, projectName, year) => {
+    const collectionName = `${environment === 'test' ? 'Test' : ''}${projectName}Session`;
+    const sessionsQuery = query(
+        collection(db, collectionName),
+        where('dateTime', '>=', `${year}/01/01 00:00:00`),
+        where('dateTime', '<=', `${year}/12/31 23:59:59`),
+        orderBy('dateTime', 'desc'),
+    );
+    return (await getDocs(sessionsQuery)).docs;
+};
+
+const getSpeciesCodesForProjectByTaxa = async (project, taxa) => {
+    const answerSet = await getDocs(
+        query(collection(db, 'AnswerSet'), where('set_name', '==', `${project}${taxa}Species`)),
+    );
+    return answerSet.docs.flatMap((doc) =>
+        doc.data().answers.map((answer) => ({
+            code: answer.primary,
+            genus: answer.secondary.Genus,
+            species: answer.secondary.Species,
+        })),
+    );
+};
+
+export const getStandardizedDateTimeString = (dateString) => {
+    const tempDate = new Date(dateString);
+    return `${tempDate.getFullYear()}/${String(tempDate.getMonth() + 1).padStart(2, '0')}/${String(tempDate.getDate()).padStart(2, '0')} ${tempDate.toLocaleTimeString('en-US', { hourCycle: 'h23' })}`;
+};
+
+export const uploadNewSession = async (sessionData, project, environment) => {
+    const collectionName = `${environment === 'live' ? '' : 'Test'}${project.replace(/\s/g, '')}Session`;
+    try {
+        await addDoc(collection(db, collectionName), sessionData);
         return true;
-    } catch (error) {
-        console.error('Error editing memberships:', error);
+    } catch {
         return false;
     }
 };
+
 export const getUserName = async (email) => {
-    console.log("in getUserName", email)
     const user = await getDocs(query(collection(db, 'Users'), where('email', '==', email)));
-    return user.docs[0].data().name || "null";
+    return user.docs[0].data().name;
 }
+
+export const uploadNewEntry = async (entryData, project, environment) => {
+    const now = new Date();
+    entryData.entryId = entryData.entryId || now.getTime();
+    entryData.lastEdit = now.getTime();
+    if (entryData.taxa === 'Arthropod') {
+        entryData = {
+            ...entryData,
+            aran: entryData.aran || '0',
+            auch: entryData.auch || '0',
+            blat: entryData.blat || '0',
+            chil: entryData.chil || '0',
+            cole: entryData.cole || '0',
+            crus: entryData.crus || '0',
+            derm: entryData.derm || '0',
+            diel: entryData.diel || '0',
+            dipt: entryData.dipt || '0',
+            hete: entryData.hete || '0',
+            hyma: entryData.hyma || '0',
+            hymb: entryData.hymb || '0',
+            lepi: entryData.lepi || '0',
+            mant: entryData.mant || '0',
+            orth: entryData.orth || '0',
+            pseu: entryData.pseu || '0',
+            scor: entryData.scor || '0',
+            soli: entryData.soli || '0',
+            thys: entryData.thys || '0',
+            unki: entryData.unki || '0',
+            micro: entryData.micro || '0',
+            taxa: 'N/A',
+        };
+    } else if (entryData.taxa === 'Lizard') {
+        await updateDoc(doc(db, 'Metadata', 'LizardData'), { lastEditTime: now.getTime() });
+    }
+    for (const key in entryData) {
+        if (entryData[key] === '') entryData[key] = 'N/A';
+    }
+    const entryId = `${entryData.site}${entryData.taxa === 'N/A' ? 'Arthropod' : entryData.taxa}${entryData.entryId}`;
+    const collectionName = `${environment === 'live' ? '' : 'Test'}${project.replace(/\s/g, '')}Data`;
+    try {
+        await setDoc(doc(db, collectionName, entryId), entryData);
+        return true;
+    } catch {
+        return false;
+    }
+};
+
+export {
+    getDocsFromCollection,
+    addDocToCollection,
+    updateDocInCollection,
+    deleteDocFromCollection,
+    getCollectionName,
+    getCollectionNameFromDoc,
+    startEntryOperation,
+    getSessionsByProjectAndYear,
+    getSpeciesCodesForProjectByTaxa,
+};

@@ -25,12 +25,11 @@ export default function NewProject({ CancelProject, OpenNewProject, Email }) {
             return;
         }
 
-        const finalContributors = Array.from(new Set(validContributors));
-        const finalAdministrators = Array.from(new Set(validAdministrators));
-
-        const filteredContributors = finalContributors.filter(
-            (email) => !finalAdministrators.includes(email)
+        const finalContributors = Array.from(
+            new Set([...validContributors, ...validAdministrators, Email]),
         );
+
+        const finalAdministrators = Array.from(new Set([...validAdministrators]));
 
         const trimmedProjectName = projectName.trim();
 
@@ -39,16 +38,14 @@ export default function NewProject({ CancelProject, OpenNewProject, Email }) {
             const projectCreated = await createProject(
                 trimmedProjectName,
                 Email,
-                filteredContributors,
-                finalAdministrators
+                finalContributors,
+                finalAdministrators,
             );
-
             if (projectCreated) {
-                notify(Type.success, `Created new project.`);
                 OpenNewProject(trimmedProjectName);
                 return;
             } else {
-                notify(Type.error, 'Error creating project.');
+                notify('Error creating project');
                 return;
             }
         } else {

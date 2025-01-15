@@ -7,8 +7,6 @@ import { Type, notify } from '../components/Notifier';
 import NewProject from '../windows/NewProject';
 import NewTab from '../windows/NewTab'
 
-export let updateProjectName = null;
-
 export default function TabBar({
     Email,
     SelectedTab,
@@ -39,7 +37,6 @@ export default function TabBar({
 
     const initializeTabs = async () => {
         const projects = await getProjectNames(Email);
-        console.log("PROJECTS", projects);
         setProjectNames(projects);
 
         if (projects.length > 0) {
@@ -53,14 +50,6 @@ export default function TabBar({
                 const defaultTab = tabs[0];
                 SetSelectedTab(defaultTab);
             }
-        }
-    };
-
-    // when we update project name in ProjectSettings.jsx we need to propagate that change here too
-    updateProjectName = (newProjectName) => {
-        SetSelectedProject(newProjectName);
-        if (!projectNames.includes(newProjectName)) {
-            setProjectNames((prevProjectNames) => [...prevProjectNames, newProjectName]);
         }
     };
 
