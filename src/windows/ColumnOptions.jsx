@@ -51,15 +51,10 @@ export default function ColumnOptions({
         }
 
         setEntryOptionsHelper(tempEntryOptions);
-    }, [columnIndex, dataType, tempEntryOptions, entryOptions, identifierDomain, requiredField]);
+    }, [columnIndex, dataType, tempEntryOptions, identifierDomain, requiredField]);
 
     const storeNewTab = async () => {
         if (validInputs()) {
-            let finalEntryOptions = Array.from({ length: ColumnNames.length }, () => []);
-            for (let i = 0; i < ColumnNames.length; i++) {
-            finalEntryOptions[i] = entryOptions[i].filter((name) => name !== 'Add Here');
-            }
-
             const tabAlreadyExists = await tabExists(Email, SelectedProject, TabName);
             if (!tabAlreadyExists) {
                 const tabCreated = await createTab(
@@ -73,13 +68,12 @@ export default function ColumnOptions({
                     UtilizeUnwantedCodes,
                     ColumnNames,
                     dataType,
-                    finalEntryOptions,
+                    entryOptions,
                     identifierDomain,
                     requiredField,
                     order,
                 );
                 if (tabCreated) {
-                    notify(Type.success, `Tab created.`);
                     OpenNewTab(TabName);
                     return;
                 } else {
@@ -103,7 +97,6 @@ export default function ColumnOptions({
                 const newIndex = prevIndex + 1;
                 return newIndex;
             });
-            setTempEntryOptions([]);
         }
     };
 

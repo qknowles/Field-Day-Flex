@@ -33,16 +33,7 @@ const notify = (type, text) => {
 
 function Notifier() {
     return (
-        <Toaster
-            position="bottom-center"
-            toastOptions={{
-                // this is purely to make sure no modals or other site components are displayed
-                // above the notifications. Had some issues with this prior.
-                style: {
-                    zIndex: 1000
-                }
-            }}
-        />
+        <Toaster  position="bottom-center" />
     );
 }
 
