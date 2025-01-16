@@ -2,8 +2,6 @@ name: Restrict Branch Creation
 
 on:
   create:
-    branches:
-      - '**'
 
 jobs:
   restrict_branch_creation:
