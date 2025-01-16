@@ -1,17 +1,17 @@
 name: Restrict merges to main from dev
 
 on:
-  pull_request:
-    branches:
-      - main
+    pull_request:
+        branches:
+            - main
 
 jobs:
-  check_source_branch:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check source branch
-        run: |
-          if [ "${{ github.base_ref }}" != "main" ] || [ "${{ github.head_ref }}" != "dev" ]; then
-            echo "Pull requests to main must originate from dev.";
-            exit 1;
-          fi
+    check_source_branch:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Check source branch
+              run: |
+                  if [ "${{ github.base_ref }}" != "main" ] || [ "${{ github.head_ref }}" != "dev" ]; then
+                    echo "Pull requests to main must originate from dev.";
+                    exit 1;
+                  fi
