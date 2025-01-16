@@ -7,20 +7,23 @@ import {
     getProjectFields,
     updateDocInCollection,
     addMemberToProject,
-    getDocumentIdByProjectName
+    getDocumentIdByProjectName,
 } from '../utils/firestore.js';
 import Button from '../components/Button.jsx';
 import { notify, Type } from '../components/Notifier.jsx';
 import { updateProjectName } from '../components/TabBar.jsx';
 
-export default function ProjectSettings({ projectNameProp = "NoNamePassed", CloseProjectSettings }) {
+export default function ProjectSettings({
+    projectNameProp = 'NoNamePassed',
+    CloseProjectSettings,
+}) {
     const [documentId, setDocumentId] = useState(null); // Start with null, indicating it's unresolved
     const [projectName, setProjectName] = useState(projectNameProp);
     const [newMemberSelectedRole, setNewMemberSelectedRole] = useState('Select Role');
     const [newMemberEmail, setNewMemberEmail] = useState('');
     const [members, setMembers] = useState([
-        { email: "There is no project selected!", role: "Contributor" },
-        { email: "Does the project exist in the DB?", role: "Owner" }
+        { email: 'There is no project selected!', role: 'Contributor' },
+        { email: 'Does the project exist in the DB?', role: 'Owner' },
     ]);
 
     useEffect(() => {
@@ -46,14 +49,18 @@ export default function ProjectSettings({ projectNameProp = "NoNamePassed", Clos
 
     const fetchProjectData = async () => {
         try {
-            const membersData = await getProjectFields(documentId, ['contributors', 'admins', 'owners']);
+            const membersData = await getProjectFields(documentId, [
+                'contributors',
+                'admins',
+                'owners',
+            ]);
 
             if (membersData) {
                 const { contributors = [], admins = [], owners = [] } = membersData;
                 const updatedMembers = [
-                    ...contributors.map(email => ({ email, role: "Contributor" })),
-                    ...admins.map(email => ({ email, role: "Admin" })),
-                    ...owners.map(email => ({ email, role: "Owner" })),
+                    ...contributors.map((email) => ({ email, role: 'Contributor' })),
+                    ...admins.map((email) => ({ email, role: 'Admin' })),
+                    ...owners.map((email) => ({ email, role: 'Owner' })),
                 ];
 
                 updatedMembers.sort((a, b) => {
@@ -68,20 +75,24 @@ export default function ProjectSettings({ projectNameProp = "NoNamePassed", Clos
                 setMembers(updatedMembers);
             }
         } catch (err) {
-            console.error("Error fetching project data:", err);
+            console.error('Error fetching project data:', err);
         }
     };
 
     async function addMember() {
         if (!newMemberEmail || newMemberEmail.length === 0) {
-            notify(Type.error, "Please enter member email.");
+            notify(Type.error, 'Please enter member email.');
             return;
         }
         if (newMemberSelectedRole === 'Select Role') {
-            notify(Type.error, "Please select a role.");
+            notify(Type.error, 'Please select a role.');
             return;
         }
-        await addMemberToProject(documentId, newMemberSelectedRole.toLowerCase() + "s", newMemberEmail);
+        await addMemberToProject(
+            documentId,
+            newMemberSelectedRole.toLowerCase() + 's',
+            newMemberEmail,
+        );
         await fetchProjectData();
     }
 
@@ -92,29 +103,29 @@ export default function ProjectSettings({ projectNameProp = "NoNamePassed", Clos
     }
 
     async function removeMember(email, role) {
-        if(role === "Owner") {
-            notify(Type.error, "Cannot remove an owner from the project.");
+        if (role === 'Owner') {
+            notify(Type.error, 'Cannot remove an owner from the project.');
             return;
         }
         try {
             // Map the role to the appropriate Firestore field
-            const field = role.toLowerCase() + "s"; // "Contributor" -> "contributors", "Admin" -> "admins", etc.
+            const field = role.toLowerCase() + 's'; // "Contributor" -> "contributors", "Admin" -> "admins", etc.
 
             // Get the current list of members in the field
             const updatedFieldMembers = members
                 .filter((member) => !(member.email === email && member.role === role)) // Remove the matching member
-                .filter((member) => member.role.toLowerCase() + "s" === field) // Filter only those in the same role field
+                .filter((member) => member.role.toLowerCase() + 's' === field) // Filter only those in the same role field
                 .map((member) => member.email); // Only keep the email
 
             // Update Firestore
             const updateData = {
                 [field]: updatedFieldMembers,
             };
-            await updateDocInCollection("Projects", documentId, updateData);
+            await updateDocInCollection('Projects', documentId, updateData);
 
             // Update local state
             setMembers((prevMembers) =>
-                prevMembers.filter((member) => !(member.email === email && member.role === role))
+                prevMembers.filter((member) => !(member.email === email && member.role === role)),
             );
 
             notify(Type.success, `${email} has been successfully removed as a ${role}.`);
@@ -124,7 +135,6 @@ export default function ProjectSettings({ projectNameProp = "NoNamePassed", Clos
         }
     }
 
-
     // Component depends on the docID ... we do nothing until that promise resolves.
     if (!documentId) {
         return <div>Loading project settings...</div>;
@@ -133,8 +143,12 @@ export default function ProjectSettings({ projectNameProp = "NoNamePassed", Clos
     return (
         <WindowWrapper
             header={`Manage ${projectNameProp} Project`}
-            onLeftButton={() => { CloseProjectSettings() }}
-            onRightButton={() => { saveChanges() }}
+            onLeftButton={() => {
+                CloseProjectSettings();
+            }}
+            onRightButton={() => {
+                saveChanges();
+            }}
             leftButtonText="Cancel"
             rightButtonText="Save Project Name"
         >
@@ -186,11 +200,14 @@ export default function ProjectSettings({ projectNameProp = "NoNamePassed", Clos
                                 <option value="Owner">Owner</option>
                             </select>
                         }
-                    /> <br />
+                    />{' '}
+                    <br />
                     <div className="flex justify-end mt-4">
                         <Button
                             text="Add member"
-                            onClick={() => { addMember() }}
+                            onClick={() => {
+                                addMember();
+                            }}
                         />
                     </div>
                 </div>
@@ -200,16 +217,13 @@ export default function ProjectSettings({ projectNameProp = "NoNamePassed", Clos
                     <h3 className="font-semibold">Members</h3>
                     <div className="space-y-2">
                         {members.map((member, index) => (
-                            <div
-                                key={index}
-                                className="flex items-center space-x-4 p-2"
-                            >
+                            <div key={index} className="flex items-center space-x-4 p-2">
                                 {/* Delete Button */}
                                 <button
                                     className="text-red-500 font-bold"
                                     onClick={() => {
-                                        console.log("Calling remove member")
-                                        removeMember(member.email, member.role)
+                                        console.log('Calling remove member');
+                                        removeMember(member.email, member.role);
                                     }}
                                 >
                                     <AiFillDelete />
@@ -219,7 +233,7 @@ export default function ProjectSettings({ projectNameProp = "NoNamePassed", Clos
 
                                 {/* Role Selector */}
                                 <DropdownSelector
-                                    options={["Owner", "Admin", "Contributor"]}
+                                    options={['Owner', 'Admin', 'Contributor']}
                                     selection={member.role}
                                     setSelection={(newRole) => {
                                         const updatedMembers = [...members];
@@ -235,4 +249,3 @@ export default function ProjectSettings({ projectNameProp = "NoNamePassed", Clos
         </WindowWrapper>
     );
 }
-

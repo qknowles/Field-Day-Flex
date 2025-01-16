@@ -4,11 +4,7 @@ import Button from '../components/Button';
 import WindowWrapper from '../wrappers/WindowWrapper';
 import { Type, notify } from '../components/Notifier';
 
-export default function ManageMembership({ 
-    Email,
-    CancelMemberships,
-    setCurrentWindow
-}) {
+export default function ManageMembership({ Email, CancelMemberships, setCurrentWindow }) {
     const [userProjectData, setUserProjectData] = useState([]);
 
     useEffect(() => {
@@ -25,11 +21,14 @@ export default function ManageMembership({
             notify(Type.success, `Left project: ${project}`);
             const updatedProjects = await getProjectNames(Email);
             setUserProjectData(updatedProjects);
-            if(updatedProjects.length === 0) {
+            if (updatedProjects.length === 0) {
                 setCurrentWindow('HomePage');
             }
         } else {
-            notify(Type.error, 'Could not leave project. Project owners cannot leave their projects.');
+            notify(
+                Type.error,
+                'Could not leave project. Project owners cannot leave their projects.',
+            );
         }
     };
 
@@ -44,7 +43,10 @@ export default function ManageMembership({
                     <p className="text-center">You are not a member of any projects</p>
                 ) : (
                     userProjectData.map((project) => (
-                        <div key={project} className="flex justify-between items-center p-4 bg-white dark:bg-neutral-800 rounded-lg shadow">
+                        <div
+                            key={project}
+                            className="flex justify-between items-center p-4 bg-white dark:bg-neutral-800 rounded-lg shadow"
+                        >
                             <span className="text-lg">{project}</span>
                             <Button
                                 text="Leave Project"

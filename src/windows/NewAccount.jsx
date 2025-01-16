@@ -12,7 +12,6 @@ export default function NewAccount({ CancelAccount, OpenNewAccount, SetEmail }) 
     const [confirmPassword, setConfirmPassword] = useState('');
 
     const createClick = async () => {
-
         if (name.trim().length === 0) {
             notify(Type.error, 'Please enter a name.');
             return;

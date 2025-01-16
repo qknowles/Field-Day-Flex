@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 const Table = ({ Email, SelectedProject, SelectedTab, entries, columns, onEdit, onDelete }) => {
-    const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' }); 
+    const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
     const handleSort = (key) => {
         setSortConfig((prev) => ({
@@ -40,7 +40,12 @@ const Table = ({ Email, SelectedProject, SelectedTab, entries, columns, onEdit, 
                                 className="p-2 text-left border-b font-semibold cursor-pointer"
                                 onClick={() => handleSort(column.name)}
                             >
-                                {column.name} {sortConfig.key === column.name ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}
+                                {column.name}{' '}
+                                {sortConfig.key === column.name
+                                    ? sortConfig.direction === 'asc'
+                                        ? '↑'
+                                        : '↓'
+                                    : ''}
                             </th>
                         ))}
                     </tr>
@@ -52,7 +57,10 @@ const Table = ({ Email, SelectedProject, SelectedTab, entries, columns, onEdit, 
                                 <button className="btn btn-edit" onClick={() => onEdit?.(entry)}>
                                     Edit
                                 </button>
-                                <button className="btn btn-delete ml-2" onClick={() => onDelete?.(entry.id)}>
+                                <button
+                                    className="btn btn-delete ml-2"
+                                    onClick={() => onDelete?.(entry.id)}
+                                >
                                     Delete
                                 </button>
                             </td>

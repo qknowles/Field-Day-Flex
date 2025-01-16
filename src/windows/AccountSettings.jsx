@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import WindowWrapper from '../wrappers/WindowWrapper.jsx'
-import { Type, notify } from '../components/Notifier.jsx'
+import WindowWrapper from '../wrappers/WindowWrapper.jsx';
+import { Type, notify } from '../components/Notifier.jsx';
 import InputLabel from '../components/InputLabel.jsx';
 import {
     verifyPassword,
     getUserName,
     updateDocInCollection,
     updateEmailInProjects,
-    getDocumentIdByUserName
+    getDocumentIdByUserName,
 } from '../utils/firestore';
 import CryptoJS from 'crypto-js';
 import { updateUserEmail } from '../App.jsx';
@@ -25,7 +25,7 @@ export default function AccountSettings({ CloseAccountSettings, emailProp }) {
         try {
             // Verify password matches current
             const hashedPassword = CryptoJS.SHA256(password).toString();
-            console.log("LOGGING EMAIL", originalEmail); // Always verify using the original email
+            console.log('LOGGING EMAIL', originalEmail); // Always verify using the original email
             const isPasswordVerified = await verifyPassword(originalEmail, hashedPassword);
             if (!isPasswordVerified) {
                 notify(Type.error, 'Incorrect password');
@@ -34,7 +34,7 @@ export default function AccountSettings({ CloseAccountSettings, emailProp }) {
 
             // Check which fields have been changed by user
             const fieldsChanged = {};
-            if (name !== await getUserName(originalEmail)) fieldsChanged.name = name;
+            if (name !== (await getUserName(originalEmail))) fieldsChanged.name = name;
             if (email !== originalEmail) fieldsChanged.email = email;
             if (newPassword && confirmPassword && newPassword === confirmPassword) {
                 const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{8,}$/;
@@ -54,17 +54,22 @@ export default function AccountSettings({ CloseAccountSettings, emailProp }) {
                 let userDocId;
                 if (fieldsChanged.email) {
                     userDocId = await getDocumentIdByUserName(originalEmail); // Always use the original email here
-                    console.log("AccountSettings get docId for user email:", userDocId);
+                    console.log('AccountSettings get docId for user email:', userDocId);
 
                     // Update email in the "Users" collection
-                    const emailUpdateSuccess = await updateDocInCollection("Users", userDocId, { email: fieldsChanged.email });
+                    const emailUpdateSuccess = await updateDocInCollection('Users', userDocId, {
+                        email: fieldsChanged.email,
+                    });
                     if (!emailUpdateSuccess) {
                         notify(Type.error, 'Failed to update email.');
                         return;
                     }
 
                     // Update email across all projects
-                    const projectsUpdateSuccess = await updateEmailInProjects(originalEmail, fieldsChanged.email);
+                    const projectsUpdateSuccess = await updateEmailInProjects(
+                        originalEmail,
+                        fieldsChanged.email,
+                    );
                     if (projectsUpdateSuccess) {
                         console.log('Email updated across all projects.');
                         updateUserEmail(fieldsChanged.email); // Update the global email state
@@ -72,7 +77,7 @@ export default function AccountSettings({ CloseAccountSettings, emailProp }) {
                     } else {
                         notify(Type.error, 'Failed to update email across all projects.');
                         // revert email back on user table
-                        await updateDocInCollection("Users", userDocId, { email: originalEmail });
+                        await updateDocInCollection('Users', userDocId, { email: originalEmail });
                         notify(Type.error, 'Email change rolled back because of an error.');
                         return;
                     }
@@ -81,10 +86,10 @@ export default function AccountSettings({ CloseAccountSettings, emailProp }) {
                 // Update other fields in the "Users" collection
                 const updatedData = {
                     ...fieldsChanged,
-                    lastUpdated: new Date()
+                    lastUpdated: new Date(),
                 };
                 const targetEmail = fieldsChanged.email || originalEmail; // Use the new email if it has been updated
-                console.log("targetEmail", targetEmail);
+                console.log('targetEmail', targetEmail);
                 const updateSuccess = await updateDocInCollection('Users', userDocId, updatedData);
 
                 if (updateSuccess) {
@@ -102,7 +107,7 @@ export default function AccountSettings({ CloseAccountSettings, emailProp }) {
     // Notify user if passwords do not match
     useEffect(() => {
         if (newPassword && confirmPassword && newPassword !== confirmPassword) {
-            notify(Type.error, "Passwords do not match");
+            notify(Type.error, 'Passwords do not match');
         }
     }, [newPassword, confirmPassword]);
 
@@ -118,8 +123,12 @@ export default function AccountSettings({ CloseAccountSettings, emailProp }) {
     return (
         <WindowWrapper
             header="Account Settings"
-            onLeftButton={() => { CloseAccountSettings() }}
-            onRightButton={() => { saveChanges() }}
+            onLeftButton={() => {
+                CloseAccountSettings();
+            }}
+            onRightButton={() => {
+                saveChanges();
+            }}
             leftButtonText="Back"
             rightButtonText="Save Changes"
         >
