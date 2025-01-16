@@ -4,6 +4,9 @@ import TableTools from '../wrappers/TableTools';
 import { Pagination } from './Pagination';
 import { useAtom } from 'jotai';
 import { currentProjectName, currentTableName, currentBatchSize } from '../utils/jotai';
+import { Type, notify } from '../components/Notifier';
+import NewEntry from '../windows/NewEntry';
+import ColumnSelectorButton from './ColumnSelectorButton';
 
 const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
     const [entries, setEntries] = useState([]);
@@ -12,6 +15,9 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
     const [error, setError] = useState(null);
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
     const [currentPage, setCurrentPage] = useState(1);
+    const [visibleColumns, setVisibleColumns] = useState(new Set());
+    const [showEditEntry, setShowEditEntry] = useState(false);
+    const [editingEntry, setEditingEntry] = useState(null);
     
     const [batchSize] = useAtom(currentBatchSize);
     const [currentProject, setCurrentProject] = useAtom(currentProjectName);
@@ -23,7 +29,10 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
         
         try {
             const columnsData = await getColumnsCollection(SelectedProject, SelectedTab, Email);
-            setColumns(columnsData.sort((a, b) => a.order - b.order));
+            const sortedColumns = columnsData.sort((a, b) => a.order - b.order);
+            setColumns(sortedColumns);
+            // Initialize visible columns
+            setVisibleColumns(new Set(sortedColumns.map(col => col.name)));
         } catch (err) {
             console.error('Error fetching columns:', err);
             setError('Failed to load columns');
@@ -64,13 +73,44 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
 
         loadData();
         
-        // Cleanup function
         return () => {
             setEntries([]);
             setColumns([]);
             setError(null);
         };
     }, [SelectedProject, SelectedTab, fetchColumns, fetchEntries, setCurrentProject, setCurrentTable]);
+
+    // Handle column visibility toggle
+    const toggleColumn = useCallback((columnName) => {
+        setVisibleColumns(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(columnName)) {
+                newSet.delete(columnName);
+            } else {
+                newSet.add(columnName);
+            }
+            return newSet;
+        });
+    }, []);
+
+    // Handle edit entry
+    const handleEdit = (entry) => {
+        setEditingEntry(entry);
+        setShowEditEntry(true);
+    };
+
+    // Handle delete entry
+    const handleDelete = async (entryId) => {
+        try {
+            // Implement delete functionality using Firestore
+            await deleteEntryFromFirestore(entryId);
+            notify(Type.success, 'Entry deleted successfully');
+            fetchEntries(); // Refresh the entries
+        } catch (err) {
+            console.error('Error deleting entry:', err);
+            notify(Type.error, 'Failed to delete entry');
+        }
+    };
 
     // Sort entries based on configuration
     const sortedEntries = React.useMemo(() => {
@@ -101,17 +141,9 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
         return sortedEntries.slice(startIndex, startIndex + batchSize);
     }, [sortedEntries, currentPage, batchSize]);
 
-    if (loading) {
-        return <div className="p-4 text-center">Loading...</div>;
-    }
-
-    if (error) {
-        return <div className="p-4 text-center text-red-600">{error}</div>;
-    }
-
-    if (!columns.length) {
-        return <div className="p-4 text-center">No columns defined for this tab.</div>;
-    }
+    if (loading) return <div className="p-4 text-center">Loading...</div>;
+    if (error) return <div className="p-4 text-center text-red-600">{error}</div>;
+    if (!columns.length) return <div className="p-4 text-center">No columns defined for this tab.</div>;
 
     return (
         <div className="flex-grow overflow-auto">
@@ -121,6 +153,11 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
                     totalPages={Math.ceil(sortedEntries.length / batchSize)}
                     onPageChange={setCurrentPage}
                 />
+                <ColumnSelectorButton 
+                    labels={columns.map(col => col.name)}
+                    columns={visibleColumns}
+                    toggleColumn={toggleColumn}
+                />
             </TableTools>
             
             <div className="overflow-x-auto">
@@ -129,18 +166,20 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
                         <tr>
                             <th className="p-2 text-left border-b font-semibold">Actions</th>
                             {columns.map((column) => (
-                                <th
-                                    key={column.id}
-                                    className="p-2 text-left border-b font-semibold cursor-pointer hover:bg-gray-50"
-                                    onClick={() => handleSort(column.name)}
-                                >
-                                    {column.name}
-                                    {sortConfig.key === column.name && (
-                                        <span className="ml-1">
-                                            {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                                        </span>
-                                    )}
-                                </th>
+                                visibleColumns.has(column.name) && (
+                                    <th
+                                        key={column.id}
+                                        className="p-2 text-left border-b font-semibold cursor-pointer hover:bg-gray-50"
+                                        onClick={() => handleSort(column.name)}
+                                    >
+                                        {column.name}
+                                        {sortConfig.key === column.name && (
+                                            <span className="ml-1">
+                                                {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                                            </span>
+                                        )}
+                                    </th>
+                                )
                             ))}
                         </tr>
                     </thead>
@@ -148,23 +187,49 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
                         {paginatedEntries.map((entry) => (
                             <tr key={entry.id} className="hover:bg-gray-50">
                                 <td className="p-2 border-b">
-                                    <button className="px-2 py-1 text-sm bg-blue-500 text-white rounded mr-2">
+                                    <button 
+                                        className="px-2 py-1 text-sm bg-blue-500 text-white rounded mr-2"
+                                        onClick={() => handleEdit(entry)}
+                                    >
                                         Edit
                                     </button>
-                                    <button className="px-2 py-1 text-sm bg-red-500 text-white rounded">
+                                    <button 
+                                        className="px-2 py-1 text-sm bg-red-500 text-white rounded"
+                                        onClick={() => {
+                                            if (window.confirm('Are you sure you want to delete this entry?')) {
+                                                handleDelete(entry.id);
+                                            }
+                                        }}
+                                    >
                                         Delete
                                     </button>
                                 </td>
                                 {columns.map((column) => (
-                                    <td key={`${entry.id}-${column.id}`} className="p-2 border-b">
-                                        {entry.entry_data?.[column.name] ?? 'N/A'}
-                                    </td>
+                                    visibleColumns.has(column.name) && (
+                                        <td key={`${entry.id}-${column.id}`} className="p-2 border-b">
+                                            {entry.entry_data?.[column.name] ?? 'N/A'}
+                                        </td>
+                                    )
                                 ))}
                             </tr>
                         ))}
                     </tbody>
                 </table>
             </div>
+
+            {showEditEntry && (
+                <NewEntry
+                    CloseNewEntry={() => {
+                        setShowEditEntry(false);
+                        setEditingEntry(null);
+                        fetchEntries(); // Refresh entries after edit
+                    }}
+                    ProjectName={SelectedProject}
+                    TabName={SelectedTab}
+                    Email={Email}
+                    editingEntry={editingEntry}
+                />
+            )}
         </div>
     );
 };
