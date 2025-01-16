@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "field-day-flex"
+  },
+  "targets": {
+    "field-day-flex": {
+        "hosting": {
+            "flex": [
+                "field-day-flex"
+            ]
+        }
+    }
+  }
+}
