@@ -191,7 +191,11 @@ export const getTabNames = async (email, projectName) => {
         const projectsQuery = query(
             projectRef,
             where('project_name', '==', projectName),
-            where('contributors', 'array-contains', email),
+            or(
+                where('contributors', 'array-contains', Email),
+                where('admins', 'array-contains', Email),
+                where('owners', 'array-contains', Email)
+            )
         );
         const projectSnapshot = await getDocs(projectsQuery);
 
@@ -220,7 +224,11 @@ export const tabExists = async (Email, SelectedProject, tabName) => {
         const projectsQuery = query(
             projectRef,
             where('project_name', '==', SelectedProject),
-            where('contributors', 'array-contains', Email),
+            or(
+                where('contributors', 'array-contains', Email),
+                where('admins', 'array-contains', Email),
+                where('owners', 'array-contains', Email)
+            )
         );
         const projectSnapshot = await getDocs(projectsQuery);
 
@@ -257,7 +265,10 @@ export const createTab = async (
         const projectsQuery = query(
             projectRef,
             where('project_name', '==', SelectedProject),
-            where('contributors', 'array-contains', Email),
+            or(
+                where('admins', 'array-contains', Email),
+                where('owners', 'array-contains', Email)
+            )
         );
         const projectSnapshot = await getDocs(projectsQuery);
         const projectDoc = projectSnapshot.docs[0];
@@ -311,7 +322,11 @@ export const getColumnsCollection = async (projectName, tabName, email) => {
         const projectQuery = query(
             projectRef,
             where('project_name', '==', projectName),
-            where('contributors', 'array-contains', email),
+            or(
+                where('contributors', 'array-contains', Email),
+                where('admins', 'array-contains', Email),
+                where('owners', 'array-contains', Email)
+            )
         );
         const projectSnapshot = await getDocs(projectQuery);
 
@@ -363,7 +378,11 @@ export const addEntry = async (projectName, tabName, email, newEntry) => {
         const projectsQuery = query(
             projectRef,
             where('project_name', '==', projectName),
-            where('contributors', 'array-contains', email),
+            or(
+                where('contributors', 'array-contains', Email),
+                where('admins', 'array-contains', Email),
+                where('owners', 'array-contains', Email)
+            )
         );
         const projectSnapshot = await getDocs(projectsQuery);
 
@@ -424,7 +443,11 @@ export const getEntriesForTab = async (projectName, tabName, email) => {
         const projectQuery = query(
             projectRef,
             where('project_name', '==', projectName),
-            where('contributors', 'array-contains', email),
+            or(
+                where('contributors', 'array-contains', Email),
+                where('admins', 'array-contains', Email),
+                where('owners', 'array-contains', Email)
+            )
         );
         const projectSnapshot = await getDocs(projectQuery);
 
