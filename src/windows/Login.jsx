@@ -10,16 +10,13 @@ export default function Login({ CancelLogin, OpenAccount, SetEmail }) {
     const [password, setPassword] = useState('');
 
     const attemptLogin = async () => {
-
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(thisEmail)) {
             notify(Type.error, 'Please enter a valid email address.');
             return;
         }
         if (password.length < 1) {
-            notify(
-                Type.error, 'Please enter a password.',
-            );
+            notify(Type.error, 'Please enter a password.');
             return;
         }
 

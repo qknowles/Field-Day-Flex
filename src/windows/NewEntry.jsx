@@ -47,12 +47,12 @@ export default function NewEntry({ CloseNewEntry, ProjectName, TabName, Email })
                 notify(Type.error, `The field "${name}" must be a valid number.`);
                 return false;
             }
-    
+
             if (data_type === 'date' && isNaN(Date.parse(value))) {
                 notify(Type.error, `The field "${name}" must be a valid date.`);
                 return false;
             }
-    
+
             if (data_type === 'multiple choice' && value === 'Select') {
                 notify(Type.error, `Please select a valid option for "${name}".`);
                 return false;
@@ -61,8 +61,6 @@ export default function NewEntry({ CloseNewEntry, ProjectName, TabName, Email })
 
         return true;
     };
-    
-    
 
     const submitEntry = async () => {
         if (validEntries()) {

@@ -19,48 +19,48 @@ export default function WindowWrapper({
             aria-modal="true"
         >
             <AnimatePresence>
-                    <WindowOverlay key="window-overlay" />
-                    <motion.div
-                        className="fixed inset-0 backdrop-blur-sm"
-                        key="modal"
-                        variants={windowVariant}
-                        initial="hidden"
-                        animate="visible"
-                        exit="hidden"
-                    >
-                        <WindowBuffer>
-                            <ContentWrapper>
-                                <WindowHeader header={header} />
-                                <div className="bg-neutral-100 dark:bg-neutral-700 flex-shrink-0 h-window-bar" />
-                                <div className="flex-grow overflow-auto">
-                                    <div className="flex-col space-y-1 h-window-content">
-                                        <div className="p-4">
-                                            <WindowContent>{children}</WindowContent>
-                                        </div>
+                <WindowOverlay key="window-overlay" />
+                <motion.div
+                    className="fixed inset-0 backdrop-blur-sm"
+                    key="modal"
+                    variants={windowVariant}
+                    initial="hidden"
+                    animate="visible"
+                    exit="hidden"
+                >
+                    <WindowBuffer>
+                        <ContentWrapper>
+                            <WindowHeader header={header} />
+                            <div className="bg-neutral-100 dark:bg-neutral-700 flex-shrink-0 h-window-bar" />
+                            <div className="flex-grow overflow-auto">
+                                <div className="flex-col space-y-1 h-window-content">
+                                    <div className="p-4">
+                                        <WindowContent>{children}</WindowContent>
                                     </div>
                                 </div>
+                            </div>
 
-                                <WindowFooter>
-                                    {leftButtonText && (
-                                        <Button
-                                            key="left-button"
-                                            onClick={() => onLeftButton?.()}
-                                            text={leftButtonText}
-                                            enabled={true}
-                                        />
-                                    )}
-                                    {rightButtonText && (
-                                        <Button
-                                            key="right-button"
-                                            onClick={() => onRightButton?.()}
-                                            text={rightButtonText}
-                                            enabled={true}
-                                        />
-                                    )}
-                                </WindowFooter>
-                            </ContentWrapper>
-                        </WindowBuffer>
-                    </motion.div>
+                            <WindowFooter>
+                                {leftButtonText && (
+                                    <Button
+                                        key="left-button"
+                                        onClick={() => onLeftButton?.()}
+                                        text={leftButtonText}
+                                        enabled={true}
+                                    />
+                                )}
+                                {rightButtonText && (
+                                    <Button
+                                        key="right-button"
+                                        onClick={() => onRightButton?.()}
+                                        text={rightButtonText}
+                                        enabled={true}
+                                    />
+                                )}
+                            </WindowFooter>
+                        </ContentWrapper>
+                    </WindowBuffer>
+                </motion.div>
             </AnimatePresence>
         </motion.div>
     );

@@ -85,7 +85,7 @@ Install dependencies:
 3.  ```bash
     npm test
     ```
-    
+
 ## Test Deployments
 
 Test deployments are automatically created on PR into `main` and `dev` branches using the workflow: `firebase-hosting-pull-request.yml`. The URLs for the test deployment are provided in the PR checks.
@@ -102,6 +102,6 @@ In order to use Google Auth and access the test deployment, you will need to add
 
 <a href="https://github.com/ilathem"><img src="https://github.com/ilathem.png" width="50" height="50" alt="Isaiah Lathem"></a>
 <a href="https://github.com/jakBkwik"><img src="https://github.com/jakBkwik.png" width="50" height="50" alt="Jack Norman"></a>
-<a href="https://github.com/realdgrassl"><img src="https://github.com/realdgrassl.png" width="50" height="50" alt="Dennis Grassl"></a>  
+<a href="https://github.com/realdgrassl"><img src="https://github.com/realdgrassl.png" width="50" height="50" alt="Dennis Grassl"></a>
 <a href="https://github.com/ianskelskey"><img src="https://github.com/ianskelskey.png" width="50" height="50" alt="Ian Skelskey"></a>
 <a href="https://github.com/zacharyjacobson"><img src="https://github.com/zacharyjacobson.png" width="50" height="50" alt="Zachary Jacobson"></a> -->

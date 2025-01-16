@@ -9,8 +9,16 @@ import NewTab from '../windows/NewTab';
 const NoProjectDisplay = () => (
     <div className="w-full text-center">
         <div className="pt-10">
-            <h1 className="title">Field Day <br />
-                <span style={{ fontFamily: '"Lucida Handwriting", cursive', fontSize: '0.7em', position: 'relative', top: '-0.3em' }}>
+            <h1 className="title">
+                Field Day <br />
+                <span
+                    style={{
+                        fontFamily: '"Lucida Handwriting", cursive',
+                        fontSize: '0.7em',
+                        position: 'relative',
+                        top: '-0.3em',
+                    }}
+                >
                     Flex
                 </span>
             </h1>
@@ -28,8 +36,16 @@ const NoProjectDisplay = () => (
 const NoTabsDisplay = () => (
     <div className="w-full text-center">
         <div className="pt-10">
-            <h1 className="title">Field Day <br />
-                <span style={{ fontFamily: '"Lucida Handwriting", cursive', fontSize: '0.7em', position: 'relative', top: '-0.3em' }}>
+            <h1 className="title">
+                Field Day <br />
+                <span
+                    style={{
+                        fontFamily: '"Lucida Handwriting", cursive',
+                        fontSize: '0.7em',
+                        position: 'relative',
+                        top: '-0.3em',
+                    }}
+                >
                     Flex
                 </span>
             </h1>
@@ -48,7 +64,7 @@ const NoTabsDisplay = () => (
  * Quick and dirty way to get the Current Project to TopNav for ProjectSettings.jsx
  * @type {string}
  */
-let currentProject = "null";
+let currentProject = 'null';
 export function getCurrentProject() {
     return currentProject;
 }

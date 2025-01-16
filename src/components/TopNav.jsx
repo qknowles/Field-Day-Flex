@@ -11,7 +11,8 @@ export default function TopNav({ Email, SetEmail, SetAuthenticated, Authenticate
                     {Authenticated && (
                         <li>
                             <Hamburger Email={Email} />
-                        </li>)}
+                        </li>
+                    )}
                     <li>
                         <LizardIcon className="text-asu-maroon fill-current h-12 cursor-pointer" />
                     </li>
@@ -25,7 +26,11 @@ export default function TopNav({ Email, SetEmail, SetAuthenticated, Authenticate
                         </p>
                     </li>
                 </ul>
-                <UserController email={Email} setEmail={SetEmail} setAuthenticated={SetAuthenticated} />
+                <UserController
+                    email={Email}
+                    setEmail={SetEmail}
+                    setAuthenticated={SetAuthenticated}
+                />
             </nav>
         </div>
     );

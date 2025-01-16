@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "ci": "npx prettier --write **/*.{html,css,js,md} --config .prettierrc && npm run lint && npm test",
+    "ci": "npx prettier --write **/*.{html,css,js,jsx,md} --config .prettierrc && npm run lint && npm test",
     "preview": "vite preview",
     "lint": "eslint .",
     "test": "jest --passWithNoTests"

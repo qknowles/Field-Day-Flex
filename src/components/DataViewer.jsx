@@ -12,7 +12,7 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
     const [error, setError] = useState(null);
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
     const [currentPage, setCurrentPage] = useState(1);
-    
+
     const [batchSize] = useAtom(currentBatchSize);
     const [currentProject, setCurrentProject] = useAtom(currentProjectName);
     const [currentTable, setCurrentTable] = useAtom(currentTableName);
@@ -20,7 +20,7 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
     // Fetch columns data
     const fetchColumns = useCallback(async () => {
         if (!SelectedProject || !SelectedTab) return;
-        
+
         try {
             const columnsData = await getColumnsCollection(SelectedProject, SelectedTab, Email);
             setColumns(columnsData.sort((a, b) => a.order - b.order));
@@ -48,11 +48,11 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
         const loadData = async () => {
             setLoading(true);
             setError(null);
-            
+
             try {
                 setCurrentProject(SelectedProject);
                 setCurrentTable(SelectedTab);
-                
+
                 await Promise.all([fetchColumns(), fetchEntries()]);
             } catch (err) {
                 console.error('Error loading data:', err);
@@ -63,23 +63,30 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
         };
 
         loadData();
-        
+
         // Cleanup function
         return () => {
             setEntries([]);
             setColumns([]);
             setError(null);
         };
-    }, [SelectedProject, SelectedTab, fetchColumns, fetchEntries, setCurrentProject, setCurrentTable]);
+    }, [
+        SelectedProject,
+        SelectedTab,
+        fetchColumns,
+        fetchEntries,
+        setCurrentProject,
+        setCurrentTable,
+    ]);
 
     // Sort entries based on configuration
     const sortedEntries = React.useMemo(() => {
         if (!sortConfig.key) return entries;
-        
+
         return [...entries].sort((a, b) => {
             const aValue = a.entry_data?.[sortConfig.key] ?? '';
             const bValue = b.entry_data?.[sortConfig.key] ?? '';
-            
+
             if (sortConfig.direction === 'asc') {
                 return aValue.toString().localeCompare(bValue.toString());
             }
@@ -116,13 +123,13 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
     return (
         <div className="flex-grow overflow-auto">
             <TableTools>
-                <Pagination 
+                <Pagination
                     currentPage={currentPage}
                     totalPages={Math.ceil(sortedEntries.length / batchSize)}
                     onPageChange={setCurrentPage}
                 />
             </TableTools>
-            
+
             <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
                     <thead>

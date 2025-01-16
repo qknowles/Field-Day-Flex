@@ -29,7 +29,7 @@ export default function NewProject({ CancelProject, OpenNewProject, Email }) {
         const finalAdministrators = Array.from(new Set(validAdministrators));
 
         const filteredContributors = finalContributors.filter(
-            (email) => !finalAdministrators.includes(email)
+            (email) => !finalAdministrators.includes(email),
         );
 
         const trimmedProjectName = projectName.trim();
@@ -40,7 +40,7 @@ export default function NewProject({ CancelProject, OpenNewProject, Email }) {
                 trimmedProjectName,
                 Email,
                 filteredContributors,
-                finalAdministrators
+                finalAdministrators,
             );
 
             if (projectCreated) {

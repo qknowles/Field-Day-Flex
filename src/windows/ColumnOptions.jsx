@@ -57,7 +57,7 @@ export default function ColumnOptions({
         if (validInputs()) {
             let finalEntryOptions = Array.from({ length: ColumnNames.length }, () => []);
             for (let i = 0; i < ColumnNames.length; i++) {
-            finalEntryOptions[i] = entryOptions[i].filter((name) => name !== 'Add Here');
+                finalEntryOptions[i] = entryOptions[i].filter((name) => name !== 'Add Here');
             }
 
             const tabAlreadyExists = await tabExists(Email, SelectedProject, TabName);
@@ -126,12 +126,7 @@ export default function ColumnOptions({
         return true;
     };
 
-    const entryTypeOptions = [
-        'number',
-        'text',
-        'date',
-        'multiple choice',
-    ];
+    const entryTypeOptions = ['number', 'text', 'date', 'multiple choice'];
 
     const setDataTypeHelper = (type) => {
         setDataType((previousState) => {
@@ -179,7 +174,7 @@ export default function ColumnOptions({
                     layout="horizontal-single"
                     input={<input disabled={true} value={ColumnNames[columnIndex]} />}
                 />
-                <span className='text-sm'>Data Entry Type:</span>
+                <span className="text-sm">Data Entry Type:</span>
                 <RadioButtons
                     layout="horizontal"
                     options={entryTypeOptions}

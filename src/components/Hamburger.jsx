@@ -48,7 +48,7 @@ export default function Hamburger({ Email }) {
                                             <AccountSettings
                                                 emailProp={Email}
                                                 CloseAccountSettings={closeModal}
-                                            />
+                                            />,
                                         )
                                     }
                                 >
@@ -64,7 +64,7 @@ export default function Hamburger({ Email }) {
                                                 Email={Email}
                                                 CancelMemberships={closeModal}
                                                 setCurrentWindow={setCurrentWindow}
-                                            />
+                                            />,
                                         )
                                     }
                                 >
@@ -79,7 +79,7 @@ export default function Hamburger({ Email }) {
                                             <ProjectSettings
                                                 projectNameProp={getCurrentProject()}
                                                 CloseProjectSettings={closeModal}
-                                            />
+                                            />,
                                         )
                                     }
                                 >
