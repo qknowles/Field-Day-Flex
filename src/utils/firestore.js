@@ -13,6 +13,7 @@ import {
     where,
     writeBatch,
     or,
+    and,
     getCountFromServer,
 } from 'firebase/firestore';
 import { db } from './firebase';
@@ -190,11 +191,13 @@ export const getTabNames = async (email, projectName) => {
         const projectRef = collection(db, 'Projects');
         const projectsQuery = query(
             projectRef,
-            where('project_name', '==', projectName),
-            or(
-                where('contributors', 'array-contains', Email),
-                where('admins', 'array-contains', Email),
-                where('owners', 'array-contains', Email)
+            and(
+                where('project_name', '==', projectName),
+                or(
+                    where('contributors', 'array-contains', email),
+                    where('admins', 'array-contains', email),
+                    where('owners', 'array-contains', email)
+                )
             )
         );
         const projectSnapshot = await getDocs(projectsQuery);
@@ -218,16 +221,18 @@ export const getTabNames = async (email, projectName) => {
     }
 };
 
-export const tabExists = async (Email, SelectedProject, tabName) => {
+export const tabExists = async (email, selectedProject, tabName) => {
     try {
         const projectRef = collection(db, 'Projects');
         const projectsQuery = query(
             projectRef,
-            where('project_name', '==', SelectedProject),
-            or(
-                where('contributors', 'array-contains', Email),
-                where('admins', 'array-contains', Email),
-                where('owners', 'array-contains', Email)
+            and(
+                where('project_name', '==', selectedProject),
+                or(
+                    where('contributors', 'array-contains', email),
+                    where('admins', 'array-contains', email),
+                    where('owners', 'array-contains', email)
+                )
             )
         );
         const projectSnapshot = await getDocs(projectsQuery);
@@ -245,8 +250,8 @@ export const tabExists = async (Email, SelectedProject, tabName) => {
 };
 
 export const createTab = async (
-    Email,
-    SelectedProject,
+    email,
+    selectedProject,
     tabName,
     generateIdentifiers,
     possibleIdentifiers,
@@ -264,10 +269,12 @@ export const createTab = async (
         const projectRef = collection(db, 'Projects');
         const projectsQuery = query(
             projectRef,
-            where('project_name', '==', SelectedProject),
-            or(
-                where('admins', 'array-contains', Email),
-                where('owners', 'array-contains', Email)
+            and(
+                where('project_name', '==', selectedProject),
+                or(
+                    where('admins', 'array-contains', email),
+                    where('owners', 'array-contains', email)
+                )
             )
         );
         const projectSnapshot = await getDocs(projectsQuery);
@@ -321,11 +328,13 @@ export const getColumnsCollection = async (projectName, tabName, email) => {
         const projectRef = collection(db, 'Projects');
         const projectQuery = query(
             projectRef,
-            where('project_name', '==', projectName),
-            or(
-                where('contributors', 'array-contains', Email),
-                where('admins', 'array-contains', Email),
-                where('owners', 'array-contains', Email)
+            and(
+                where('project_name', '==', projectName),
+                or(
+                    where('contributors', 'array-contains', email),
+                    where('admins', 'array-contains', email),
+                    where('owners', 'array-contains', email)
+                )
             )
         );
         const projectSnapshot = await getDocs(projectQuery);
@@ -377,11 +386,13 @@ export const addEntry = async (projectName, tabName, email, newEntry) => {
         const projectRef = collection(db, 'Projects');
         const projectsQuery = query(
             projectRef,
-            where('project_name', '==', projectName),
-            or(
-                where('contributors', 'array-contains', Email),
-                where('admins', 'array-contains', Email),
-                where('owners', 'array-contains', Email)
+            and(
+                where('project_name', '==', projectName),
+                or(
+                    where('contributors', 'array-contains', email),
+                    where('admins', 'array-contains', email),
+                    where('owners', 'array-contains', email)
+                )
             )
         );
         const projectSnapshot = await getDocs(projectsQuery);
@@ -442,11 +453,13 @@ export const getEntriesForTab = async (projectName, tabName, email) => {
         const projectRef = collection(db, 'Projects');
         const projectQuery = query(
             projectRef,
-            where('project_name', '==', projectName),
-            or(
-                where('contributors', 'array-contains', Email),
-                where('admins', 'array-contains', Email),
-                where('owners', 'array-contains', Email)
+            and(
+                where('project_name', '==', projectName),
+                or(
+                    where('contributors', 'array-contains', email),
+                    where('admins', 'array-contains', email),
+                    where('owners', 'array-contains', email)
+                )
             )
         );
         const projectSnapshot = await getDocs(projectQuery);

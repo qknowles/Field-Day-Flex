@@ -120,7 +120,7 @@ export default function NewTab({ CancelTab, OpenNewTab, Email, SelectedProject }
                     OpenNewTab(tabName);
                     return;
                 } else {
-                    notify(Type.error, 'Error creating subject.');
+                    notify(Type.error, 'Error creating subject new tab.');
                     return;
                 }
             }
