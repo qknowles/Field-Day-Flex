@@ -4,7 +4,7 @@ import PageWrapper from '../wrappers/PageWrapper';
 import { LizardIcon } from '../assets/icons';
 import NewAccount from '../windows/NewAccount';
 import Login from '../windows/Login';
-import TopNav from '../components/TopNav'; 
+import TopNav from '../components/TopNav';
 
 export default function HomePage({ SetAuthenticated, SetEmail }) {
     const [showNewAccount, setShowNewAccount] = useState(false);
@@ -24,7 +24,6 @@ export default function HomePage({ SetAuthenticated, SetEmail }) {
 
     return (
         <PageWrapper hideMenu={true} SetEmail={SetEmail} SetAuthenticated={SetAuthenticated}>
-    
             {showNewAccount && (
                 <NewAccount
                     CancelAccount={closeNewAccount}

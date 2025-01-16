@@ -1,9 +1,8 @@
 // jest.config.cjs
 export default {
-    testEnvironment: "jest-environment-jsdom",
+    testEnvironment: 'jest-environment-jsdom',
     transform: {
-      "^.+\\.jsx?$": "babel-jest",
+        '^.+\\.jsx?$': 'babel-jest',
     },
-    extensionsToTreatAsEsm: [".jsx"],
-  };
-  
+    extensionsToTreatAsEsm: ['.jsx'],
+};

@@ -8,11 +8,7 @@ import { currentProjectName } from '../utils/jotai';
 // import { editProject_Details } from '../utils/firestore';
 // import { auth } from '../utils/authenticator';
 
-export default function ManageProject({ 
-    CloseManageProject, 
-    setCurrentWindow, 
-    userProjectData 
-}) {
+export default function ManageProject({ CloseManageProject, setCurrentWindow, userProjectData }) {
     // Required by architecture diagram
     const handleProjectDetails = async () => {
         // Will use editProject_Details from firestore

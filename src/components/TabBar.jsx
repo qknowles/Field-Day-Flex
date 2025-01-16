@@ -5,7 +5,7 @@ import Button from './Button';
 import { DropdownSelector } from './FormFields';
 import { Type, notify } from '../components/Notifier';
 import NewProject from '../windows/NewProject';
-import NewTab from '../windows/NewTab'
+import NewTab from '../windows/NewTab';
 
 export let updateProjectName = null;
 
@@ -35,11 +35,11 @@ export default function TabBar({
         setShowNewTab(false);
         setTabNames((prevTabNames) => [...prevTabNames, tabName]);
         SetSelectedTab(tabName);
-    }
+    };
 
     const initializeTabs = async () => {
         const projects = await getProjectNames(Email);
-        console.log("PROJECTS", projects);
+        console.log('PROJECTS', projects);
         setProjectNames(projects);
 
         if (projects.length > 0) {
@@ -104,7 +104,7 @@ export default function TabBar({
                 <div className="flex pt-1 px-5 pb-1 space-x-6">
                     <Button text="New Project" onClick={() => setShowNewProject(true)} />
                     <DropdownSelector
-                        label='Project'
+                        label="Project"
                         options={projectNames}
                         selection={SelectedProject}
                         setSelection={SetSelectedProject}
@@ -113,8 +113,21 @@ export default function TabBar({
                 </div>
             </div>
             <div>
-                {showNewTab && <NewTab CancelTab={closeNewTab} OpenNewTab={openNewTab} Email={Email} SelectedProject={SelectedProject} />}
-                {showNewProject && <NewProject CancelProject={closeNewProject} OpenNewProject={openNewProject} Email={Email} />}
+                {showNewTab && (
+                    <NewTab
+                        CancelTab={closeNewTab}
+                        OpenNewTab={openNewTab}
+                        Email={Email}
+                        SelectedProject={SelectedProject}
+                    />
+                )}
+                {showNewProject && (
+                    <NewProject
+                        CancelProject={closeNewProject}
+                        OpenNewProject={openNewProject}
+                        Email={Email}
+                    />
+                )}
             </div>
         </>
     );

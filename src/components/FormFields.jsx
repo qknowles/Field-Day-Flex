@@ -91,7 +91,6 @@ export const DropdownFlex = ({ options, setOptions, label }) => {
     );
 };
 
-
 export const DropdownSelector = ({ label, options, selection, setSelection, layout }) => {
     return (
         <InputLabel
@@ -166,4 +165,3 @@ export const RadioButtons = ({ layout, label, options, selectedOption, setSelect
         />
     );
 };
-

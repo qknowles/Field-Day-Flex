@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { DropdownFlex, RadioButtons, YesNoSelector } from '../components/FormFields';
 import WindowWrapper from '../wrappers/WindowWrapper';
 import InputLabel from '../components/InputLabel';
@@ -18,13 +18,9 @@ export default function ColumnOptions({
     UnwantedCodes,
     UtilizeUnwantedCodes,
 }) {
-    const [leftButtonClick, setLeftButtonClick] = useState();
-    const [rightButtonText, setRightButtonText] = useState('');
-    const [rightButtonClick, setRightButtonClick] = useState();
-
+    const [rightButtonText, setRightButtonText] = useState('Next Column');
     const [columnIndex, setColumnIndex] = useState(0);
     const [tempEntryOptions, setTempEntryOptions] = useState([]);
-
     const [dataType, setDataType] = useState(new Array(ColumnNames.length).fill(''));
     const [entryOptions, setEntryOptions] = useState(() =>
         Array.from({ length: ColumnNames.length }, () => []),
@@ -35,30 +31,43 @@ export default function ColumnOptions({
     const [requiredField, setRequiredField] = useState(new Array(ColumnNames.length).fill(false));
     const [order, setOrder] = useState(Array.from({ length: ColumnNames.length }, (_, i) => i));
 
-    useEffect(() => {
-        if (columnIndex === 0) {
-            setLeftButtonClick(() => CancelColumnOptions);
-        } else {
-            setLeftButtonClick(() => goBackward);
+    const entryTypeOptions = ['number', 'text', 'date', 'multiple choice'];
+
+    const validInputs = useCallback(() => {
+        if (!entryTypeOptions.includes(dataType[columnIndex])) {
+            notify(Type.error, 'Must first select an entry type.');
+            return false;
         }
 
-        if (columnIndex === ColumnNames.length - 1) {
-            setRightButtonText('Finish');
-            setRightButtonClick(() => storeNewTab);
-        } else {
-            setRightButtonText('Next Column');
-            setRightButtonClick(() => goForward);
-        }
-
-        setEntryOptionsHelper(tempEntryOptions);
-    }, [columnIndex, dataType, tempEntryOptions, entryOptions, identifierDomain, requiredField]);
-
-    const storeNewTab = async () => {
-        if (validInputs()) {
-            let finalEntryOptions = Array.from({ length: ColumnNames.length }, () => []);
-            for (let i = 0; i < ColumnNames.length; i++) {
-            finalEntryOptions[i] = entryOptions[i].filter((name) => name !== 'Add Here');
+        if (dataType[columnIndex] === entryTypeOptions[3]) {
+            if (!entryOptions[columnIndex]) {
+                notify(Type.error, 'Must include entry options for multiple choice entry.');
+                return false;
             }
+            if (entryOptions[columnIndex].length !== new Set(entryOptions[columnIndex]).size) {
+                notify(Type.error, 'Entry choices must not contain duplicates.');
+                return false;
+            }
+        }
+        return true;
+    }, [columnIndex, dataType, entryOptions, entryTypeOptions]);
+
+    const goBackward = useCallback(() => {
+        setColumnIndex((prevIndex) => prevIndex - 1);
+    }, []);
+
+    const goForward = useCallback(() => {
+        if (validInputs()) {
+            setColumnIndex((prevIndex) => prevIndex + 1);
+            setTempEntryOptions([]);
+        }
+    }, [validInputs]);
+
+    const storeNewTab = useCallback(async () => {
+        if (validInputs()) {
+            const finalEntryOptions = Array.from({ length: ColumnNames.length }, (_, i) =>
+                entryOptions[i].filter((name) => name !== 'Add Here'),
+            );
 
             const tabAlreadyExists = await tabExists(Email, SelectedProject, TabName);
             if (!tabAlreadyExists) {
@@ -79,91 +88,43 @@ export default function ColumnOptions({
                     order,
                 );
                 if (tabCreated) {
-                    notify(Type.success, `Tab created.`);
+                    notify(Type.success, 'Tab created.');
                     OpenNewTab(TabName);
-                    return;
                 } else {
-                    notify(Type.error, 'Error creating subject.');
-                    return;
+                    notify(Type.error, 'Error creating subject column options.');
                 }
             }
         }
-    };
+    }, [
+        validInputs,
+        ColumnNames,
+        Email,
+        SelectedProject,
+        TabName,
+        GenerateIdentifiers,
+        PossibleIdentifiers,
+        IdentifierDimension,
+        UnwantedCodes,
+        UtilizeUnwantedCodes,
+        entryOptions,
+        dataType,
+        identifierDomain,
+        requiredField,
+        order,
+        OpenNewTab,
+    ]);
 
-    const goBackward = () => {
-        setColumnIndex((prevIndex) => {
-            const newIndex = prevIndex - 1;
-            return newIndex;
-        });
-    };
+    const leftButtonClick = useMemo(() => {
+        return columnIndex === 0 ? CancelColumnOptions : goBackward;
+    }, [columnIndex, CancelColumnOptions, goBackward]);
 
-    const goForward = () => {
-        if (validInputs()) {
-            setColumnIndex((prevIndex) => {
-                const newIndex = prevIndex + 1;
-                return newIndex;
-            });
-            setTempEntryOptions([]);
-        }
-    };
+    const rightButtonClick = useMemo(() => {
+        return columnIndex === ColumnNames.length - 1 ? storeNewTab : goForward;
+    }, [columnIndex, storeNewTab, goForward]);
 
-    const validInputs = () => {
-        if (!entryTypeOptions.includes(dataType[columnIndex])) {
-            notify(Type.error, 'Must first select an entry type.');
-            return false;
-        } else {
-            if (dataType[columnIndex] === entryTypeOptions[3]) {
-                if (!entryOptions[columnIndex]) {
-                    notify(Type.error, 'Must include entry options for multiple choice entry.');
-                    return false;
-                }
-                if (entryOptions[columnIndex].length !== new Set(entryOptions[columnIndex]).size) {
-                    notify(Type.error, 'Entry choices must not contain duplicates.');
-                    return false;
-                }
-            }
-        }
-        return true;
-    };
-
-    const entryTypeOptions = [
-        'number',
-        'text',
-        'date',
-        'multiple choice',
-    ];
-
-    const setDataTypeHelper = (type) => {
-        setDataType((previousState) => {
-            const updatedState = [...previousState];
-            updatedState[columnIndex] = type;
-            return updatedState;
-        });
-    };
-
-    const setEntryOptionsHelper = (options) => {
-        setEntryOptions((previousState) => {
-            const updatedState = [...previousState];
-            updatedState[columnIndex] = options;
-            return updatedState;
-        });
-    };
-
-    const setIdentifierDomainHelper = (selection) => {
-        setIdentifierDomain((previousState) => {
-            const updatedState = [...previousState];
-            updatedState[columnIndex] = selection;
-            return updatedState;
-        });
-    };
-
-    const setRequiredFieldHelper = (selection) => {
-        setRequiredField((previousState) => {
-            const updatedState = [...previousState];
-            updatedState[columnIndex] = selection;
-            return updatedState;
-        });
-    };
+    useEffect(() => {
+        setRightButtonText(columnIndex === ColumnNames.length - 1 ? 'Finish' : 'Next Column');
+    }, [columnIndex, ColumnNames.length]);
 
     return (
         <WindowWrapper
@@ -179,31 +140,49 @@ export default function ColumnOptions({
                     layout="horizontal-single"
                     input={<input disabled={true} value={ColumnNames[columnIndex]} />}
                 />
-                <span className='text-sm'>Data Entry Type:</span>
+                <span className="text-sm">Data Entry Type:</span>
                 <RadioButtons
                     layout="horizontal"
                     options={entryTypeOptions}
                     selectedOption={dataType[columnIndex]}
-                    setSelectedOption={setDataTypeHelper}
+                    setSelectedOption={(type) => {
+                        setDataType((prev) => {
+                            const updated = [...prev];
+                            updated[columnIndex] = type;
+                            return updated;
+                        });
+                    }}
                 />
                 {dataType[columnIndex] === entryTypeOptions[3] && (
                     <DropdownFlex
                         options={entryOptions[columnIndex]}
                         setOptions={setTempEntryOptions}
-                        label={'Entry Choices'}
+                        label="Entry Choices"
                     />
                 )}
                 <YesNoSelector
                     label="Make column a required field"
                     layout="horizontal-start"
                     selection={requiredField[columnIndex]}
-                    setSelection={setRequiredFieldHelper}
+                    setSelection={(selection) =>
+                        setRequiredField((prev) => {
+                            const updated = [...prev];
+                            updated[columnIndex] = selection;
+                            return updated;
+                        })
+                    }
                 />
                 <YesNoSelector
                     label="Include column in entry ID domain"
                     layout="horizontal-start"
                     selection={identifierDomain[columnIndex]}
-                    setSelection={setIdentifierDomainHelper}
+                    setSelection={(selection) =>
+                        setIdentifierDomain((prev) => {
+                            const updated = [...prev];
+                            updated[columnIndex] = selection;
+                            return updated;
+                        })
+                    }
                 />
             </div>
         </WindowWrapper>

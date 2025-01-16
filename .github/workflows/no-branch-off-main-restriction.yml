@@ -1,18 +1,16 @@
 name: Restrict Branch Creation
 
 on:
-  create:
-    branches:
-      - '**'
+    create:
 
 jobs:
-  restrict_branch_creation:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check base branch
-        run: |
-          BASE_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-          if [[ "$BASE_BRANCH" == "main" ]]; then
-            echo "Branches cannot be created off 'main'.
-            exit 1
-          fi
+    restrict_branch_creation:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Check base branch
+              run: |
+                  BASE_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+                  if [[ "$BASE_BRANCH" == "main" ]]; then
+                    echo "Branches cannot be created off 'main'.
+                    exit 1
+                  fi

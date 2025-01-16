@@ -13,6 +13,7 @@ import {
     where,
     writeBatch,
     or,
+    and,
     getCountFromServer,
 } from 'firebase/firestore';
 import { db } from './firebase';
@@ -77,7 +78,6 @@ export const createProject = async (projectName, email, contributors, administra
         });
 
         return true;
-
     } catch (error) {
         console.error('Error creating project:', error);
         return false;
@@ -95,7 +95,6 @@ export const verifyPassword = async (email, hashedPassword) => {
         const userSnapshot = await getDocs(verifyQuery);
 
         return !userSnapshot.empty;
-
     } catch (error) {
         console.error('Error verifying password:', error);
         return false;
@@ -113,7 +112,6 @@ export const createAccount = async (name, email, hashedPassword) => {
         });
 
         return true;
-
     } catch (error) {
         console.error('Error creating account:', error);
         return false;
@@ -123,19 +121,21 @@ export const createAccount = async (name, email, hashedPassword) => {
 export const getProjectNames = async (email) => {
     try {
         const projectsRef = collection(db, 'Projects');
-        'owners'
+        ('owners');
         const combinedQuery = query(
             projectsRef,
             or(
                 where('contributors', 'array-contains', email),
                 where('admins', 'array-contains', email),
-                where('owners', 'array-contains', email)
-            )
+                where('owners', 'array-contains', email),
+            ),
         );
         const projectSnapshot = await getDocs(combinedQuery);
-        const projectNames = Array.from(new Set(
-            projectSnapshot.docs.map((doc) => doc.data().project_name).filter((name) => name)
-        ));
+        const projectNames = Array.from(
+            new Set(
+                projectSnapshot.docs.map((doc) => doc.data().project_name).filter((name) => name),
+            ),
+        );
         return projectNames;
     } catch (error) {
         console.error('Error retrieving project names:', error);
@@ -146,8 +146,8 @@ export const getProjectNames = async (email) => {
 export const getDocumentIdByProjectName = async (projectName) => {
     try {
         const projectQuery = query(
-            collection(db, "Projects"),
-            where("project_name", "==", projectName)
+            collection(db, 'Projects'),
+            where('project_name', '==', projectName),
         );
 
         const querySnapshot = await getDocs(projectQuery);
@@ -160,27 +160,27 @@ export const getDocumentIdByProjectName = async (projectName) => {
             return null;
         }
     } catch (error) {
-        console.error("Error fetching document ID:", error);
+        console.error('Error fetching document ID:', error);
         return null;
     }
 };
 
 export async function addMemberToProject(projectId, field, newMemberEmail) {
-    const isValid = ["contributors", "admins", "owners"].some(
-        (validField) => validField.toLowerCase() === field.toLowerCase())
+    const isValid = ['contributors', 'admins', 'owners'].some(
+        (validField) => validField.toLowerCase() === field.toLowerCase(),
+    );
 
-    if (!["contributors", "admins", "owners"].includes(field)) {
+    if (!['contributors', 'admins', 'owners'].includes(field)) {
         console.error(`Invalid field: ${field}. Must be 'contributors', 'admins', or 'owners'.`);
         return;
     }
 
-    const projectRef = doc(db, "Projects", projectId);
+    const projectRef = doc(db, 'Projects', projectId);
 
     try {
         await updateDoc(projectRef, {
             [field]: arrayUnion(newMemberEmail),
         });
-
     } catch (error) {
         console.error(`Error updating ${field}:`, error);
     }
@@ -191,8 +191,14 @@ export const getTabNames = async (email, projectName) => {
         const projectRef = collection(db, 'Projects');
         const projectsQuery = query(
             projectRef,
-            where('project_name', '==', projectName),
-            where('contributors', 'array-contains', email),
+            and(
+                where('project_name', '==', projectName),
+                or(
+                    where('contributors', 'array-contains', email),
+                    where('admins', 'array-contains', email),
+                    where('owners', 'array-contains', email)
+                )
+            )
         );
         const projectSnapshot = await getDocs(projectsQuery);
 
@@ -209,20 +215,25 @@ export const getTabNames = async (email, projectName) => {
             .filter((name) => name);
 
         return tabNames;
-
     } catch (error) {
         console.error('Error retrieving tab names:', error);
         return [];
     }
 };
 
-export const tabExists = async (Email, SelectedProject, tabName) => {
+export const tabExists = async (email, selectedProject, tabName) => {
     try {
         const projectRef = collection(db, 'Projects');
         const projectsQuery = query(
             projectRef,
-            where('project_name', '==', SelectedProject),
-            where('contributors', 'array-contains', Email)
+            and(
+                where('project_name', '==', selectedProject),
+                or(
+                    where('contributors', 'array-contains', email),
+                    where('admins', 'array-contains', email),
+                    where('owners', 'array-contains', email)
+                )
+            )
         );
         const projectSnapshot = await getDocs(projectsQuery);
 
@@ -232,7 +243,6 @@ export const tabExists = async (Email, SelectedProject, tabName) => {
         const tabSnapshot = await getDocs(tabQuery);
 
         return !tabSnapshot.empty;
-
     } catch (error) {
         console.error('Error checking if tab exists:', error);
         return false;
@@ -240,8 +250,8 @@ export const tabExists = async (Email, SelectedProject, tabName) => {
 };
 
 export const createTab = async (
-    Email,
-    SelectedProject,
+    email,
+    selectedProject,
     tabName,
     generateIdentifiers,
     possibleIdentifiers,
@@ -259,8 +269,13 @@ export const createTab = async (
         const projectRef = collection(db, 'Projects');
         const projectsQuery = query(
             projectRef,
-            where('project_name', '==', SelectedProject),
-            where('contributors', 'array-contains', Email)
+            and(
+                where('project_name', '==', selectedProject),
+                or(
+                    where('admins', 'array-contains', email),
+                    where('owners', 'array-contains', email)
+                )
+            )
         );
         const projectSnapshot = await getDocs(projectsQuery);
         const projectDoc = projectSnapshot.docs[0];
@@ -299,7 +314,6 @@ export const createTab = async (
         }
 
         return true;
-
     } catch (error) {
         console.error('Error creating tab:', error);
         return false;
@@ -314,8 +328,14 @@ export const getColumnsCollection = async (projectName, tabName, email) => {
         const projectRef = collection(db, 'Projects');
         const projectQuery = query(
             projectRef,
-            where('project_name', '==', projectName),
-            where('contributors', 'array-contains', email)
+            and(
+                where('project_name', '==', projectName),
+                or(
+                    where('contributors', 'array-contains', email),
+                    where('admins', 'array-contains', email),
+                    where('owners', 'array-contains', email)
+                )
+            )
         );
         const projectSnapshot = await getDocs(projectQuery);
 
@@ -355,21 +375,25 @@ export const getColumnsCollection = async (projectName, tabName, email) => {
 
         console.log('Fetched columns:', columns);
         return columns;
-
     } catch (error) {
         console.error('Error in getColumnsCollection:', error);
         return [];
     }
 };
 
-
 export const addEntry = async (projectName, tabName, email, newEntry) => {
     try {
         const projectRef = collection(db, 'Projects');
         const projectsQuery = query(
             projectRef,
-            where('project_name', '==', projectName),
-            where('contributors', 'array-contains', email)
+            and(
+                where('project_name', '==', projectName),
+                or(
+                    where('contributors', 'array-contains', email),
+                    where('admins', 'array-contains', email),
+                    where('owners', 'array-contains', email)
+                )
+            )
         );
         const projectSnapshot = await getDocs(projectsQuery);
 
@@ -409,7 +433,6 @@ export const addEntry = async (projectName, tabName, email, newEntry) => {
 
         console.log('Entry added successfully.');
         return true;
-
     } catch (error) {
         console.error('Error adding entry:', error);
         return false;
@@ -430,8 +453,14 @@ export const getEntriesForTab = async (projectName, tabName, email) => {
         const projectRef = collection(db, 'Projects');
         const projectQuery = query(
             projectRef,
-            where('project_name', '==', projectName),
-            where('contributors', 'array-contains', email)
+            and(
+                where('project_name', '==', projectName),
+                or(
+                    where('contributors', 'array-contains', email),
+                    where('admins', 'array-contains', email),
+                    where('owners', 'array-contains', email)
+                )
+            )
         );
         const projectSnapshot = await getDocs(projectQuery);
 
@@ -456,12 +485,11 @@ export const getEntriesForTab = async (projectName, tabName, email) => {
         const entriesRef = collection(tabDoc.ref, 'Entries');
         const entriesSnapshot = await getDocs(entriesRef);
 
-        return entriesSnapshot.docs.map(doc => ({
+        return entriesSnapshot.docs.map((doc) => ({
             id: doc.id,
             ...doc.data(),
-            entry_date: doc.data().entry_date?.toDate?.() || doc.data().entry_date
+            entry_date: doc.data().entry_date?.toDate?.() || doc.data().entry_date,
         }));
-
     } catch (error) {
         console.error('Error fetching entries:', error);
         throw error;
@@ -489,17 +517,17 @@ export const updateEmailInProjects = async (oldEmail, newEmail) => {
 
             if (projectData.contributors && projectData.contributors.includes(oldEmail)) {
                 updatedData.contributors = projectData.contributors.map((email) =>
-                    email === oldEmail ? newEmail : email
+                    email === oldEmail ? newEmail : email,
                 );
             }
             if (projectData.admins && projectData.admins.includes(oldEmail)) {
                 updatedData.admins = projectData.admins.map((email) =>
-                    email === oldEmail ? newEmail : email
+                    email === oldEmail ? newEmail : email,
                 );
             }
             if (projectData.owners && projectData.owners.includes(oldEmail)) {
                 updatedData.owners = projectData.owners.map((email) =>
-                    email === oldEmail ? newEmail : email
+                    email === oldEmail ? newEmail : email,
                 );
             }
             if (Object.keys(updatedData).length > 0) {
@@ -521,10 +549,7 @@ export const updateEmailInProjects = async (oldEmail, newEmail) => {
 
 export async function getDocumentIdByUserName(userEmail) {
     try {
-        const userQuery = query(
-            collection(db, "Users"),
-            where("email", "==", userEmail)
-        );
+        const userQuery = query(collection(db, 'Users'), where('email', '==', userEmail));
 
         const querySnapshot = await getDocs(userQuery);
 
@@ -536,7 +561,7 @@ export async function getDocumentIdByUserName(userEmail) {
             return null;
         }
     } catch (error) {
-        console.error("Error fetching document ID:", error);
+        console.error('Error fetching document ID:', error);
         return null;
     }
 }
@@ -638,12 +663,12 @@ export const editMemberships = async (email, projectName) => {
         }
 
         // Remove user from contributors and admins
-        const updatedContributors = projectData.contributors.filter(c => c !== email);
-        const updatedAdmins = projectData.admins.filter(a => a !== email);
+        const updatedContributors = projectData.contributors.filter((c) => c !== email);
+        const updatedAdmins = projectData.admins.filter((a) => a !== email);
 
         await updateDoc(projectDoc.ref, {
             contributors: updatedContributors,
-            admins: updatedAdmins
+            admins: updatedAdmins,
         });
 
         return true;
@@ -653,7 +678,7 @@ export const editMemberships = async (email, projectName) => {
     }
 };
 export const getUserName = async (email) => {
-    console.log("in getUserName", email)
+    console.log('in getUserName', email);
     const user = await getDocs(query(collection(db, 'Users'), where('email', '==', email)));
-    return user.docs[0].data().name || "null";
-}
+    return user.docs[0].data().name || 'null';
+};
