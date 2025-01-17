@@ -1,17 +1,28 @@
 name: Restrict Branch Creation
 
 on:
-  create:
-    
+  push:
+    branches-ignore:
+      - main
+      - dev
+
 jobs:
   restrict_branch_creation:
     runs-on: ubuntu-latest
     steps:
-      - name: Check base branch
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Check if Branch is Directly Forked from Main
         run: |
-          BASE_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-          if [[ "$BASE_BRANCH" == "main" ]]; then
-            echo "Branches cannot be created off 'main'. Deleting the branch..."
-            git push origin --delete "${GITHUB_REF##*/}"
+          # Extract the branch name
+          BASE_BRANCH=${GITHUB_REF##*/}
+          echo "Detected branch: $BASE_BRANCH"
+
+          # Ensure 'main' is the direct parent of the branch
+          if [ "$(git log --pretty=%P -n 1 HEAD | grep -o origin/main)" = "origin/main" ]; then
+            echo "Branch is forked from main. Create a new branch off of dev and re-implement."
             exit 1
+          else
+            echo "Branch is not directly forked from main. Proceeding."
           fi
