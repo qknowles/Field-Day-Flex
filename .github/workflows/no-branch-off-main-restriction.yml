@@ -13,7 +13,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # Fetch all history for all branches
+          fetch-depth: 0
 
       - name: Fetch All Remote Branches
         run: git fetch --prune origin "+refs/heads/*:refs/remotes/origin/*"
@@ -24,13 +24,15 @@ jobs:
           PULLED_FROM=${GITHUB_REF##*/}
           echo "Pulled from: $PULLED_FROM"
 
-          # Get the merge-base between the branch and main
-          MERGE_BASE=$(git merge-base HEAD origin/main)
-          echo "Common Base: $MERGE_BASE"
+          # Check if HEAD's immediate parent is from origin/main
+          IMMEDIATE_PARENT=$(git log --pretty=%P -n 1 HEAD)
+          MAIN_HEAD=$(git rev-parse origin/main)
 
-          # Check if the branch starts from main
-          if [ "$MERGE_BASE" = "$(git rev-parse origin/main)" ]; then
-            echo "Branch is forked from main. Create a new branch off of dev and re-implement."
+          echo "Immediate Parent Commit: $IMMEDIATE_PARENT"
+          echo "Main Head Commit: $MAIN_HEAD"
+
+          if [ "$IMMEDIATE_PARENT" = "$MAIN_HEAD" ]; then
+            echo "Branch is directly forked from main. Create a new branch off of dev and re-implement."
             exit 1
           else
             echo "Branch is not directly forked from main. Proceeding."
