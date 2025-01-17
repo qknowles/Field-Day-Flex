@@ -245,6 +245,7 @@ export const tabExists = async (email, selectedProject, tabName) => {
         const tabSnapshot = await getDocs(tabQuery);
 
         return !tabSnapshot.empty;
+        
     } catch (error) {
         console.error('Error checking if tab exists:', error);
         return false;
