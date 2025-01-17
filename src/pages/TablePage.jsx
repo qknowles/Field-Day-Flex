@@ -104,7 +104,6 @@ export default function TablePage({ Email }) {
                 </div>
             )}
 
-
             {/* Content Area */}
             <div className="flex-grow bg-white dark:bg-neutral-950">
                 {!selectedProject ? (
