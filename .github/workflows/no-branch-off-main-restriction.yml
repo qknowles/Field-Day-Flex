@@ -10,6 +10,9 @@ jobs:
   restrict_branch_creation:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
       - name: Check if Branch is Directly Forked from Main
         run: |
           # Extract the branch name
