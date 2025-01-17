@@ -12,6 +12,11 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Fetch all history for all branches
+
+      - name: Fetch All Remote Branches
+        run: git fetch --prune origin "+refs/heads/*:refs/remotes/origin/*"
 
       - name: Check if Branch is Directly Forked from Main
         run: |
