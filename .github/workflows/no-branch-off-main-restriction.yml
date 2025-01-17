@@ -7,20 +7,29 @@ on:
       - dev
 
 jobs:
-  restrict_branch_creation:
+  restrict_main_branching:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Fetch all history for all branches
+
+      - name: Fetch All Remote Branches
+        run: git fetch --prune origin "+refs/heads/*:refs/remotes/origin/*"
 
       - name: Check if Branch is Directly Forked from Main
         run: |
           # Extract the branch name
-          BASE_BRANCH=${GITHUB_REF##*/}
-          echo "Detected branch: $BASE_BRANCH"
+          PULLED_FROM=${GITHUB_REF##*/}
+          echo "Pulled from: $PULLED_FROM"
 
-          # Ensure 'main' is the direct parent of the branch
-          if [ "$(git log --pretty=%P -n 1 HEAD | grep -o origin/main)" = "origin/main" ]; then
+          # Get the merge-base between the branch and main
+          MERGE_BASE=$(git merge-base HEAD origin/main)
+          echo "Common Base: $MERGE_BASE"
+
+          # Check if the branch starts from main
+          if [ "$MERGE_BASE" = "$(git rev-parse origin/main)" ]; then
             echo "Branch is forked from main. Create a new branch off of dev and re-implement."
             exit 1
           else
