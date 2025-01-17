@@ -16,8 +16,10 @@ jobs:
           BASE_BRANCH=${GITHUB_REF##*/}
           echo "Detected branch: $BASE_BRANCH"
 
-          # Check if the branch is directly forked from main
-          if [ "$(git merge-base --fork-point origin/main HEAD)" = "$(git merge-base origin/main HEAD)" ]; then
-            echo "Branch is directly forked from main... Deleting"
+          # Ensure 'main' is the direct parent of the branch
+          if [ "$(git log --pretty=%P -n 1 HEAD | grep -o origin/main)" = "origin/main" ]; then
+            echo "Branch is forked from main. Create a new branch off of dev and re-implement."
             exit 1
+          else
+            echo "Branch is not directly forked from main. Proceeding."
           fi
