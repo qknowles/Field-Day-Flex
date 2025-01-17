@@ -19,6 +19,5 @@ jobs:
           # Check if the branch is directly forked from main
           if [ "$(git merge-base --fork-point origin/main HEAD)" = "$(git merge-base origin/main HEAD)" ]; then
             echo "Branch is directly forked from main... Deleting"
-            git push origin --delete "${BASE_BRANCH}"
             exit 1
           fi
