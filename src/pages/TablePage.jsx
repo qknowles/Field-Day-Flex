@@ -73,13 +73,15 @@ export function getCurrentProject() {
 
 export default function TablePage({ Email }) {
     const [selectedProject, setSelectedProject] = useState('');
-    useEffect(() => {
-        currentProject = selectedProject;
-    }, [selectedProject]);
     const [selectedTab, setSelectedTab] = useState('');
     const [showNewProject, setShowNewProject] = useState(false);
     const [showNewTab, setShowNewTab] = useState(false);
     const [showNewEntry, setShowNewEntry] = useState(false);
+
+    useEffect(() => {
+        currentProject = selectedProject;
+        setSelectedTab('');
+    }, [selectedProject]);
 
     return (
         <PageWrapper>
@@ -95,10 +97,13 @@ export default function TablePage({ Email }) {
             />
 
             {/* Table Management Buttons */}
-            <div className="flex items-center pt-3 px-5 pb-3 space-x-6 dark:bg-neutral-950">
-                <p className="text-2xl">{selectedTab} - Entries</p>
-                <Button text="New Entry" onClick={() => setShowNewEntry(true)} />
-            </div>
+            {selectedTab && (
+                <div className="flex items-center pt-3 px-5 pb-3 space-x-6 dark:bg-neutral-950">
+                    <p className="text-2xl">{selectedTab} - Entries</p>
+                    <Button text="New Entry" onClick={() => setShowNewEntry(true)} />
+                </div>
+            )}
+
 
             {/* Content Area */}
             <div className="flex-grow bg-white dark:bg-neutral-950">

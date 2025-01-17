@@ -75,6 +75,8 @@ export const createProject = async (projectName, email, contributors, administra
             owners: [email],
             contributors: contributors,
             admins: administrators,
+            created_at: new Date(),
+            next_tab: 0,
         });
 
         return true;
@@ -289,6 +291,9 @@ export const createTab = async (
             return false;
         }
 
+        const projectData = projectDoc.data();
+        const tabOrder = projectData.next_tab;
+
         const tabRef = doc(tabsRef, tabName);
         await setDoc(tabRef, {
             tab_name: tabName,
@@ -298,7 +303,12 @@ export const createTab = async (
             unwanted_codes: unwantedCodes,
             utilize_unwanted: utilizeUnwantedCodes,
             created_at: new Date(),
-            next_entry: 1,
+            order: tabOrder,
+        });
+
+        const projectToUpdate = doc(projectRef, projectDoc.id);
+        await updateDoc(projectToUpdate, {
+            next_tab: tabOrder + 1,
         });
 
         const columnsRef = collection(tabRef, 'Columns');
@@ -414,21 +424,12 @@ export const addEntry = async (projectName, tabName, email, newEntry) => {
         }
 
         const tabDoc = tabSnapshot.docs[0];
-        const tabData = tabDoc.data();
-
-        const entryNumber = tabData.next_entry;
 
         const entriesRef = collection(tabDoc.ref, 'Entries');
         await addDoc(entriesRef, {
             entry_data: newEntry,
             entry_date: new Date(),
             deleted: false,
-            entry_number: entryNumber,
-        });
-
-        const tabRef = doc(tabsRef, tabDoc.id);
-        await updateDoc(tabRef, {
-            next_entry: entryNumber + 1,
         });
 
         return true;
@@ -438,14 +439,6 @@ export const addEntry = async (projectName, tabName, email, newEntry) => {
     }
 };
 
-export const addDocToCollection = async (collectionName, data) => {
-    try {
-        const docRef = await addDoc(collection(db, collectionName), data);
-        console.log(`Document written to collection: ${collectionName} with ID: ${docRef.id}`);
-    } catch (error) {
-        console.error('Error adding document:', error);
-    }
-};
 export const getEntriesForTab = async (projectName, tabName, email) => {
     try {
         // Get project reference
