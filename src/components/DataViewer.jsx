@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { getColumnsCollection, getEntriesForTab } from '../utils/firestore';
+import { getColumnsCollection, getEntriesForTab, deleteEntry, updateColumns } from '../utils/firestore';
 import TableTools from '../wrappers/TableTools';
 import { Pagination } from './Pagination';
 import { useAtom } from 'jotai';
@@ -7,8 +7,11 @@ import { currentProjectName, currentTableName, currentBatchSize } from '../utils
 import { Type, notify } from '../components/Notifier';
 import NewEntry from '../windows/NewEntry';
 import ColumnSelectorButton from './ColumnSelectorButton';
+import ColumnManager from './ColumnManager';
+import IdentifierHandler from './IdentifierHandler';
 
 const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
+    // State Management
     const [entries, setEntries] = useState([]);
     const [columns, setColumns] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -18,10 +21,25 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
     const [visibleColumns, setVisibleColumns] = useState(new Set());
     const [showEditEntry, setShowEditEntry] = useState(false);
     const [editingEntry, setEditingEntry] = useState(null);
+    const [showColumnManager, setShowColumnManager] = useState(false);
+    const [tabConfig, setTabConfig] = useState(null);
+    const [isRemeasure, setIsRemeasure] = useState(false);
     
     const [batchSize] = useAtom(currentBatchSize);
     const [currentProject, setCurrentProject] = useAtom(currentProjectName);
     const [currentTable, setCurrentTable] = useAtom(currentTableName);
+
+    // Fetch tab configuration including identifier settings
+    const fetchTabConfig = useCallback(async () => {
+        if (!SelectedProject || !SelectedTab) return;
+        try {
+            const config = await getTabConfiguration(SelectedProject, SelectedTab);
+            setTabConfig(config);
+        } catch (err) {
+            console.error('Error fetching tab configuration:', err);
+            setError('Failed to load tab configuration');
+        }
+    }, [SelectedProject, SelectedTab]);
 
     // Fetch columns data
     const fetchColumns = useCallback(async () => {
@@ -31,7 +49,6 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
             const columnsData = await getColumnsCollection(SelectedProject, SelectedTab, Email);
             const sortedColumns = columnsData.sort((a, b) => a.order - b.order);
             setColumns(sortedColumns);
-            // Initialize visible columns
             setVisibleColumns(new Set(sortedColumns.map(col => col.name)));
         } catch (err) {
             console.error('Error fetching columns:', err);
@@ -62,7 +79,7 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
                 setCurrentProject(SelectedProject);
                 setCurrentTable(SelectedTab);
                 
-                await Promise.all([fetchColumns(), fetchEntries()]);
+                await Promise.all([fetchTabConfig(), fetchColumns(), fetchEntries()]);
             } catch (err) {
                 console.error('Error loading data:', err);
                 setError('Failed to load data');
@@ -77,42 +94,77 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
             setEntries([]);
             setColumns([]);
             setError(null);
+            setTabConfig(null);
         };
-    }, [SelectedProject, SelectedTab, fetchColumns, fetchEntries, setCurrentProject, setCurrentTable]);
+    }, [SelectedProject, SelectedTab, fetchColumns, fetchEntries, fetchTabConfig]);
 
-    // Handle column visibility toggle
-    const toggleColumn = useCallback((columnName) => {
-        setVisibleColumns(prev => {
-            const newSet = new Set(prev);
-            if (newSet.has(columnName)) {
-                newSet.delete(columnName);
-            } else {
-                newSet.add(columnName);
-            }
-            return newSet;
-        });
-    }, []);
+    // Handle column updates
+    const handleColumnUpdate = async (updatedColumns) => {
+        try {
+            await updateColumns(SelectedProject, SelectedTab, updatedColumns);
+            await fetchColumns();
+            notify(Type.success, 'Columns updated successfully');
+        } catch (err) {
+            console.error('Error updating columns:', err);
+            notify(Type.error, 'Failed to update columns');
+        }
+    };
 
-    // Handle edit entry
+    // Handle column deletion
+    const handleColumnDelete = async (columnId) => {
+        try {
+            const updatedColumns = columns.filter(col => col.id !== columnId);
+            await updateColumns(SelectedProject, SelectedTab, updatedColumns);
+            await fetchColumns();
+            notify(Type.success, 'Column deleted successfully');
+        } catch (err) {
+            console.error('Error deleting column:', err);
+            notify(Type.error, 'Failed to delete column');
+        }
+    };
+
+    // Handle entry editing
     const handleEdit = (entry) => {
         setEditingEntry(entry);
         setShowEditEntry(true);
+        setIsRemeasure(!!entry.identifier); // Set remeasure if entry has identifier
     };
 
-    // Handle delete entry
+    // Handle entry deletion
     const handleDelete = async (entryId) => {
         try {
-            // Implement delete functionality using Firestore
-            await deleteEntryFromFirestore(entryId);
+            await deleteEntry(SelectedProject, SelectedTab, entryId);
             notify(Type.success, 'Entry deleted successfully');
-            fetchEntries(); // Refresh the entries
+            fetchEntries();
         } catch (err) {
             console.error('Error deleting entry:', err);
             notify(Type.error, 'Failed to delete entry');
         }
     };
 
-    // Sort entries based on configuration
+    // Handle identifier generation
+    const handleIdentifierGenerate = (identifier) => {
+        if (editingEntry) {
+            setEditingEntry({ ...editingEntry, identifier });
+        }
+        notify(Type.success, `Generated identifier: ${identifier}`);
+    };
+
+    // Format cell value based on column type
+    const formatCellValue = (value, columnType) => {
+        if (!value) return 'N/A';
+        
+        switch (columnType) {
+            case 'date':
+                return new Date(value).toLocaleDateString();
+            case 'number':
+                return Number(value).toLocaleString();
+            default:
+                return value.toString();
+        }
+    };
+
+    // Memoized sorting
     const sortedEntries = React.useMemo(() => {
         if (!sortConfig.key) return entries;
         
@@ -126,14 +178,6 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
             return bValue.toString().localeCompare(aValue.toString());
         });
     }, [entries, sortConfig]);
-
-    // Handle sorting
-    const handleSort = (columnName) => {
-        setSortConfig((prev) => ({
-            key: columnName,
-            direction: prev.key === columnName && prev.direction === 'asc' ? 'desc' : 'asc',
-        }));
-    };
 
     // Handle pagination
     const paginatedEntries = React.useMemo(() => {
@@ -158,6 +202,12 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
                     columns={visibleColumns}
                     toggleColumn={toggleColumn}
                 />
+                <button
+                    onClick={() => setShowColumnManager(true)}
+                    className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                >
+                    Manage Columns
+                </button>
             </TableTools>
             
             <div className="overflow-x-auto">
@@ -165,6 +215,9 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
                     <thead>
                         <tr>
                             <th className="p-2 text-left border-b font-semibold">Actions</th>
+                            {tabConfig?.generate_unique_identifier && (
+                                <th className="p-2 text-left border-b font-semibold">Identifier</th>
+                            )}
                             {columns.map((column) => (
                                 visibleColumns.has(column.name) && (
                                     <th
@@ -173,6 +226,9 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
                                         onClick={() => handleSort(column.name)}
                                     >
                                         {column.name}
+                                        <span className="text-xs text-gray-500 ml-1">
+                                            ({column.data_type})
+                                        </span>
                                         {sortConfig.key === column.name && (
                                             <span className="ml-1">
                                                 {sortConfig.direction === 'asc' ? '↑' : '↓'}
@@ -187,27 +243,42 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
                         {paginatedEntries.map((entry) => (
                             <tr key={entry.id} className="hover:bg-gray-50">
                                 <td className="p-2 border-b">
-                                    <button 
-                                        className="px-2 py-1 text-sm bg-blue-500 text-white rounded mr-2"
-                                        onClick={() => handleEdit(entry)}
-                                    >
-                                        Edit
-                                    </button>
-                                    <button 
-                                        className="px-2 py-1 text-sm bg-red-500 text-white rounded"
-                                        onClick={() => {
-                                            if (window.confirm('Are you sure you want to delete this entry?')) {
-                                                handleDelete(entry.id);
-                                            }
-                                        }}
-                                    >
-                                        Delete
-                                    </button>
+                                    <div className="flex space-x-2">
+                                        <button 
+                                            className="px-2 py-1 text-sm bg-blue-500 text-white rounded"
+                                            onClick={() => handleEdit(entry)}
+                                        >
+                                            Edit
+                                        </button>
+                                        <button 
+                                            className="px-2 py-1 text-sm bg-red-500 text-white rounded"
+                                            onClick={() => {
+                                                if (window.confirm('Are you sure you want to delete this entry?')) {
+                                                    handleDelete(entry.id);
+                                                }
+                                            }}
+                                        >
+                                            Delete
+                                        </button>
+                                        {tabConfig?.generate_unique_identifier && (
+                                            <IdentifierHandler
+                                                tabConfig={tabConfig}
+                                                onIdentifierGenerate={handleIdentifierGenerate}
+                                                onHistoryClick={() => {/* Implement history view */}}
+                                                isRemeasure={isRemeasure}
+                                            />
+                                        )}
+                                    </div>
                                 </td>
+                                {tabConfig?.generate_unique_identifier && (
+                                    <td className="p-2 border-b">
+                                        {entry.identifier || 'N/A'}
+                                    </td>
+                                )}
                                 {columns.map((column) => (
                                     visibleColumns.has(column.name) && (
                                         <td key={`${entry.id}-${column.id}`} className="p-2 border-b">
-                                            {entry.entry_data?.[column.name] ?? 'N/A'}
+                                            {formatCellValue(entry.entry_data?.[column.name], column.data_type)}
                                         </td>
                                     )
                                 ))}
@@ -217,18 +288,36 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
                 </table>
             </div>
 
+            {/* Column Manager Modal */}
+            {showColumnManager && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <ColumnManager
+                        columns={columns}
+                        onColumnUpdate={handleColumnUpdate}
+                        onColumnDelete={handleColumnDelete}
+                        onClose={() => setShowColumnManager(false)}
+                    />
+                </div>
+            )}
+
+            {/* Edit Entry Modal */}
             {showEditEntry && (
-                <NewEntry
-                    CloseNewEntry={() => {
-                        setShowEditEntry(false);
-                        setEditingEntry(null);
-                        fetchEntries(); // Refresh entries after edit
-                    }}
-                    ProjectName={SelectedProject}
-                    TabName={SelectedTab}
-                    Email={Email}
-                    editingEntry={editingEntry}
-                />
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <NewEntry
+                        CloseNewEntry={() => {
+                            setShowEditEntry(false);
+                            setEditingEntry(null);
+                            setIsRemeasure(false);
+                            fetchEntries();
+                        }}
+                        ProjectName={SelectedProject}
+                        TabName={SelectedTab}
+                        Email={Email}
+                        editingEntry={editingEntry}
+                        tabConfig={tabConfig}
+                        isRemeasure={isRemeasure}
+                    />
+                </div>
             )}
         </div>
     );
