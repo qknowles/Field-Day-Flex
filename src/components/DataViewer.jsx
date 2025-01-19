@@ -183,7 +183,45 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
         }
         notify(Type.success, `Generated identifier: ${identifier}`);
     };
+    const validateImportData = (data) => {
+        const errors = [];
+        const requiredColumns = columns.filter(col => col.required_field).map(col => col.name);
+        
+        data.forEach((row, index) => {
+            // Check required fields
+            requiredColumns.forEach(colName => {
+                if (!row[colName]) {
+                    errors.push(`Row ${index + 1}: Missing required field "${colName}"`);
+                }
+            });
 
+            // Validate data types
+            columns.forEach(col => {
+                if (row[col.name]) {
+                    const value = row[col.name];
+                    switch (col.data_type) {
+                        case 'number':
+                            if (isNaN(Number(value))) {
+                                errors.push(`Row ${index + 1}: Invalid number in "${col.name}"`);
+                            }
+                            break;
+                        case 'date':
+                            if (isNaN(Date.parse(value))) {
+                                errors.push(`Row ${index + 1}: Invalid date in "${col.name}"`);
+                            }
+                            break;
+                        case 'multiple choice':
+                            if (!col.entry_options.includes(value)) {
+                                errors.push(`Row ${index + 1}: Invalid option in "${col.name}"`);
+                            }
+                            break;
+                    }
+                }
+            });
+        });
+
+        return errors;
+    };
     // Format cell value based on column type
     const formatCellValue = (value, columnType) => {
         if (!value) return 'N/A';
