@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useState } from 'react';
 import classNames from 'classnames';
-import { SearchIcon } from '../assets/icons';
+// import { SearchIcon } from '../assets/icons';
 import InputLabel from './InputLabel';
 import React from 'react';
 

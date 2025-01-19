@@ -7,7 +7,7 @@ import { CheckIcon, CloseIcon, DeleteIcon, EditIcon } from '../assets/icons';
 import { getKey, getKeys, getLabel } from '../const/tableLabels';
 import { getSessionEntryCount, startEntryOperation } from '../utils/firestore';
 import { Type, notify } from './Notifier';
-import { FormField } from './FormFields';
+// import { FormField } from './FormFields';
 import React from 'react';
 
 const BINARY_KEYS = ['noCaptures', 'isAlive', 'dead'];
@@ -117,8 +117,8 @@ export const TableEntry = forwardRef((props, ref) => {
     );
 });
 
-const EntryItem = ({ entrySnapshot, dbKey, entryUIState, setEntryData, entryData, className }) => {
-    const [editable, setEditable] = useState(true);
+const EntryItem = ({ dbKey, entryUIState, setEntryData, entryData, className }) => {
+    const [editable] = useState(true);
 
     const onChangeHandler = (e) => {
         const value = e.target.value.slice(-1);
@@ -138,7 +138,7 @@ const EntryItem = ({ entrySnapshot, dbKey, entryUIState, setEntryData, entryData
         }));
     };
 
-    const onClickHandler = (e) => {
+    const onClickHandler = () => {
         if (dbKey === 'year' && entryUIState === 'editing') {
             notify(
                 Type.error,

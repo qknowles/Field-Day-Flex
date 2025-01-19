@@ -2,18 +2,19 @@ import React from 'react';
 import WindowWrapper from '../wrappers/WindowWrapper';
 import { DropdownFlex } from '../components/FormFields';
 import Button from '../components/Button';
-import { currentProjectName } from '../utils/jotai';
+//import { currentProjectName } from '../utils/jotai';
 // TODO: These imports need to be implemented
 // import { SetRole } from '../components/FormFields';
 // import { editProject_Details } from '../utils/firestore';
 // import { auth } from '../utils/authenticator';
 
-export default function ManageProject({ CloseManageProject, setCurrentWindow, userProjectData }) {
+export default function ManageProject({ CloseManageProject/*, setCurrentWindow, userProjectData */ }) {
     // Required by architecture diagram
+    /*
     const handleProjectDetails = async () => {
         // Will use editProject_Details from firestore
     };
-
+    
     const handleSetRole = () => {
         // Will use SetRole component
     };
@@ -21,7 +22,7 @@ export default function ManageProject({ CloseManageProject, setCurrentWindow, us
     const handleAuth = () => {
         // Will use auth/Authenticator
     };
-
+    */
     return (
         <WindowWrapper
             header="Manage Project"

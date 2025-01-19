@@ -3,7 +3,7 @@ import { getColumnsCollection, getEntriesForTab } from '../utils/firestore';
 import TableTools from '../wrappers/TableTools';
 import { Pagination } from './Pagination';
 import { useAtom } from 'jotai';
-import { currentProjectName, currentTableName, currentBatchSize } from '../utils/jotai';
+import { /*currentProjectName, currentTableName,*/ currentBatchSize } from '../utils/jotai';
 
 const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
     const [entries, setEntries] = useState([]);
@@ -14,8 +14,8 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
     const [currentPage, setCurrentPage] = useState(1);
 
     const [batchSize] = useAtom(currentBatchSize);
-    const [currentProject, setCurrentProject] = useAtom(currentProjectName);
-    const [currentTable, setCurrentTable] = useAtom(currentTableName);
+    // const [currentProject, setCurrentProject] = useAtom(currentProjectName);
+    // const [currentTable, setCurrentTable] = useAtom(currentTableName);
 
     // Fetch columns data
     const fetchColumns = useCallback(async () => {

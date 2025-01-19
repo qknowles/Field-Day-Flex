@@ -2,22 +2,22 @@ import {
     addDoc,
     getDoc,
     collection,
-    deleteDoc,
+    // deleteDoc,
     doc,
     getDocs,
     query,
     updateDoc,
-    orderBy,
+    // orderBy,
     arrayUnion,
     setDoc,
     where,
-    writeBatch,
+    // writeBatch,
     or,
     and,
-    getCountFromServer,
+    // getCountFromServer,
 } from 'firebase/firestore';
 import { db } from './firebase';
-import { Type } from '../components/Notifier';
+// import { Type } from '../components/Notifier';
 
 export const accountExists = async (email) => {
     const usersRef = collection(db, 'Users');
@@ -168,9 +168,9 @@ export const getDocumentIdByProjectName = async (projectName) => {
 };
 
 export async function addMemberToProject(projectId, field, newMemberEmail) {
-    const isValid = ['contributors', 'admins', 'owners'].some(
+    /*const isValid = ['contributors', 'admins', 'owners'].some(
         (validField) => validField.toLowerCase() === field.toLowerCase(),
-    );
+    );*/
 
     if (!['contributors', 'admins', 'owners'].includes(field)) {
         console.error(`Invalid field: ${field}. Must be 'contributors', 'admins', or 'owners'.`);

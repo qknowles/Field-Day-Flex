@@ -20,16 +20,14 @@ export default function ColumnOptions({
 }) {
     const [rightButtonText, setRightButtonText] = useState('Next Column');
     const [columnIndex, setColumnIndex] = useState(0);
-    const [tempEntryOptions, setTempEntryOptions] = useState([]);
+    const [setTempEntryOptions] = useState([]);
     const [dataType, setDataType] = useState(new Array(ColumnNames.length).fill(''));
-    const [entryOptions, setEntryOptions] = useState(() =>
-        Array.from({ length: ColumnNames.length }, () => []),
-    );
+    const [entryOptions] = useState(() => Array.from({ length: ColumnNames.length }, () => []));
     const [identifierDomain, setIdentifierDomain] = useState(
         new Array(ColumnNames.length).fill(false),
     );
     const [requiredField, setRequiredField] = useState(new Array(ColumnNames.length).fill(false));
-    const [order, setOrder] = useState(Array.from({ length: ColumnNames.length }, (_, i) => i));
+    const [order] = useState(Array.from({ length: ColumnNames.length }, (_, i) => i));
 
     const entryTypeOptions = ['number', 'text', 'date', 'multiple choice'];
 

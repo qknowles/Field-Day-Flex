@@ -1,10 +1,10 @@
-import { LizardIcon } from '../assets/icons';
+// import { LizardIcon } from '../assets/icons';
 import React, { useState } from 'react';
-import Button from './Button';
+// import Button from './Button';
 import AccountSettings from '../windows/AccountSettings.jsx';
 import ProjectSettings from '../windows/ProjectSettings.jsx';
 import { getCurrentProject } from '../pages/TablePage.jsx';
-import { getDocumentIdByProjectName } from '../utils/firestore.js';
+// import { getDocumentIdByProjectName } from '../utils/firestore.js';
 import ManageMembership from '../windows/MembershipWindow';
 
 export default function Hamburger({ Email }) {

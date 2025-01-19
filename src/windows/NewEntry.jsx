@@ -40,7 +40,7 @@ export default function NewEntry({ CloseNewEntry, ProjectName, TabName, Email })
 
     const validEntries = () => {
         for (const column of columnsCollection) {
-            const { name, data_type, required_field } = column;
+            const { name, data_type } = column;
             const value = userEntries[name];
 
             if (data_type === 'number' && (value === '' || isNaN(value))) {
