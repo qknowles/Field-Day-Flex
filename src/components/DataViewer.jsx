@@ -10,6 +10,40 @@ import ColumnSelectorButton from './ColumnSelectorButton';
 import ColumnManager from './ColumnManager';
 import IdentifierHandler from './IdentifierHandler';
 
+const getTabConfiguration = async (projectName, tabName) => {
+    try {
+        const projectRef = collection(db, 'Projects');
+        const projectQuery = query(projectRef, where('project_name', '==', projectName));
+        const projectSnapshot = await getDocs(projectQuery);
+
+        if (projectSnapshot.empty) return null;
+
+        const projectDoc = projectSnapshot.docs[0];
+        const tabsRef = collection(projectDoc.ref, 'Tabs');
+        const tabQuery = query(tabsRef, where('tab_name', '==', tabName));
+        const tabSnapshot = await getDocs(tabQuery);
+
+        if (tabSnapshot.empty) return null;
+
+        const tabData = tabSnapshot.docs[0].data();
+        return {
+            generate_unique_identifier: tabData.generate_unique_identifier || false,
+            possible_identifiers: tabData.possible_identifiers || [],
+            identifier_dimension: tabData.identifier_dimension || [],
+            unwanted_codes: tabData.unwanted_codes || [],
+            utilize_unwanted: tabData.utilize_unwanted || false,
+            next_entry: tabData.next_entry || 1
+        };
+    } catch (error) {
+        console.error('Error fetching tab configuration:', error);
+        return null;
+    }
+};
+
+
+
+
+
 const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
     // State Management
     const [entries, setEntries] = useState([]);
