@@ -12,6 +12,7 @@ import {
 import Button from '../components/Button.jsx';
 import { notify, Type } from '../components/Notifier.jsx';
 import { updateProjectName } from '../components/TabBar.jsx';
+import { m } from 'framer-motion';
 
 export default function ProjectSettings({ projectNameProp = "NoNamePassed", CloseProjectSettings }) {
     const [documentId, setDocumentId] = useState(null); // Start with null, indicating it's unresolved
@@ -43,6 +44,10 @@ export default function ProjectSettings({ projectNameProp = "NoNamePassed", Clos
             fetchProjectData();
         }
     }, [documentId]); // we run this whenever docId gets resolved from the promise
+
+    useEffect(() => {
+        updateMemberRole();
+    }, [members]);
 
     const fetchProjectData = async () => {
         try {
@@ -83,6 +88,32 @@ export default function ProjectSettings({ projectNameProp = "NoNamePassed", Clos
         }
         await addMemberToProject(documentId, newMemberSelectedRole.toLowerCase() + "s", newMemberEmail);
         await fetchProjectData();
+    }
+
+    async function updateMemberRole() {
+        try {
+            const contributors = members
+                .filter((member) => member.role === "Contributor")
+                .map((member) => member.email);
+            const admins = members
+                .filter((member) => member.role === "Admin")
+                .map((member) => member.email);
+            const owners = members
+                .filter((member) => member.role === "Owner")
+                .map((member) => member.email);
+
+            const updatedData = { contributors, admins, owners };
+
+            const success = await updateDocInCollection("Projects", documentId, updatedData);
+
+            if (success) {
+                console.log("Members successfully synced to Firebase:", updatedData);
+            } else {
+                console.error("Failed to sync members to Firebase.");
+            }
+        } catch (error) {
+            console.error("Error updating Firebase:", error);
+        }
     }
 
     async function saveChanges() {
@@ -222,9 +253,17 @@ export default function ProjectSettings({ projectNameProp = "NoNamePassed", Clos
                                     options={["Owner", "Admin", "Contributor"]}
                                     selection={member.role}
                                     setSelection={(newRole) => {
-                                        const updatedMembers = [...members];
-                                        updatedMembers[index].role = newRole;
-                                        setMembers(updatedMembers);
+                                        console.log("old members", members);
+                                        const oldMembers = members;
+                                        setMembers(() => {
+                                            return oldMembers.map((m) => {
+                                                if (m.email === member.email) {
+                                                    return { ...m, role: newRole };
+                                                }
+                                                return m;
+                                            });
+                                        })
+                                        console.log("new members", members);
                                     }}
                                 />
                             </div>
