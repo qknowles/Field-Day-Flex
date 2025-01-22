@@ -32,7 +32,13 @@ export const TableEntry = forwardRef((props, ref) => {
         setKeys(getKeys(tableName));
     }, [tableName]);
 
-    const handleEditClick = () => setEntryUIState('editing');
+    // Function to handle the edit button click
+    const handleEditClick = () => {
+        // Set the UI state to 'editing'
+        setEntryUIState('editing');
+        // Log to console for debugging
+        console.log('Edit button clicked, entryUIState set to editing');
+    };
 
     const handleDeleteClick = async () => {
         setEntryUIState('deleting');
