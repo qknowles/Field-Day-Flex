@@ -12,9 +12,9 @@ import {
 import Button from '../components/Button.jsx';
 import { notify, Type } from '../components/Notifier.jsx';
 import { updateProjectName } from '../components/TabBar.jsx';
-import { m } from 'framer-motion';
 
-export default function ProjectSettings({ projectNameProp = "NoNamePassed", CloseProjectSettings }) {
+export default function ProjectSettings({ projectNameProp = "NoNamePassed", CloseProjectSettings, emailProp }) {
+    const [isAuthorized, setIsAuthorized] = useState(false);
     const [documentId, setDocumentId] = useState(null); // Start with null, indicating it's unresolved
     const [projectName, setProjectName] = useState(projectNameProp);
     const [newMemberSelectedRole, setNewMemberSelectedRole] = useState('Select Role');
@@ -71,6 +71,11 @@ export default function ProjectSettings({ projectNameProp = "NoNamePassed", Clos
                 });
 
                 setMembers(updatedMembers);
+
+                const currUser = updatedMembers.find((member) => member.email === emailProp);
+                if(currUser && ((currUser.role === "Owner") || (currUser.role === "Admin"))) {
+                    setIsAuthorized(true);
+                } else setIsAuthorized(false);
             }
         } catch (err) {
             console.error("Error fetching project data:", err);
@@ -160,6 +165,22 @@ export default function ProjectSettings({ projectNameProp = "NoNamePassed", Clos
     if (!documentId) {
         return <div>Loading project settings...</div>;
     }
+
+    if (!isAuthorized) {
+        return (
+            <WindowWrapper
+                header={`Manage ${projectNameProp} Project`}
+                onLeftButton={() => { CloseProjectSettings() }}
+                leftButtonText="Close"
+            >
+                <div className="p-5">
+                    <p>You do not have permission to view this page.</p>
+                    <p>You must be the project owner or an administrator.</p>
+                </div>
+            </WindowWrapper>
+        );
+    }
+
 
     return (
         <WindowWrapper
