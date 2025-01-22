@@ -1,69 +1,26 @@
-import { useEffect, useState, forwardRef } from 'react';
-import { useAtomValue } from 'jotai';
-import { currentTableName } from '../utils/jotai';
+import React, { useState, forwardRef } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { tableRows } from '../utils/variants';
 import { CheckIcon, CloseIcon, DeleteIcon, EditIcon } from '../assets/icons';
-import { getKey, getKeys, getLabel } from '../const/tableLabels';
-import { getSessionEntryCount, startEntryOperation } from '../utils/firestore';
 import { Type, notify } from './Notifier';
-import { FormField } from './FormFields';
-import React from 'react';
-
-const BINARY_KEYS = ['noCaptures', 'isAlive', 'dead'];
-const TRUE_KEYS = ['Y', 'y', 'T', 't'];
-const FALSE_KEYS = ['N', 'n', 'F', 'f'];
-
-export const getValue = (entry, column) => {
-    const field = entry._document.data.value.mapValue.fields[getKey(column, name)];
-    return field ? field.stringValue : 'N/A';
-};
 
 export const TableEntry = forwardRef((props, ref) => {
-    const { entrySnapshot, shownColumns, removeEntry: removeEntryFromUI, index } = props;
+    const { entrySnapshot, shownColumns, index } = props;
 
     const [entryUIState, setEntryUIState] = useState('viewing');
-    const [entryData, setEntryData] = useState(entrySnapshot.data());
-    const [keys, setKeys] = useState([]);
-    const tableName = useAtomValue(currentTableName);
-    const [deleteMessage, setDeleteMessage] = useState('Are you sure you want to delete this row?');
-
-    useEffect(() => {
-        setKeys(getKeys(tableName));
-    }, [tableName]);
+    const [entryData, setEntryData] = useState(entrySnapshot.entry_data || {});
+    const [deleteMessage] = useState('Are you sure you want to delete this row?');
 
     const handleEditClick = () => setEntryUIState('editing');
-
-    const handleDeleteClick = async () => {
-        setEntryUIState('deleting');
-        if (entrySnapshot.ref.parent.id.includes('Session')) {
-            const entryCount = await getSessionEntryCount(entrySnapshot);
-            setDeleteMessage(
-                `Are you sure you want to delete this session and its ${entryCount} animal entries?`,
-            );
-        }
-    };
+    const handleDeleteClick = () => setEntryUIState('deleting');
 
     const handleSaveClick = () => {
-        const operationType =
-            entryUIState === 'editing'
-                ? tableName.includes('Session')
-                    ? 'uploadSessionEdits'
-                    : 'uploadEntryEdits'
-                : tableName.includes('Session')
-                  ? 'deleteSession'
-                  : 'deleteEntry';
-
-        startEntryOperation(operationType, {
-            entrySnapshot,
-            entryData,
-            setEntryUIState,
-            removeEntryFromUI,
-        }).then((response) => notify(...response));
+        notify(Type.info, 'Save functionality coming soon');
+        setEntryUIState('viewing');
     };
 
     const handleCancelClick = () => {
-        setEntryData(entrySnapshot.data());
+        setEntryData(entrySnapshot.entry_data || {});
         setEntryUIState('viewing');
     };
 
@@ -85,87 +42,64 @@ export const TableEntry = forwardRef((props, ref) => {
                 entryUIState={entryUIState}
                 deleteMessage={deleteMessage}
             />
-            {keys.map(
-                (key) =>
-                    shownColumns.includes(getLabel(key)) && (
-                        <EntryItem
-                            key={key}
-                            entrySnapshot={entrySnapshot}
-                            entryUIState={entryUIState}
-                            dbKey={key}
-                            entryData={entryData}
-                            setEntryData={setEntryData}
-                            className={
-                                getLabel(key) === 'Date & Time'
-                                    ? 'dateTimeColumn'
-                                    : getLabel(key) === 'Site'
-                                      ? 'siteColumn'
-                                      : getLabel(key) === 'Year'
-                                        ? 'yearColumn'
-                                        : getLabel(key) === 'Taxa'
-                                          ? 'taxaColumn'
-                                          : getLabel(key) === 'Genus'
-                                            ? 'genusColumn'
-                                            : getLabel(key) === 'Species'
-                                              ? 'speciesColumn'
-                                              : ''
-                            }
-                        />
-                    ),
-            )}
+
+            {shownColumns.map((columnName) => (
+                <EntryItem
+                    key={columnName}
+                    columnName={columnName}
+                    entryUIState={entryUIState}
+                    entryData={entryData}
+                    setEntryData={setEntryData}
+                    className={getColumnClassName(columnName)}
+                />
+            ))}
         </motion.tr>
     );
 });
 
-const EntryItem = ({ entrySnapshot, dbKey, entryUIState, setEntryData, entryData, className }) => {
-    const [editable, setEditable] = useState(true);
+const getColumnClassName = (columnName) => {
+    const classMap = {
+        'Date & Time': 'dateTimeColumn',
+        'Site': 'siteColumn',
+        'Year': 'yearColumn',
+        'Taxa': 'taxaColumn',
+        'Genus': 'genusColumn',
+        'Species': 'speciesColumn'
+    };
+    return classMap[columnName] || '';
+};
+
+const EntryItem = ({ columnName, entryUIState, setEntryData, entryData, className }) => {
+    const [editable] = useState(true);
 
     const onChangeHandler = (e) => {
-        const value = e.target.value.slice(-1);
-        const isBinaryKey = BINARY_KEYS.includes(dbKey);
-        const isTrueKey = TRUE_KEYS.includes(value);
-        const isFalseKey = FALSE_KEYS.includes(value);
-
-        setEntryData((prev) => ({
+        setEntryData(prev => ({
             ...prev,
-            [dbKey]: isBinaryKey
-                ? isTrueKey
-                    ? 'true'
-                    : isFalseKey
-                      ? 'false'
-                      : prev[dbKey]
-                : e.target.value,
+            [columnName]: e.target.value
         }));
     };
 
-    const onClickHandler = (e) => {
-        if (dbKey === 'year' && entryUIState === 'editing') {
-            notify(
-                Type.error,
-                'Editing the year directly is not supported. Please edit the date instead.',
-            );
-        }
-    };
-
-    let disabled =
-        dbKey === 'year' ||
+    const disabled =
+        columnName === 'Year' ||
         entryUIState === 'viewing' ||
         (entryUIState === 'editing' && !editable) ||
         entryUIState === 'deleting';
 
-    const size = entryData[dbKey] ? String(entryData[dbKey]).length : 1;
+    const value = entryData[columnName] || '';
+    const size = value ? String(value).length : 1;
 
     return (
-        //<td className="text-center border-b border-neutral-400 dark:border-neutral-600 p-1">
-        <td
-            className={`text-left border-b border-neutral-400 dark:border-neutral-600 p-1 ${className || ''}`}
-        >
+        <td className={`text-left border-b border-neutral-400 dark:border-neutral-600 p-1 ${className || ''}`}>
             <input
                 readOnly={disabled}
                 className="pl-2 w-full read-only:bg-transparent read-only:border-transparent read-only:focus:outline-none"
-                value={entryData[dbKey] ?? 'N/A'}
-                onChange={(e) => onChangeHandler(e)}
-                onClick={(e) => onClickHandler(e)}
+                value={value || 'N/A'}
+                onChange={onChangeHandler}
+                onClick={() => {
+                    if (columnName === 'Year' && entryUIState === 'editing') {
+                        notify(Type.error, 'Year cannot be edited directly');
+                    }
+                }}
                 size={size}
             />
         </td>
@@ -187,7 +121,7 @@ const Actions = ({
                     {entryUIState === 'deleting' && (
                         <motion.div
                             key="deleteMsg"
-                            className="absolute text-lg left-8 -top-3 z-10 px-2 rounded-md drop-shadow-xl border-[1px] bg-red-800/10 backdrop-blur border-red-800 shadow-lg  shadow-red-800/25 leading-tight"
+                            className="absolute text-lg left-8 -top-3 z-10 px-2 rounded-md drop-shadow-xl border-[1px] bg-red-800/10 backdrop-blur border-red-800 shadow-lg shadow-red-800/25 leading-tight"
                             initial={{ left: '-2rem', opacity: 0 }}
                             animate={{ left: '2rem', opacity: 1 }}
                             exit={{
@@ -236,3 +170,5 @@ const Actions = ({
         </td>
     );
 };
+
+export default TableEntry;
