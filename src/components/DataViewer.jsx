@@ -10,10 +10,10 @@ import { Type, notify } from './Notifier';
 import { deleteDoc, doc, writeBatch, collection, getDocs } from 'firebase/firestore';
 import { db } from '../utils/firebase';
 import NewEntry from '../windows/NewEntry';
-import InputLabel from '../components/InputLabel';
-import { DropdownSelector } from '../components/FormFields';
-import PageWrapper from '../wrappers/PageWrapper';
-import TabBar from '../components/TabBar';
+//import InputLabel from '../components/InputLabel';
+//import { DropdownSelector } from '../components/FormFields';
+//import PageWrapper from '../wrappers/PageWrapper';
+//import TabBar from '../components/TabBar';
 
 const STATIC_COLUMNS = [
     { id: 'actions', name: 'Actions', type: 'actions', order: -3 },
@@ -22,7 +22,7 @@ const STATIC_COLUMNS = [
 
 
 const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
-    // Existing state
+    
     const [entries, setEntries] = useState([]);
     const [columns, setColumns] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -53,7 +53,10 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
    
  
     
-    
+    const [editedColumnTypes, setEditedColumnTypes] = useState({});
+const [editedRequiredFields, setEditedRequiredFields] = useState({});
+const [editedIdentifierDomains, setEditedIdentifierDomains] = useState({});
+const [editedDropdownOptions, setEditedDropdownOptions] = useState({});
 const defaultColumns = useMemo(() => {
     return [
         { id: 'actions', name: 'Actions', type: 'actions', order: -3 },
@@ -68,7 +71,7 @@ const defaultColumns = useMemo(() => {
             const sortedColumns = [...defaultColumns, ...columnsData].sort((a, b) => a.order - b.order);
             setColumns(sortedColumns);
             
-            // Initialize all column properties
+            // Not sure this is needed
             const orderObj = {};
             const namesObj = {};
             const typesObj = {};
@@ -232,7 +235,7 @@ const defaultColumns = useMemo(() => {
                     const columnRef = doc(db, 'Projects', SelectedProject, 'Tabs', SelectedTab, 'Columns', column.id);
                     batch.delete(columnRef);
                     
-                    // Update entries to remove deleted column
+                    // Remove column from all entries
                     const entriesSnapshot = await getDocs(collection(db, 'Projects', SelectedProject, 'Tabs', SelectedTab, 'Entries'));
                     entriesSnapshot.docs.forEach(entryDoc => {
                         const entryRef = doc(db, 'Projects', SelectedProject, 'Tabs', SelectedTab, 'Entries', entryDoc.id);
@@ -241,7 +244,7 @@ const defaultColumns = useMemo(() => {
                         batch.update(entryRef, entryData);
                     });
                 } else if (!['actions', 'datetime', 'identifier'].includes(column.id)) {
-                    // Update column with all properties
+                    // Update column
                     const columnRef = doc(db, 'Projects', SelectedProject, 'Tabs', SelectedTab, 'Columns', column.id);
                     batch.update(columnRef, {
                         name: editedColumnNames[column.id],
@@ -274,7 +277,7 @@ const defaultColumns = useMemo(() => {
             Email={Email}
             existingEntry={entry}
         />;
-       // setEditWindow(editWindow);
+       // setEditWindow(editWindow);  this is not working
     };
     
     const handleDelete = async (entryId) => {
@@ -290,7 +293,7 @@ const defaultColumns = useMemo(() => {
             notify(Type.error, 'Failed to delete entry');
         }
     };
-    // Sort entries based on current sort configuration
+   
     const sortedEntries = React.useMemo(() => {
         if (!sortConfig.key) return entries;
 
@@ -305,13 +308,13 @@ const defaultColumns = useMemo(() => {
         });
     }, [entries, sortConfig]);
 
-    // Calculate pagination
+   
     const paginatedEntries = React.useMemo(() => {
         const startIndex = (currentPage - 1) * batchSize;
         return sortedEntries.slice(startIndex, startIndex + batchSize);
     }, [sortedEntries, currentPage, batchSize]);
 
-    // Column Management Modal Component
+   
     const ManageColumnsModal = () => (
         <WindowWrapper
             header="Manage Columns"
@@ -375,21 +378,26 @@ const defaultColumns = useMemo(() => {
 
     return (
         <div className="flex-grow bg-white dark:bg-neutral-950">
-            <div className="flex flex-col">
-                <TableTools className="px-5 py-3">
-                    {isAdminOrOwner && (
-                        <Button 
-                            text="Manage Columns"
-                            onClick={() => setShowManageColumns(true)}
-                        />
-                    )}
-                    <Pagination
-                        currentPage={currentPage} 
-                        totalPages={Math.ceil(entries.length / batchSize)}
-                        onPageChange={setCurrentPage}
-                    />
-                </TableTools>
-     
+    <div className="flex flex-col">
+    <TableTools className="px-5 py-3 flex items-center w-full">
+    <div className="px-5 py-3 flex items-center w-full">
+  {isAdminOrOwner && (
+    <Button 
+      text="Manage Columns"
+      onClick={() => setShowManageColumns(true)}
+      className="mr-auto" 
+    />
+  )}
+ 
+  <div className="ml-auto">  {/* Force right alignment for pagination */}
+    <Pagination
+      currentPage={currentPage} 
+      totalPages={Math.ceil(entries.length / batchSize)}
+      onPageChange={setCurrentPage}
+    />
+  </div>
+  </div>
+</TableTools>
                 <div className="overflow-x-auto">
     <table className="w-full border-collapse">
         <thead>
