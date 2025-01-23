@@ -1,3 +1,8 @@
+// IMPORTANT
+// THIS CODE DOES LITERALLY NOTHING
+// ITS JUST LEFTOVER FROM FIELD DAY 1
+
+
 import React, { useState } from 'react';
 
 const Table = ({ Email, SelectedProject, SelectedTab, entries, columns, onEdit, onDelete }) => {

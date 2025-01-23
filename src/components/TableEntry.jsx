@@ -1,3 +1,8 @@
+// IMPORTANT
+// THIS CODE DOES LITERALLY NOTHING
+// ITS JUST LEFTOVER FROM FIELD DAY 1
+
+
 import { useEffect, useState, forwardRef } from 'react';
 import { useAtomValue } from 'jotai';
 import { currentTableName } from '../utils/jotai';
@@ -32,7 +37,11 @@ export const TableEntry = forwardRef((props, ref) => {
         setKeys(getKeys(tableName));
     }, [tableName]);
 
-    const handleEditClick = () => setEntryUIState('editing');
+    // Function to handle the edit button click
+    const handleEditClick = () => {
+        // Set the UI state to 'editing'
+        setEntryUIState('editing');
+    };
 
     const handleDeleteClick = async () => {
         setEntryUIState('deleting');
