@@ -1,3 +1,7 @@
+// IMPORTANT
+// THIS CODE DOES LITERALLY NOTHING
+// ITS JUST LEFTOVER FROM FIELD DAY 1
+
 import { ColumnToggleIcon } from '../assets/icons';
 import { useState } from 'react';
 import ColumnSelector from './ColumnSelector';

@@ -1,3 +1,7 @@
+// IMPORTANT
+// THIS CODE DOES LITERALLY NOTHING
+// ITS JUST LEFTOVER FROM FIELD DAY 1
+
 import { useRef } from 'react';
 import React from 'react';
 import { LayoutGroup, motion, useAnimationControls } from 'framer-motion';
