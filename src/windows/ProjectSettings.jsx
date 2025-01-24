@@ -72,6 +72,7 @@ export default function ProjectSettings({ projectNameProp = "NoNamePassed", Clos
 
                 setMembers(updatedMembers);
 
+                // This was accidentally commited in the same commit as Task 420. These lines are for Task 418:
                 const currUser = updatedMembers.find((member) => member.email === emailProp);
                 if(currUser && ((currUser.role === "Owner") || (currUser.role === "Admin"))) {
                     setIsAuthorized(true);
@@ -166,6 +167,7 @@ export default function ProjectSettings({ projectNameProp = "NoNamePassed", Clos
         return <div>Loading project settings...</div>;
     }
 
+    // and this if statement as well
     if (!isAuthorized) {
         return (
             <WindowWrapper
@@ -180,6 +182,7 @@ export default function ProjectSettings({ projectNameProp = "NoNamePassed", Clos
             </WindowWrapper>
         );
     }
+    // TODO: remove these comments I just needed the git commit.
 
 
     return (
