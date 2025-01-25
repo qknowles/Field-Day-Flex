@@ -93,7 +93,7 @@ export default function AccountSettings({ CloseAccountSettings, emailProp }) {
 
                 if (updateSuccess) {
                     notify(Type.success, 'Changes saved successfully');
-                    CloseAccountSettings(); // a665a45920422f9d417e4867efdc4fb8a04a1f3fff1fa07e998e86f7f7a27ae3
+                    CloseAccountSettings();
                 } else {
                     notify(Type.error, 'Failed to save changes');
                 }
