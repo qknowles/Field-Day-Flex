@@ -11,12 +11,16 @@ const style = {
     padding: '8px',
 };
 
-const config = {
+const defaultConfig = {
     duration: 2000,
     style: style,
 };
 
-const notify = (type, text) => {
+const notify = (type, text, duration) => {
+    const config = {
+        ...defaultConfig,
+        duration: duration || defaultConfig.duration,
+    }
     switch (type) {
         case Type.error:
             toast.error(text, config);
