@@ -15,6 +15,7 @@ import {
     or,
     and,
     getCountFromServer,
+    runTransaction
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { Type } from '../components/Notifier';
@@ -498,6 +499,7 @@ export const updateDocInCollection = async (collectionName, docId, data) => {
     }
 };
 
+// TODO: Update this function to use Firestore's Transactions.
 export const updateEmailInProjects = async (oldEmail, newEmail) => {
     try {
         const projectsRef = collection(db, 'Projects');
@@ -674,3 +676,30 @@ export const getUserName = async (email) => {
     const user = await getDocs(query(collection(db, 'Users'), where('email', '==', email)));
     return user.docs[0].data().name || 'null';
 };
+
+export async function saveUserAccountChanges(fieldsChanged, originalEmail) {
+    try {
+        const userDocRef = doc(db, "Users", await getDocumentIdByUserName(originalEmail));
+        await runTransaction(db, async (transaction) => {
+            const userDoc = await transaction.get(userDocRef);
+            if (!userDoc.exists()) {
+                console.error("User does not exist in saveUserAccountChanges", originalEmail);
+                throw new Error("User document does not exist.");
+            }
+            // TODO: Once updateEmailInProjects uses transactions, refactor this to use that change.
+            transaction.update(userDocRef, {
+                ...fieldsChanged,
+                lastUpdated: new Date()
+            });
+            if(fieldsChanged.email) {
+                console.log("email field changed");
+                await updateEmailInProjects(originalEmail, fieldsChanged.email);
+            }
+            console.log("Transaction completed successfully:", fieldsChanged);
+        });
+        return true;
+    } catch (error) {
+        console.error("Error in saveUserAccountChanges:", error);
+        return false;
+    }
+}
