@@ -78,6 +78,7 @@ export default function Hamburger({ Email }) {
                                         <ProjectSettings
                                             projectNameProp={getCurrentProject()}
                                             CloseProjectSettings={closeModal}
+                                            emailProp={Email}
                                         />,
                                     )
                                 }

@@ -8,6 +8,7 @@ import {
     updateDocInCollection,
     updateEmailInProjects,
     getDocumentIdByUserName,
+    saveUserAccountChanges
 } from '../utils/firestore';
 import CryptoJS from 'crypto-js';
 import { updateUserEmail } from '../App.jsx';
@@ -21,7 +22,81 @@ export default function AccountSettings({ CloseAccountSettings, emailProp }) {
     const [emailChanged, setEmailChanged] = useState(false); // Track if email has been updated in the DB
     const originalEmail = emailProp;
 
+    // Fetch user's current name
+    useEffect(() => {
+        const fetchUserName = async () => {
+            const userName = await getUserName(email);
+            setName(userName);
+        };
+        fetchUserName();
+    }, [emailProp]);
+
     async function saveChanges() {
+        // Step 1: Verify password
+        const hashedPassword = CryptoJS.SHA256(password).toString();
+        console.log("account details", originalEmail, hashedPassword);
+        const isPasswordVerified = await verifyPassword(originalEmail, hashedPassword);
+        if(!isPasswordVerified) {
+            notify(Type.error, 'Please make sure the current password is correct.');
+            return;
+        }
+
+        // Step 2: Detect any changes to the fields in component
+        const fieldsChanged = await detectChanges();
+        if(!fieldsChanged) {return;}
+
+        // Step 3: Save changes to Firebase
+        const success = saveUserAccountChanges(fieldsChanged, originalEmail);
+        if(success) {
+            notify(Type.success, 'Successfully updated account account.');
+            CloseAccountSettings();
+        } else {
+            notify(Type.error, 'Something went wrong. Please verify all fields are correct.');
+        }
+
+    }
+
+    async function detectChanges() {
+        const fieldsChanged = {};
+        const currentName = await getUserName(originalEmail);
+
+        if (name !== currentName) fieldsChanged.name = name;
+        if (email !== originalEmail) fieldsChanged.email = email;
+
+        if (newPassword && confirmPassword && newPassword === confirmPassword) {
+            const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{8,}$/;
+            if (!passwordRegex.test(newPassword)) {
+                notify(
+                    Type.error,
+                    (
+                        <div>
+                            Password must:
+                            <ol>
+                                <li>1. Be at least 8 characters long</li>
+                                <li>2. Include at least one number</li>
+                                <li>3. Include one special character</li>
+                            </ol>
+                        </div>
+                    ),
+                    10000
+                );
+                return null;
+            }
+            const newHash = CryptoJS.SHA256(newPassword).toString();
+            fieldsChanged.password = newHash;
+        }
+
+        if (Object.keys(fieldsChanged).length === 0) {
+            notify(Type.error, 'No changes detected.');
+            return null;
+        }
+
+        return fieldsChanged;
+    }
+
+
+
+    async function saveChanges_old() {
         try {
             // Verify password matches current
             const hashedPassword = CryptoJS.SHA256(password).toString();
@@ -41,7 +116,17 @@ export default function AccountSettings({ CloseAccountSettings, emailProp }) {
                 if (!passwordRegex.test(newPassword)) {
                     notify(
                         Type.error,
-                        'Password must be at least 8 characters long and include at least one number and one special character.',
+                        (
+                            <div>
+                                Password must:
+                                <ol>
+                                    <li>1. Be at least 8 characters long</li>
+                                    <li>2. Include at least one number</li>
+                                    <li>3. Include one special character</li>
+                                </ol>
+                            </div>
+                        ),
+                        10000
                     );
                     return;
                 }
@@ -103,15 +188,6 @@ export default function AccountSettings({ CloseAccountSettings, emailProp }) {
             notify(Type.error, 'An unexpected error occurred while saving changes.');
         }
     }
-
-    // Fetch user's current name
-    useEffect(() => {
-        const fetchUserName = async () => {
-            const userName = await getUserName(email);
-            setName(userName);
-        };
-        fetchUserName();
-    }, [emailProp]);
 
     return (
         <WindowWrapper
