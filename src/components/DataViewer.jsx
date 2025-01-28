@@ -285,7 +285,7 @@ const defaultColumns = useMemo(() => {
         if (!confirmed) return;
     
         try {
-            await deleteDoc(doc(db, 'Projects', SelectedProject, 'Tabs', SelectedTab, 'Entries', entryId));
+            await deleteDoc(doc(db, 'Projects', 'gLWLz4Xv8mQToTUPxS0r', 'Tabs', SelectedTab, 'Entries', entryId));
             await fetchEntries(); // Refresh entries
             notify(Type.success, 'Entry deleted successfully');
         } catch (error) {
