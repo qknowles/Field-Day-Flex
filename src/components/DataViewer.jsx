@@ -379,25 +379,6 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
     return (
         <div className="flex-grow bg-white dark:bg-neutral-950">
             <div className="flex flex-col">
-                <TableTools className="px-5 py-3 flex items-center w-full">
-                    <div className="px-5 py-3 flex items-center w-full">
-                        {isAdminOrOwner && (
-                            <Button
-                                text="Manage Columns"
-                                onClick={() => setShowManageColumns(true)}
-                                className="mr-auto"
-                            />
-                        )}
-
-                        <div className="ml-auto">  {/* Force right alignment for pagination */}
-                            <Pagination
-                                currentPage={currentPage}
-                                totalPages={Math.ceil(entries.length / batchSize)}
-                                onPageChange={setCurrentPage}
-                            />
-                        </div>
-                    </div>
-                </TableTools>
                 <div className="overflow-x-auto">
                     <table className="w-full border-collapse">
                         <thead>
@@ -454,94 +435,13 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
                     </table>
                 </div>
 
-                {showManageColumns && isAdminOrOwner && (
-                    <WindowWrapper
-                        header="Manage Columns"
-                        onLeftButton={() => setShowManageColumns(false)}
-                        onRightButton={handleSaveColumnChanges}
-                        leftButtonText="Cancel"
-                        rightButtonText="Save Changes"
-                    >
-                        <div className="flex flex-col space-y-4">
-                            {columns.filter(col => !['actions', 'datetime', 'identifier'].includes(col.id))
-                                .map((column) => (
-                                    <div key={column.id} className="flex flex-col space-y-2 p-2">
-                                        <div className="flex items-center space-x-4">
-                                            <input
-                                                type="text"
-                                                value={editedColumnNames[column.id]}
-                                                className="flex-grow border rounded px-2 py-1"
-                                                onChange={(e) => handleColumnNameChange(column.id, e.target.value)}
-                                                placeholder="Column Name"
-                                            />
-                                            <select
-                                                value={editedColumnTypes[column.id]}
-                                                className="w-40 border rounded px-2 py-1"
-                                                onChange={(e) => handleColumnTypeChange(column.id, e.target.value)}
-                                            >
-                                                <option value="text">Text Entry</option>
-                                                <option value="multiple choice">Multiple Choice</option>
-                                            </select>
-                                            <select
-                                                value={columnsToDelete.includes(column.id) ? 'DELETE' : columnOrder[column.id]}
-                                                className="w-24 border rounded px-2 py-1"
-                                                onChange={(e) => handleColumnOrderChange(column.id, e.target.value)}
-                                            >
-                                                {Array.from({ length: columns.length }, (_, i) => i + 1)
-                                                    .map(num => (
-                                                        <option key={num} value={num}>{num}</option>
-                                                    ))}
-                                                <option value="DELETE">DELETE</option>
-                                            </select>
-                                        </div>
-
-                                        <div className="flex items-center space-x-4 pl-4">
-                                            <label className="flex items-center space-x-2">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={editedRequiredFields[column.id]}
-                                                    onChange={(e) => handleRequiredFieldChange(column.id, e.target.checked)}
-                                                />
-                                                <span>Required Field</span>
-                                            </label>
-                                            <label className="flex items-center space-x-2">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={editedIdentifierDomains[column.id]}
-                                                    onChange={(e) => handleIdentifierDomainChange(column.id, e.target.checked)}
-                                                />
-                                                <span>Include in Entry ID Domain</span>
-                                            </label>
-                                        </div>
-
-                                        {editedColumnTypes[column.id] === 'multiple choice' && (
-                                            <div className="pl-4">
-                                                <select
-                                                    multiple
-                                                    className="w-full border rounded px-2 py-1"
-                                                    value={editedDropdownOptions[column.id] || []}
-                                                    onChange={(e) => handleDropdownOptionsChange(column.id,
-                                                        Array.from(e.target.selectedOptions, option => option.value)
-                                                    )}
-                                                >
-                                                    {(editedDropdownOptions[column.id] || []).map((option) => (
-                                                        <option key={option} value={option}>
-                                                            {option}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                                <Button
-                                                    text="Add Option"
-                                                    onClick={() => handleAddDropdownOption(column.id)}
-                                                    className="mt-2"
-                                                />
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                        </div>
-                    </WindowWrapper>
-                )}
+                <div className="px-5 py-3 flex items-center w-full">
+                    <Pagination
+                        currentPage={currentPage}
+                        totalPages={Math.ceil(entries.length / batchSize)}
+                        onPageChange={setCurrentPage}
+                    />
+                </div>
             </div>
         </div>
     );
