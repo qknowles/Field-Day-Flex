@@ -6,21 +6,15 @@ import { LizardIcon } from '../assets/icons';
 import NewProject from '../windows/NewProject';
 import NewTab from '../windows/NewTab';
 import NewEntry from '../windows/NewEntry';
+import ColumnOptions from '../windows/ColumnOptions';
 import Button from '../components/Button';
+import { getColumnsCollection } from '../utils/firestore';
 
 const NoProjectDisplay = () => (
     <div className="w-full text-center">
         <div className="pt-10">
-            <h1 className="title">
-                Field Day <br />
-                <span
-                    style={{
-                        fontFamily: '"Lucida Handwriting", cursive',
-                        fontSize: '0.7em',
-                        position: 'relative',
-                        top: '-0.3em',
-                    }}
-                >
+            <h1 className="title">Field Day <br />
+                <span style={{ fontFamily: '"Lucida Handwriting", cursive', fontSize: '0.7em', position: 'relative', top: '-0.3em' }}>
                     Flex
                 </span>
             </h1>
@@ -38,16 +32,8 @@ const NoProjectDisplay = () => (
 const NoTabsDisplay = () => (
     <div className="w-full text-center">
         <div className="pt-10">
-            <h1 className="title">
-                Field Day <br />
-                <span
-                    style={{
-                        fontFamily: '"Lucida Handwriting", cursive',
-                        fontSize: '0.7em',
-                        position: 'relative',
-                        top: '-0.3em',
-                    }}
-                >
+            <h1 className="title">Field Day <br />
+                <span style={{ fontFamily: '"Lucida Handwriting", cursive', fontSize: '0.7em', position: 'relative', top: '-0.3em' }}>
                     Flex
                 </span>
             </h1>
@@ -62,10 +48,6 @@ const NoTabsDisplay = () => (
     </div>
 );
 
-/**
- * Quick and dirty way to get the Current Project to TopNav for ProjectSettings.jsx
- * @type {string}
- */
 let currentProject = 'null';
 export function getCurrentProject() {
     return currentProject;
@@ -77,11 +59,23 @@ export default function TablePage({ Email }) {
     const [showNewProject, setShowNewProject] = useState(false);
     const [showNewTab, setShowNewTab] = useState(false);
     const [showNewEntry, setShowNewEntry] = useState(false);
+    const [showManageColumns, setShowManageColumns] = useState(false);
+    const [columns, setColumns] = useState([]);
 
     useEffect(() => {
         currentProject = selectedProject;
         setSelectedTab('');
     }, [selectedProject]);
+
+    useEffect(() => {
+        const loadColumns = async () => {
+            if (selectedProject && selectedTab) {
+                const columnsData = await getColumnsCollection(selectedProject, selectedTab, Email);
+                setColumns(columnsData);
+            }
+        };
+        loadColumns();
+    }, [selectedProject, selectedTab, Email]);
 
     return (
         <PageWrapper>
@@ -101,6 +95,7 @@ export default function TablePage({ Email }) {
                 <div className="flex items-center pt-3 px-5 pb-3 space-x-6 dark:bg-neutral-950">
                     <p className="text-2xl">{selectedTab} - Entries</p>
                     <Button text="New Entry" onClick={() => setShowNewEntry(true)} />
+                    <Button text="Manage Columns" onClick={() => setShowManageColumns(true)} />
                 </div>
             )}
 
@@ -147,6 +142,15 @@ export default function TablePage({ Email }) {
                     ProjectName={selectedProject}
                     TabName={selectedTab}
                     Email={Email}
+                />
+            )}
+            {showManageColumns && (
+                <ColumnOptions
+                    CancelColumnOptions={() => setShowManageColumns(false)}
+                    ColumnNames={columns.map(col => col.name)}
+                    Email={Email}
+                    SelectedProject={selectedProject}
+                    TabName={selectedTab}
                 />
             )}
         </PageWrapper>
