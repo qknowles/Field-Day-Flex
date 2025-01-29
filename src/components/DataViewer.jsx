@@ -10,6 +10,7 @@ import { Type, notify } from './Notifier';
 import { deleteDoc, doc, writeBatch, collection, getDocs } from 'firebase/firestore';
 import { db } from '../utils/firebase';
 import NewEntry from '../windows/NewEntry';
+import { AiFillEdit } from 'react-icons/ai';
 //import InputLabel from '../components/InputLabel';
 //import { DropdownSelector } from '../components/FormFields';
 //import PageWrapper from '../wrappers/PageWrapper';
@@ -17,12 +18,10 @@ import NewEntry from '../windows/NewEntry';
 
 const STATIC_COLUMNS = [
     { id: 'actions', name: 'Actions', type: 'actions', order: -3 },
-    { id: 'datetime', name: 'Date & Time', type: 'datetime', order: -2 }
+    { id: 'datetime', name: 'Date & Time', type: 'datetime', order: -2 },
 ];
 
-
 const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
-
     const [entries, setEntries] = useState([]);
     const [columns, setColumns] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -42,16 +41,14 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
     const getColumnClass = (columnName) => {
         const classMap = {
             'Date & Time': 'dateTimeColumn',
-            'Site': 'siteColumn',
-            'Year': 'yearColumn',
-            'Taxa': 'taxaColumn',
-            'Genus': 'genusColumn',
-            'Species': 'speciesColumn'
+            Site: 'siteColumn',
+            Year: 'yearColumn',
+            Taxa: 'taxaColumn',
+            Genus: 'genusColumn',
+            Species: 'speciesColumn',
         };
         return classMap[columnName] || '';
     };
-
-
 
     const [editedColumnTypes, setEditedColumnTypes] = useState({});
     const [editedRequiredFields, setEditedRequiredFields] = useState({});
@@ -60,7 +57,7 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
     const defaultColumns = useMemo(() => {
         return [
             { id: 'actions', name: 'Actions', type: 'actions', order: -3 },
-            { id: 'datetime', name: 'Date & Time', type: 'datetime', order: -2 }
+            { id: 'datetime', name: 'Date & Time', type: 'datetime', order: -2 },
         ];
     }, []);
     const fetchColumns = useCallback(async () => {
@@ -68,7 +65,9 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
 
         try {
             const columnsData = await getColumnsCollection(SelectedProject, SelectedTab, Email);
-            const sortedColumns = [...defaultColumns, ...columnsData].sort((a, b) => a.order - b.order);
+            const sortedColumns = [...defaultColumns, ...columnsData].sort(
+                (a, b) => a.order - b.order,
+            );
             setColumns(sortedColumns);
 
             // Not sure this is needed
@@ -100,47 +99,40 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
         }
     }, [SelectedProject, SelectedTab, Email, defaultColumns]);
 
-
-
-
-
-
-
-
     const handleColumnTypeChange = (columnId, newType) => {
-        setEditedColumnTypes(prev => ({
+        setEditedColumnTypes((prev) => ({
             ...prev,
-            [columnId]: newType
+            [columnId]: newType,
         }));
     };
 
     const handleRequiredFieldChange = (columnId, isRequired) => {
-        setEditedRequiredFields(prev => ({
+        setEditedRequiredFields((prev) => ({
             ...prev,
-            [columnId]: isRequired
+            [columnId]: isRequired,
         }));
     };
 
     const handleIdentifierDomainChange = (columnId, isIdentifier) => {
-        setEditedIdentifierDomains(prev => ({
+        setEditedIdentifierDomains((prev) => ({
             ...prev,
-            [columnId]: isIdentifier
+            [columnId]: isIdentifier,
         }));
     };
 
     const handleDropdownOptionsChange = (columnId, options) => {
-        setEditedDropdownOptions(prev => ({
+        setEditedDropdownOptions((prev) => ({
             ...prev,
-            [columnId]: options
+            [columnId]: options,
         }));
     };
 
     const handleAddDropdownOption = (columnId) => {
         const option = prompt('Enter new option:');
         if (option) {
-            setEditedDropdownOptions(prev => ({
+            setEditedDropdownOptions((prev) => ({
                 ...prev,
-                [columnId]: [...(prev[columnId] || []), option]
+                [columnId]: [...(prev[columnId] || []), option],
             }));
         }
     };
@@ -155,7 +147,6 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
             setError('Failed to load entries');
         }
     }, [SelectedProject, SelectedTab, Email]);
-
 
     useEffect(() => {
         let mounted = true;
@@ -200,28 +191,28 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
     // New column management handlers
     const handleColumnOrderChange = (columnId, newValue) => {
         if (newValue === 'DELETE') {
-            setColumnsToDelete(prev => [...prev, columnId]);
+            setColumnsToDelete((prev) => [...prev, columnId]);
         } else {
-            setColumnOrder(prev => ({
+            setColumnOrder((prev) => ({
                 ...prev,
-                [columnId]: parseInt(newValue)
+                [columnId]: parseInt(newValue),
             }));
             // Remove from delete list if it was there
-            setColumnsToDelete(prev => prev.filter(id => id !== columnId));
+            setColumnsToDelete((prev) => prev.filter((id) => id !== columnId));
         }
     };
 
     const handleColumnNameChange = (columnId, newName) => {
-        setEditedColumnNames(prev => ({
+        setEditedColumnNames((prev) => ({
             ...prev,
-            [columnId]: newName
+            [columnId]: newName,
         }));
     };
 
     const handleSaveColumnChanges = async () => {
         if (columnsToDelete.length > 0) {
             const confirmed = window.confirm(
-                'Warning: Deleting columns will permanently remove all data contained in those columns. Continue?'
+                'Warning: Deleting columns will permanently remove all data contained in those columns. Continue?',
             );
             if (!confirmed) return;
         }
@@ -232,28 +223,56 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
             for (const column of columns) {
                 if (columnsToDelete.includes(column.id)) {
                     // Delete column
-                    const columnRef = doc(db, 'Projects', SelectedProject, 'Tabs', SelectedTab, 'Columns', column.id);
+                    const columnRef = doc(
+                        db,
+                        'Projects',
+                        SelectedProject,
+                        'Tabs',
+                        SelectedTab,
+                        'Columns',
+                        column.id,
+                    );
                     batch.delete(columnRef);
 
                     // Remove column from all entries
-                    const entriesSnapshot = await getDocs(collection(db, 'Projects', SelectedProject, 'Tabs', SelectedTab, 'Entries'));
-                    entriesSnapshot.docs.forEach(entryDoc => {
-                        const entryRef = doc(db, 'Projects', SelectedProject, 'Tabs', SelectedTab, 'Entries', entryDoc.id);
+                    const entriesSnapshot = await getDocs(
+                        collection(db, 'Projects', SelectedProject, 'Tabs', SelectedTab, 'Entries'),
+                    );
+                    entriesSnapshot.docs.forEach((entryDoc) => {
+                        const entryRef = doc(
+                            db,
+                            'Projects',
+                            SelectedProject,
+                            'Tabs',
+                            SelectedTab,
+                            'Entries',
+                            entryDoc.id,
+                        );
                         const entryData = entryDoc.data();
                         delete entryData[column.name];
                         batch.update(entryRef, entryData);
                     });
                 } else if (!['actions', 'datetime', 'identifier'].includes(column.id)) {
                     // Update column
-                    const columnRef = doc(db, 'Projects', SelectedProject, 'Tabs', SelectedTab, 'Columns', column.id);
+                    const columnRef = doc(
+                        db,
+                        'Projects',
+                        SelectedProject,
+                        'Tabs',
+                        SelectedTab,
+                        'Columns',
+                        column.id,
+                    );
                     batch.update(columnRef, {
                         name: editedColumnNames[column.id],
                         order: columnOrder[column.id],
                         data_type: editedColumnTypes[column.id],
                         required_field: editedRequiredFields[column.id],
                         identifier_domain: editedIdentifierDomains[column.id],
-                        entry_options: editedColumnTypes[column.id] === 'multple choice' ?
-                            editedDropdownOptions[column.id] : []
+                        entry_options:
+                            editedColumnTypes[column.id] === 'multple choice'
+                                ? editedDropdownOptions[column.id]
+                                : [],
                     });
                 }
             }
@@ -269,14 +288,15 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
         }
     };
     const handleEdit = async (entry) => {
-
-        const editWindow = <NewEntry
-            CloseNewEntry={() => { }}
-            ProjectName={SelectedProject}
-            TabName={SelectedTab}
-            Email={Email}
-            existingEntry={entry}
-        />;
+        const editWindow = (
+            <NewEntry
+                CloseNewEntry={() => {}}
+                ProjectName={SelectedProject}
+                TabName={SelectedTab}
+                Email={Email}
+                existingEntry={entry}
+            />
+        );
         // setEditWindow(editWindow);  this is not working
     };
 
@@ -285,7 +305,9 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
         if (!confirmed) return;
 
         try {
-            await deleteDoc(doc(db, 'Projects', SelectedProject, 'Tabs', SelectedTab, 'Entries', entryId));
+            await deleteDoc(
+                doc(db, 'Projects', SelectedProject, 'Tabs', SelectedTab, 'Entries', entryId),
+            );
             await fetchEntries(); // Refresh entries
             notify(Type.success, 'Entry deleted successfully');
         } catch (error) {
@@ -308,12 +330,10 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
         });
     }, [entries, sortConfig]);
 
-
     const paginatedEntries = React.useMemo(() => {
         const startIndex = (currentPage - 1) * batchSize;
         return sortedEntries.slice(startIndex, startIndex + batchSize);
     }, [sortedEntries, currentPage, batchSize]);
-
 
     const ManageColumnsModal = () => (
         <WindowWrapper
@@ -333,12 +353,18 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
                             onChange={(e) => handleColumnNameChange(column.id, e.target.value)}
                         />
                         <select
-                            value={columnsToDelete.includes(column.id) ? 'DELETE' : columnOrder[column.id]}
+                            value={
+                                columnsToDelete.includes(column.id)
+                                    ? 'DELETE'
+                                    : columnOrder[column.id]
+                            }
                             onChange={(e) => handleColumnOrderChange(column.id, e.target.value)}
                             className="border rounded px-2 py-1"
                         >
-                            {Array.from({ length: columns.length }, (_, i) => i + 1).map(num => (
-                                <option key={num} value={num}>{num}</option>
+                            {Array.from({ length: columns.length }, (_, i) => i + 1).map((num) => (
+                                <option key={num} value={num}>
+                                    {num}
+                                </option>
                             ))}
                             <option value="DELETE">DELETE</option>
                         </select>
@@ -383,33 +409,45 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
                     <table className="w-full border-collapse">
                         <thead>
                             <tr className="bg-neutral-100 dark:bg-neutral-800">
-                                <th className="p-2 text-left border-b font-semibold w-32">Actions</th>
-                                <th className="dateTimeColumn p-2 text-left border-b font-semibold">Date & Time</th>
-                                {columns.filter(col => !['actions', 'datetime'].includes(col.id)).map((column) => (
-                                    <th
-                                        key={column.id}
-                                        className={`p-2 text-left border-b font-semibold cursor-pointer ${column.type === 'identifier' ? 'min-w-[150px]' : ''
+                                <th className="p-2 text-left border-b font-semibold w-32">
+                                    Actions
+                                </th>
+                                <th className="dateTimeColumn p-2 text-left border-b font-semibold">
+                                    Date & Time
+                                </th>
+                                {columns
+                                    .filter((col) => !['actions', 'datetime'].includes(col.id))
+                                    .map((column) => (
+                                        <th
+                                            key={column.id}
+                                            className={`p-2 text-left border-b font-semibold cursor-pointer ${
+                                                column.type === 'identifier' ? 'min-w-[150px]' : ''
                                             } ${getColumnClass(column.name)}`}
-                                        onClick={() => handleSort(column.name)}
-                                    >
-                                        {column.name}
-                                        {sortConfig.key === column.name && (
-                                            <span className="ml-1">
-                                                {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                                            </span>
-                                        )}
-                                    </th>
-                                ))}
+                                            onClick={() => handleSort(column.name)}
+                                        >
+                                            {column.name}
+                                            {sortConfig.key === column.name && (
+                                                <span className="ml-1">
+                                                    {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                                                </span>
+                                            )}
+                                        </th>
+                                    ))}
                             </tr>
                         </thead>
                         <tbody>
                             {paginatedEntries.map((entry) => (
-                                <tr key={entry.id} className="hover:bg-neutral-100 dark:hover:bg-neutral-800">
+                                <tr
+                                    key={entry.id}
+                                    className="hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                                >
                                     <td className="p-2 border-b w-32">
                                         <div className="flex space-x-2">
                                             <Button
-                                                text="Edit"
                                                 onClick={() => handleEdit(entry)}
+                                                icon={AiFillEdit}
+                                                flexible={true}
+                                                className={'flex items-center justify-center'}
                                             />
                                             <Button
                                                 text="Delete"
@@ -420,15 +458,20 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
                                     <td className="dateTimeColumn text-left p-2 border-b">
                                         {entry.entry_data?.['Date & Time'] || 'N/A'}
                                     </td>
-                                    {columns.filter(col => !['actions', 'datetime'].includes(col.id)).map((column) => (
-                                        <td
-                                            key={`${entry.id}-${column.id}`}
-                                            className={`p-2 border-b text-left ${column.type === 'identifier' ? 'min-w-[150px]' : ''
+                                    {columns
+                                        .filter((col) => !['actions', 'datetime'].includes(col.id))
+                                        .map((column) => (
+                                            <td
+                                                key={`${entry.id}-${column.id}`}
+                                                className={`p-2 border-b text-left ${
+                                                    column.type === 'identifier'
+                                                        ? 'min-w-[150px]'
+                                                        : ''
                                                 } ${getColumnClass(column.name)}`}
-                                        >
-                                            {entry.entry_data?.[column.name] || 'N/A'}
-                                        </td>
-                                    ))}
+                                            >
+                                                {entry.entry_data?.[column.name] || 'N/A'}
+                                            </td>
+                                        ))}
                                 </tr>
                             ))}
                         </tbody>
