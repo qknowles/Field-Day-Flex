@@ -50,7 +50,7 @@ export default function Button({ className, flexible, text, onClick, disabled, i
             >
                 {icon && (
                     <motion.div layout key="icon" className="rounded-md ml-2">
-                        {typeof icon === "function" ? React.createElement(icon) : icon}
+                        {typeof icon === 'function' ? React.createElement(icon) : icon}
                     </motion.div>
                 )}
 
