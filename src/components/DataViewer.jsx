@@ -10,6 +10,7 @@ import { Type, notify } from './Notifier';
 import { deleteDoc, doc, writeBatch, collection, getDocs } from 'firebase/firestore';
 import { db } from '../utils/firebase';
 import NewEntry from '../windows/NewEntry';
+import { AiFillEdit } from 'react-icons/ai';
 //import InputLabel from '../components/InputLabel';
 //import { DropdownSelector } from '../components/FormFields';
 //import PageWrapper from '../wrappers/PageWrapper';
@@ -408,8 +409,10 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
                                     <td className="p-2 border-b w-32">
                                         <div className="flex space-x-2">
                                             <Button
-                                                text="Edit"
                                                 onClick={() => handleEdit(entry)}
+                                                icon={AiFillEdit}
+                                                flexible={true}
+                                                className={"flex items-center justify-center"}
                                             />
                                             <Button
                                                 text="Delete"
