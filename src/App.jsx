@@ -3,11 +3,14 @@ import TablePage from './pages/TablePage';
 import HomePage from './pages/HomePage';
 import TopNav from './components/TopNav';
 import { Notifier } from './components/Notifier';
+import { useAtom } from 'jotai';
+import {currentUserEmail} from './utils/jotai.js';
+
 export let updateUserEmail = null;
 
 function App() {
     const [authenticated, setAuthenticated] = useState(false);
-    const [email, setEmail] = useState('');
+    const [email, setEmail] = useAtom(currentUserEmail);
     updateUserEmail = (email) => {
         setEmail(email);
     };
