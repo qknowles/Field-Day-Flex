@@ -49,10 +49,11 @@ export default function Button({ className, flexible, text, onClick, disabled, i
                 animate={buttonControls}
             >
                 {icon && (
-                    <motion.div layout key="icon" className="text-2xl rounded-md">
-                        {icon}
+                    <motion.div layout key="icon" className="rounded-md ml-2">
+                        {typeof icon === 'function' ? React.createElement(icon) : icon}
                     </motion.div>
                 )}
+
                 {flexible ? (
                     <motion.div
                         variants={slideInVariant}
