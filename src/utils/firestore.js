@@ -145,6 +145,35 @@ export const getProjectNames = async (email) => {
     }
 };
 
+export const getProjectIdByName = async (projectName) => {
+    const projectRef = collection(db, 'Projects');
+    const projectsQuery = query(projectRef, where('project_name', '==', projectName));
+    const querySnapshot = await getDocs(projectsQuery);
+
+    if (!querySnapshot.empty) {
+        const projectDoc = querySnapshot.docs[0];
+        console.log('Project ID:', projectDoc.id);
+        return projectDoc.id;
+    } else {
+        throw new Error('Project not found');
+    }
+};
+
+export const deleteEntry = async (projectName, tabName, entryId) => {
+    try {
+        const projectId = await getProjectIdByName(projectName);
+        if (!projectId) {
+            throw new Error('Project ID not found for the selected project');
+        }
+        const docRef = doc(db, 'Projects', projectId, 'Tabs', tabName, 'Entries', entryId);
+        console.log('Deleting document:', docRef.path); // Log the document path
+        await deleteDoc(docRef);
+    } catch (error) {
+        console.error('Error deleting entry:', error);
+        throw error;
+    }
+};
+
 export const getDocumentIdByProjectName = async (projectName) => {
     try {
         const projectQuery = query(

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo} from 'react';
-import { getColumnsCollection, getEntriesForTab, getProjectFields } from '../utils/firestore';
+import { getColumnsCollection, getEntriesForTab, getProjectFields, deleteEntry } from '../utils/firestore'; // Import deleteEntry
 import TableTools from '../wrappers/TableTools';
 import { Pagination } from './Pagination';
 import { useAtom } from 'jotai';
@@ -283,9 +283,10 @@ const defaultColumns = useMemo(() => {
     const handleDelete = async (entryId) => {
         const confirmed = window.confirm('Are you sure you want to delete this entry?');
         if (!confirmed) return;
-    
+
         try {
-            await deleteDoc(doc(db, 'Projects', 'gLWLz4Xv8mQToTUPxS0r', 'Tabs', SelectedTab, 'Entries', entryId));
+            window.confirm("SelectedProject: " + SelectedProject + " SelectedTab: " + SelectedTab + " entryId: " + entryId);
+            await deleteEntry(SelectedProject, SelectedTab, entryId);
             await fetchEntries(); // Refresh entries
             notify(Type.success, 'Entry deleted successfully');
         } catch (error) {
