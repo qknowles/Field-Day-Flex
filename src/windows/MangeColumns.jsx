@@ -31,14 +31,15 @@ export default function ManageColumns({
     const entryTypeOptions = ['number', 'text', 'date', 'multiple choice'];
 
     useEffect(() => {
+        console.log('ManageColumns mounted with props:', { SelectedProject, TabName, Email });
         loadColumns();
     }, []);
-
+    
     const loadColumns = async () => {
         try {
+            console.log('Loading columns for:', SelectedProject, TabName, Email);
             const columnsData = await getColumnsCollection(SelectedProject, TabName, Email);
-            setColumns(columnsData);
-
+            console.log('Loaded columns:', columnsData);
             // Initialize state for each column
             const orderObj = {};
             const namesObj = {};
@@ -222,7 +223,12 @@ export default function ManageColumns({
             </div>
         </WindowWrapper>
     );
-
+    console.log('Current columns state:', {
+        columns,
+        editedColumnNames,
+        editingColumn,
+        columnOrder
+    });
     return (
         <>
             <WindowWrapper
