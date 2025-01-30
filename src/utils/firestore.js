@@ -146,7 +146,6 @@ export const getProjectIdByName = async (projectName) => {
 
     if (!querySnapshot.empty) {
         const projectDoc = querySnapshot.docs[0];
-        console.log('Project ID:', projectDoc.id);
         return projectDoc.id;
     } else {
         throw new Error('Project not found');

@@ -308,7 +308,6 @@ const DataViewer = () => {
         if (!confirmed) return;
 
         try {
-            window.confirm("SelectedProject: " + SelectedProject + " SelectedTab: " + SelectedTab + " entryId: " + entryId);
             await deleteEntry(SelectedProject, SelectedTab, entryId);
             await fetchEntries(); // Refresh entries
             notify(Type.success, 'Entry deleted successfully');
