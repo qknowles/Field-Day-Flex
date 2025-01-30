@@ -27,27 +27,36 @@ export default function ManageColumns({
     const [editedIdentifierDomains, setEditedIdentifierDomains] = useState({});
     const [editedDropdownOptions, setEditedDropdownOptions] = useState({});
     const [tempEntryOptions, setTempEntryOptions] = useState([]);
-
+    const [loading, setLoading] = useState(true);
     const entryTypeOptions = ['number', 'text', 'date', 'multiple choice'];
 
     useEffect(() => {
         console.log('ManageColumns mounted with props:', { SelectedProject, TabName, Email });
         loadColumns();
-    }, []);
-    
+    }, [SelectedProject, TabName, Email]);
+   
+
     const loadColumns = async () => {
         try {
+            setLoading(true);
             console.log('Loading columns for:', SelectedProject, TabName, Email);
             const columnsData = await getColumnsCollection(SelectedProject, TabName, Email);
             console.log('Loaded columns:', columnsData);
-            // Initialize state for each column
+    
+            if (!columnsData || columnsData.length === 0) {
+                notify(Type.error, 'No columns found');
+                return;
+            }
+    
+            setColumns(columnsData);
+    
             const orderObj = {};
             const namesObj = {};
             const typesObj = {};
             const requiredObj = {};
             const identifierObj = {};
             const optionsObj = {};
-
+    
             columnsData.forEach((col, index) => {
                 orderObj[col.id] = index + 1;
                 namesObj[col.id] = col.name;
@@ -56,7 +65,7 @@ export default function ManageColumns({
                 identifierObj[col.id] = col.identifier_domain || false;
                 optionsObj[col.id] = col.entry_options || [];
             });
-
+    
             setColumnOrder(orderObj);
             setEditedColumnNames(namesObj);
             setEditedColumnTypes(typesObj);
@@ -66,6 +75,8 @@ export default function ManageColumns({
         } catch (error) {
             console.error('Error loading columns:', error);
             notify(Type.error, 'Failed to load columns');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -239,36 +250,42 @@ export default function ManageColumns({
                 rightButtonText="Save Changes"
             >
                 <div className="flex flex-col space-y-4 p-4">
-                    {columns.map((column) => (
-                        <div key={column.id} className="flex items-center space-x-4 p-2 bg-neutral-100 dark:bg-neutral-800 rounded">
-                            <input
-                                type="text"
-                                value={editedColumnNames[column.id]}
-                                onChange={(e) => handleColumnNameChange(column.id, e.target.value)}
-                                className="flex-grow border rounded px-2 py-1"
-                            />
-                            <select
-                                value={columnsToDelete.includes(column.id) ? 'DELETE' : columnOrder[column.id]}
-                                onChange={(e) => handleColumnOrderChange(column.id, e.target.value)}
-                                className="border rounded px-2 py-1"
-                            >
-                                {Array.from({ length: columns.length }, (_, i) => i + 1).map(num => (
-                                    <option key={num} value={num}>{num}</option>
-                                ))}
-                                <option value="DELETE">DELETE</option>
-                            </select>
-                            <Button
-                                text="Edit"
-                                onClick={() => {
-                                    setTempEntryOptions(editedDropdownOptions[column.id] || []);
-                                    setEditingColumn(column);
-                                }}
-                            />
-                        </div>
-                    ))}
+                    {loading ? (
+                        <div className="text-center">Loading columns...</div>
+                    ) : columns.length === 0 ? (
+                        <div className="text-center">No columns found</div>
+                    ) : (
+                        columns.map((column) => (
+                            <div key={column.id} className="flex items-center space-x-4 p-2 bg-neutral-100 dark:bg-neutral-800 rounded">
+                                <input
+                                    type="text"
+                                    value={editedColumnNames[column.id]}
+                                    onChange={(e) => handleColumnNameChange(column.id, e.target.value)}
+                                    className="flex-grow border rounded px-2 py-1"
+                                />
+                                <select
+                                    value={columnsToDelete.includes(column.id) ? 'DELETE' : columnOrder[column.id]}
+                                    onChange={(e) => handleColumnOrderChange(column.id, e.target.value)}
+                                    className="border rounded px-2 py-1"
+                                >
+                                    {Array.from({ length: columns.length }, (_, i) => i + 1).map(num => (
+                                        <option key={num} value={num}>{num}</option>
+                                    ))}
+                                    <option value="DELETE">DELETE</option>
+                                </select>
+                                <Button
+                                    text="Edit"
+                                    onClick={() => {
+                                        setTempEntryOptions(editedDropdownOptions[column.id] || []);
+                                        setEditingColumn(column);
+                                    }}
+                                />
+                            </div>
+                        ))
+                    )}
                 </div>
             </WindowWrapper>
-
+    
             {editingColumn && <ColumnEditModal column={editingColumn} />}
         </>
     );
