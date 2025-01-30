@@ -9,6 +9,7 @@ import NewEntry from '../windows/NewEntry';
 import ColumnOptions from '../windows/ColumnOptions';
 import Button from '../components/Button';
 import { getColumnsCollection } from '../utils/firestore';
+import ManageColumns from '../windows/MangeColumns';
 
 const NoProjectDisplay = () => (
     <div className="w-full text-center">
@@ -144,15 +145,14 @@ export default function TablePage({ Email }) {
                     Email={Email}
                 />
             )}
-            {showManageColumns && (
-                <ColumnOptions
-                    CancelColumnOptions={() => setShowManageColumns(false)}
-                    ColumnNames={columns.map(col => col.name)}
-                    Email={Email}
-                    SelectedProject={selectedProject}
-                    TabName={selectedTab}
-                />
-            )}
+           {showManageColumns && (
+    <ManageColumns
+        CloseManageColumns={() => setShowManageColumns(false)}
+        Email={Email}
+        SelectedProject={selectedProject}
+        TabName={selectedTab}
+    />
+)}
         </PageWrapper>
     );
 }
