@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { getColumnsCollection, getEntriesForTab, getProjectFields } from '../utils/firestore';
+import React, { useState, useEffect, useCallback, useMemo} from 'react';
+import { getColumnsCollection, getEntriesForTab, getProjectFields, deleteEntry } from '../utils/firestore'; // Import deleteEntry
+import TableTools from '../wrappers/TableTools';
 import { Pagination } from './Pagination';
 import Button from './Button';
 import WindowWrapper from '../wrappers/WindowWrapper';
@@ -307,9 +308,8 @@ const DataViewer = () => {
         if (!confirmed) return;
 
         try {
-            await deleteDoc(
-                doc(db, 'Projects', SelectedProject, 'Tabs', SelectedTab, 'Entries', entryId),
-            );
+            window.confirm("SelectedProject: " + SelectedProject + " SelectedTab: " + SelectedTab + " entryId: " + entryId);
+            await deleteEntry(SelectedProject, SelectedTab, entryId);
             await fetchEntries(); // Refresh entries
             notify(Type.success, 'Entry deleted successfully');
         } catch (error) {
