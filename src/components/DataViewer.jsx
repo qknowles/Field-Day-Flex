@@ -10,7 +10,7 @@ import { Type, notify } from './Notifier';
 import { deleteDoc, doc, writeBatch, collection, getDocs } from 'firebase/firestore';
 import { db } from '../utils/firebase';
 import NewEntry from '../windows/NewEntry';
-import { AiFillEdit } from 'react-icons/ai';
+import { AiFillEdit, AiFillDelete } from 'react-icons/ai';
 //import InputLabel from '../components/InputLabel';
 //import { DropdownSelector } from '../components/FormFields';
 //import PageWrapper from '../wrappers/PageWrapper';
@@ -450,8 +450,10 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
                                                 className={'flex items-center justify-center'}
                                             />
                                             <Button
-                                                text="Delete"
                                                 onClick={() => handleDelete(entry.id)}
+                                                icon={AiFillDelete}
+                                                flexible={true}
+                                                className={'flex items-center justify-center'}
                                             />
                                         </div>
                                     </td>
