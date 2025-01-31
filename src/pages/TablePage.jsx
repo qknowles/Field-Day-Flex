@@ -87,8 +87,6 @@ export default function TablePage({ Email }) {
                 SetSelectedProject={setSelectedProject}
                 SelectedTab={selectedTab}
                 SetSelectedTab={setSelectedTab}
-                OnNewProject={() => setShowNewProject(true)}
-                OnNewTab={() => setShowNewTab(true)}
             />
 
             {/* Table Management Buttons */}
@@ -115,28 +113,7 @@ export default function TablePage({ Email }) {
                 )}
             </div>
 
-            {/* Modals */}
-            {showNewProject && (
-                <NewProject
-                    CancelProject={() => setShowNewProject(false)}
-                    OpenNewProject={(projectName) => {
-                        setShowNewProject(false);
-                        setSelectedProject(projectName);
-                    }}
-                    Email={Email}
-                />
-            )}
-            {showNewTab && (
-                <NewTab
-                    CancelTab={() => setShowNewTab(false)}
-                    OpenNewTab={(tabName) => {
-                        setShowNewTab(false);
-                        setSelectedTab(tabName);
-                    }}
-                    Email={Email}
-                    SelectedProject={selectedProject}
-                />
-            )}
+            {/* Pages */}
             {showNewEntry && (
                 <NewEntry
                     CloseNewEntry={() => setShowNewEntry(false)}
