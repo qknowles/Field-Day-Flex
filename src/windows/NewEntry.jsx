@@ -90,9 +90,12 @@ export default function NewEntry({ CloseNewEntry, ProjectName, TabName, Email })
     };
 
     const renderDynamicInputs = () => {
-        return columnsCollection.map((column, index) => {
+        // Ensure columns are sorted using the same `order` field as the table
+        const sortedColumns = [...columnsCollection].sort((a, b) => a.order - b.order);
+    
+        return sortedColumns.map((column, index) => {
             const { name, data_type, entry_options, required_field } = column;
-
+    
             if (data_type === 'multiple choice') {
                 return (
                     <DropdownSelector
@@ -105,13 +108,13 @@ export default function NewEntry({ CloseNewEntry, ProjectName, TabName, Email })
                     />
                 );
             }
-
+    
             const inputType = data_type === 'number' 
                 ? 'number' 
                 : data_type === 'date' 
                 ? 'datetime-local' 
                 : 'text';
-
+    
             return (
                 <InputLabel
                     key={index}
@@ -135,6 +138,7 @@ export default function NewEntry({ CloseNewEntry, ProjectName, TabName, Email })
             );
         });
     };
+    
 
     return (
         <WindowWrapper
