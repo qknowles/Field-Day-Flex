@@ -7,21 +7,25 @@ import {
     getProjectFields,
     updateDocInCollection,
     addMemberToProject,
-    getDocumentIdByProjectName
+    getDocumentIdByProjectName,
 } from '../utils/firestore.js';
 import Button from '../components/Button.jsx';
 import { notify, Type } from '../components/Notifier.jsx';
 import { updateProjectName } from '../components/TabBar.jsx';
 
-export default function ProjectSettings({ projectNameProp = "NoNamePassed", CloseProjectSettings, emailProp }) {
+export default function ProjectSettings({
+    projectNameProp = 'NoNamePassed',
+    CloseProjectSettings,
+    emailProp,
+}) {
     const [isAuthorized, setIsAuthorized] = useState(false);
     const [documentId, setDocumentId] = useState(null); // Start with null, indicating it's unresolved
     const [projectName, setProjectName] = useState(projectNameProp);
     const [newMemberSelectedRole, setNewMemberSelectedRole] = useState('Select Role');
     const [newMemberEmail, setNewMemberEmail] = useState('');
     const [members, setMembers] = useState([
-        { email: "There is no project selected!", role: "Contributor" },
-        { email: "Does the project exist in the DB?", role: "Owner" }
+        { email: 'There is no project selected!', role: 'Contributor' },
+        { email: 'Does the project exist in the DB?', role: 'Owner' },
     ]);
 
     useEffect(() => {
@@ -51,14 +55,18 @@ export default function ProjectSettings({ projectNameProp = "NoNamePassed", Clos
 
     const fetchProjectData = async () => {
         try {
-            const membersData = await getProjectFields(documentId, ['contributors', 'admins', 'owners']);
+            const membersData = await getProjectFields(documentId, [
+                'contributors',
+                'admins',
+                'owners',
+            ]);
 
             if (membersData) {
                 const { contributors = [], admins = [], owners = [] } = membersData;
                 const updatedMembers = [
-                    ...contributors.map(email => ({ email, role: "Contributor" })),
-                    ...admins.map(email => ({ email, role: "Admin" })),
-                    ...owners.map(email => ({ email, role: "Owner" })),
+                    ...contributors.map((email) => ({ email, role: 'Contributor' })),
+                    ...admins.map((email) => ({ email, role: 'Admin' })),
+                    ...owners.map((email) => ({ email, role: 'Owner' })),
                 ];
 
                 updatedMembers.sort((a, b) => {
@@ -74,51 +82,55 @@ export default function ProjectSettings({ projectNameProp = "NoNamePassed", Clos
 
                 // This was accidentally commited in the same commit as Task 420. These lines are for Task 418:
                 const currUser = updatedMembers.find((member) => member.email === emailProp);
-                if(currUser && ((currUser.role === "Owner") || (currUser.role === "Admin"))) {
+                if (currUser && (currUser.role === 'Owner' || currUser.role === 'Admin')) {
                     setIsAuthorized(true);
                 } else setIsAuthorized(false);
             }
         } catch (err) {
-            console.error("Error fetching project data:", err);
+            console.error('Error fetching project data:', err);
         }
     };
 
     async function addMember() {
         if (!newMemberEmail || newMemberEmail.length === 0) {
-            notify(Type.error, "Please enter member email.");
+            notify(Type.error, 'Please enter member email.');
             return;
         }
         if (newMemberSelectedRole === 'Select Role') {
-            notify(Type.error, "Please select a role.");
+            notify(Type.error, 'Please select a role.');
             return;
         }
-        await addMemberToProject(documentId, newMemberSelectedRole.toLowerCase() + "s", newMemberEmail);
+        await addMemberToProject(
+            documentId,
+            newMemberSelectedRole.toLowerCase() + 's',
+            newMemberEmail,
+        );
         await fetchProjectData();
     }
 
     async function updateMemberRole() {
         try {
             const contributors = members
-                .filter((member) => member.role === "Contributor")
+                .filter((member) => member.role === 'Contributor')
                 .map((member) => member.email);
             const admins = members
-                .filter((member) => member.role === "Admin")
+                .filter((member) => member.role === 'Admin')
                 .map((member) => member.email);
             const owners = members
-                .filter((member) => member.role === "Owner")
+                .filter((member) => member.role === 'Owner')
                 .map((member) => member.email);
 
             const updatedData = { contributors, admins, owners };
 
-            const success = await updateDocInCollection("Projects", documentId, updatedData);
+            const success = await updateDocInCollection('Projects', documentId, updatedData);
 
             if (success) {
-                console.log("Members successfully synced to Firebase:", updatedData);
+                console.log('Members successfully synced to Firebase:', updatedData);
             } else {
-                console.error("Failed to sync members to Firebase.");
+                console.error('Failed to sync members to Firebase.');
             }
         } catch (error) {
-            console.error("Error updating Firebase:", error);
+            console.error('Error updating Firebase:', error);
         }
     }
 
@@ -129,29 +141,29 @@ export default function ProjectSettings({ projectNameProp = "NoNamePassed", Clos
     }
 
     async function removeMember(email, role) {
-        if(role === "Owner") {
-            notify(Type.error, "Cannot remove an owner from the project.");
+        if (role === 'Owner') {
+            notify(Type.error, 'Cannot remove an owner from the project.');
             return;
         }
         try {
             // Map the role to the appropriate Firestore field
-            const field = role.toLowerCase() + "s"; // "Contributor" -> "contributors", "Admin" -> "admins", etc.
+            const field = role.toLowerCase() + 's'; // "Contributor" -> "contributors", "Admin" -> "admins", etc.
 
             // Get the current list of members in the field
             const updatedFieldMembers = members
                 .filter((member) => !(member.email === email && member.role === role)) // Remove the matching member
-                .filter((member) => member.role.toLowerCase() + "s" === field) // Filter only those in the same role field
+                .filter((member) => member.role.toLowerCase() + 's' === field) // Filter only those in the same role field
                 .map((member) => member.email); // Only keep the email
 
             // Update Firestore
             const updateData = {
                 [field]: updatedFieldMembers,
             };
-            await updateDocInCollection("Projects", documentId, updateData);
+            await updateDocInCollection('Projects', documentId, updateData);
 
             // Update local state
             setMembers((prevMembers) =>
-                prevMembers.filter((member) => !(member.email === email && member.role === role))
+                prevMembers.filter((member) => !(member.email === email && member.role === role)),
             );
 
             notify(Type.success, `${email} has been successfully removed as a ${role}.`);
@@ -160,7 +172,6 @@ export default function ProjectSettings({ projectNameProp = "NoNamePassed", Clos
             notify(Type.error, `Failed to remove ${email}.`);
         }
     }
-
 
     // Component depends on the docID ... we do nothing until that promise resolves.
     if (!documentId) {
@@ -172,7 +183,9 @@ export default function ProjectSettings({ projectNameProp = "NoNamePassed", Clos
         return (
             <WindowWrapper
                 header={`Manage ${projectNameProp} Project`}
-                onLeftButton={() => { CloseProjectSettings() }}
+                onLeftButton={() => {
+                    CloseProjectSettings();
+                }}
                 leftButtonText="Close"
             >
                 <div className="p-5">
@@ -184,12 +197,15 @@ export default function ProjectSettings({ projectNameProp = "NoNamePassed", Clos
     }
     // TODO: remove these comments I just needed the git commit.
 
-
     return (
         <WindowWrapper
             header={`Manage ${projectNameProp} Project`}
-            onLeftButton={() => { CloseProjectSettings() }}
-            onRightButton={() => { saveChanges() }}
+            onLeftButton={() => {
+                CloseProjectSettings();
+            }}
+            onRightButton={() => {
+                saveChanges();
+            }}
             leftButtonText="Cancel"
             rightButtonText="Save Project Name"
         >
@@ -241,11 +257,14 @@ export default function ProjectSettings({ projectNameProp = "NoNamePassed", Clos
                                 <option value="Owner">Owner</option>
                             </select>
                         }
-                    /> <br />
+                    />{' '}
+                    <br />
                     <div className="flex justify-end mt-4">
                         <Button
                             text="Add member"
-                            onClick={() => { addMember() }}
+                            onClick={() => {
+                                addMember();
+                            }}
                         />
                     </div>
                 </div>
@@ -255,16 +274,13 @@ export default function ProjectSettings({ projectNameProp = "NoNamePassed", Clos
                     <h3 className="font-semibold">Members</h3>
                     <div className="space-y-2">
                         {members.map((member, index) => (
-                            <div
-                                key={index}
-                                className="flex items-center space-x-4 p-2"
-                            >
+                            <div key={index} className="flex items-center space-x-4 p-2">
                                 {/* Delete Button */}
                                 <button
                                     className="text-red-500 font-bold"
                                     onClick={() => {
-                                        console.log("Calling remove member")
-                                        removeMember(member.email, member.role)
+                                        console.log('Calling remove member');
+                                        removeMember(member.email, member.role);
                                     }}
                                 >
                                     <AiFillDelete />
@@ -274,10 +290,10 @@ export default function ProjectSettings({ projectNameProp = "NoNamePassed", Clos
 
                                 {/* Role Selector */}
                                 <DropdownSelector
-                                    options={["Owner", "Admin", "Contributor"]}
+                                    options={['Owner', 'Admin', 'Contributor']}
                                     selection={member.role}
                                     setSelection={(newRole) => {
-                                        console.log("old members", members);
+                                        console.log('old members', members);
                                         const oldMembers = members;
                                         setMembers(() => {
                                             return oldMembers.map((m) => {
@@ -286,8 +302,8 @@ export default function ProjectSettings({ projectNameProp = "NoNamePassed", Clos
                                                 }
                                                 return m;
                                             });
-                                        })
-                                        console.log("new members", members);
+                                        });
+                                        console.log('new members', members);
                                     }}
                                 />
                             </div>
