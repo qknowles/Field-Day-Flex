@@ -14,8 +14,16 @@ import ManageColumns from '../windows/MangeColumns';
 const NoProjectDisplay = () => (
     <div className="w-full text-center">
         <div className="pt-10">
-            <h1 className="title">Field Day <br />
-                <span style={{ fontFamily: '"Lucida Handwriting", cursive', fontSize: '0.7em', position: 'relative', top: '-0.3em' }}>
+            <h1 className="title">
+                Field Day <br />
+                <span
+                    style={{
+                        fontFamily: '"Lucida Handwriting", cursive',
+                        fontSize: '0.7em',
+                        position: 'relative',
+                        top: '-0.3em',
+                    }}
+                >
                     Flex
                 </span>
             </h1>
@@ -33,8 +41,16 @@ const NoProjectDisplay = () => (
 const NoTabsDisplay = () => (
     <div className="w-full text-center">
         <div className="pt-10">
-            <h1 className="title">Field Day <br />
-                <span style={{ fontFamily: '"Lucida Handwriting", cursive', fontSize: '0.7em', position: 'relative', top: '-0.3em' }}>
+            <h1 className="title">
+                Field Day <br />
+                <span
+                    style={{
+                        fontFamily: '"Lucida Handwriting", cursive',
+                        fontSize: '0.7em',
+                        position: 'relative',
+                        top: '-0.3em',
+                    }}
+                >
                     Flex
                 </span>
             </h1>
@@ -122,14 +138,14 @@ export default function TablePage({ Email }) {
                     Email={Email}
                 />
             )}
-           {showManageColumns && (
-    <ManageColumns
-        CloseManageColumns={() => setShowManageColumns(false)}
-        Email={Email}
-        SelectedProject={selectedProject}
-        TabName={selectedTab}
-    />
-)}
+            {showManageColumns && (
+                <ManageColumns
+                    CloseManageColumns={() => setShowManageColumns(false)}
+                    Email={Email}
+                    SelectedProject={selectedProject}
+                    TabName={selectedTab}
+                />
+            )}
         </PageWrapper>
     );
 }

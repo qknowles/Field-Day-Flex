@@ -4,7 +4,7 @@ import { currentProjectName } from '../utils/jotai';
 import AccountSettings from '../windows/AccountSettings';
 import ProjectSettings from '../windows/ProjectSettings';
 import ManageMembership from '../windows/MembershipWindow';
-import Button from './Button';  // Import Button component
+import Button from './Button'; // Import Button component
 
 export default function Hamburger({ Email }) {
     const [menuOpen, setMenuOpen] = useState(false);
