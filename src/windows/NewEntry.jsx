@@ -18,12 +18,19 @@ export default function NewEntry({ CloseNewEntry, ProjectName, TabName, Email })
 
     const formatDateTime = (date) => {
         const d = new Date(date);
-        return d.getFullYear() + '/' +
-            String(d.getMonth() + 1).padStart(2, '0') + '/' +
-            String(d.getDate()).padStart(2, '0') + ' ' +
-            String(d.getHours()).padStart(2, '0') + ':' +
-            String(d.getMinutes()).padStart(2, '0') + ':' +
-            String(d.getSeconds()).padStart(2, '0');
+        return (
+            d.getFullYear() +
+            '/' +
+            String(d.getMonth() + 1).padStart(2, '0') +
+            '/' +
+            String(d.getDate()).padStart(2, '0') +
+            ' ' +
+            String(d.getHours()).padStart(2, '0') +
+            ':' +
+            String(d.getMinutes()).padStart(2, '0') +
+            ':' +
+            String(d.getSeconds()).padStart(2, '0')
+        );
     };
 
     const loadCollection = async () => {
@@ -68,7 +75,10 @@ export default function NewEntry({ CloseNewEntry, ProjectName, TabName, Email })
             }
 
             if (data_type === 'date' && !/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}$/.test(value)) {
-                notify(Type.error, `The field "${name}" must be in the format YYYY/MM/DD HH:MM:SS.`);
+                notify(
+                    Type.error,
+                    `The field "${name}" must be in the format YYYY/MM/DD HH:MM:SS.`,
+                );
                 return false;
             }
 
@@ -92,10 +102,10 @@ export default function NewEntry({ CloseNewEntry, ProjectName, TabName, Email })
     const renderDynamicInputs = () => {
         // Ensure columns are sorted using the same `order` field as the table
         const sortedColumns = [...columnsCollection].sort((a, b) => a.order - b.order);
-    
+
         return sortedColumns.map((column, index) => {
             const { name, data_type, entry_options, required_field } = column;
-    
+
             if (data_type === 'multiple choice') {
                 return (
                     <DropdownSelector
@@ -108,13 +118,14 @@ export default function NewEntry({ CloseNewEntry, ProjectName, TabName, Email })
                     />
                 );
             }
-    
-            const inputType = data_type === 'number' 
-                ? 'number' 
-                : data_type === 'date' 
-                ? 'datetime-local' 
-                : 'text';
-    
+
+            const inputType =
+                data_type === 'number'
+                    ? 'number'
+                    : data_type === 'date'
+                      ? 'datetime-local'
+                      : 'text';
+
             return (
                 <InputLabel
                     key={index}
@@ -125,12 +136,17 @@ export default function NewEntry({ CloseNewEntry, ProjectName, TabName, Email })
                             type={inputType}
                             placeholder={name}
                             required={required_field}
-                            value={data_type === 'date' 
-                                ? parseDateTimeInput(userEntries[name]) 
-                                : userEntries[name] || ''} 
+                            value={
+                                data_type === 'date'
+                                    ? parseDateTimeInput(userEntries[name])
+                                    : userEntries[name] || ''
+                            }
                             onChange={(e) => {
                                 const value = e.target.value;
-                                handleInputChange(name, data_type === 'date' ? formatDateTime(value) : value);
+                                handleInputChange(
+                                    name,
+                                    data_type === 'date' ? formatDateTime(value) : value,
+                                );
                             }}
                         />
                     }
@@ -138,7 +154,6 @@ export default function NewEntry({ CloseNewEntry, ProjectName, TabName, Email })
             );
         });
     };
-    
 
     return (
         <WindowWrapper
@@ -148,9 +163,7 @@ export default function NewEntry({ CloseNewEntry, ProjectName, TabName, Email })
             leftButtonText="Cancel"
             rightButtonText="Submit Entry"
         >
-            <div className="flex flex-col space-y-4">
-                {renderDynamicInputs()}
-            </div>
+            <div className="flex flex-col space-y-4">{renderDynamicInputs()}</div>
         </WindowWrapper>
     );
 }
