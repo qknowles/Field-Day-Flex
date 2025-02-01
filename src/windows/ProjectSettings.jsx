@@ -19,17 +19,15 @@ export default function ProjectSettings({
     emailProp,
 }) {
     const [isAuthorized, setIsAuthorized] = useState(false);
-    const [documentId, setDocumentId] = useState(null); // Start with null, indicating it's unresolved
+    const [isOwner, setIsOwner] = useState(false);
+    const [documentId, setDocumentId] = useState(null);
     const [projectName, setProjectName] = useState(projectNameProp);
     const [newMemberSelectedRole, setNewMemberSelectedRole] = useState('Select Role');
     const [newMemberEmail, setNewMemberEmail] = useState('');
-    const [members, setMembers] = useState([
-        { email: 'There is no project selected!', role: 'Contributor' },
-        { email: 'Does the project exist in the DB?', role: 'Owner' },
-    ]);
+    const [members, setMembers] = useState([]);
+    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
     useEffect(() => {
-        // Fetch document ID on mount
         const fetchDocumentId = async () => {
             try {
                 const docId = await getDocumentIdByProjectName(projectNameProp);
@@ -42,12 +40,11 @@ export default function ProjectSettings({
         fetchDocumentId();
     }, [projectNameProp]);
 
-    // on component mount we fetch everything.. but we need docId first.
     useEffect(() => {
         if (documentId) {
             fetchProjectData();
         }
-    }, [documentId]); // we run this whenever docId gets resolved from the promise
+    }, [documentId]);
 
     useEffect(() => {
         updateMemberRole();
@@ -71,7 +68,6 @@ export default function ProjectSettings({
 
                 updatedMembers.sort((a, b) => {
                     const rolePriority = { Owner: 1, Admin: 2, Contributor: 3 };
-
                     if (rolePriority[a.role] !== rolePriority[b.role]) {
                         return rolePriority[a.role] - rolePriority[b.role];
                     }
@@ -80,11 +76,10 @@ export default function ProjectSettings({
 
                 setMembers(updatedMembers);
 
-                // This was accidentally commited in the same commit as Task 420. These lines are for Task 418:
                 const currUser = updatedMembers.find((member) => member.email === emailProp);
-                if (currUser && (currUser.role === 'Owner' || currUser.role === 'Admin')) {
-                    setIsAuthorized(true);
-                } else setIsAuthorized(false);
+                const isUserOwner = currUser && currUser.role === 'Owner';
+                setIsOwner(isUserOwner);
+                setIsAuthorized(currUser && (currUser.role === 'Owner' || currUser.role === 'Admin'));
             }
         } catch (err) {
             console.error('Error fetching project data:', err);
@@ -100,12 +95,25 @@ export default function ProjectSettings({
             notify(Type.error, 'Please select a role.');
             return;
         }
+
+        // Check if member already exists in any role
+        const existingMember = members.find(member => member.email === newMemberEmail);
+        if (existingMember) {
+            notify(Type.error, `Member ${newMemberEmail} already exists with role ${existingMember.role}`);
+            return;
+        }
+
         await addMemberToProject(
             documentId,
             newMemberSelectedRole.toLowerCase() + 's',
             newMemberEmail,
         );
         await fetchProjectData();
+        
+        // Reset fields only on success
+        setNewMemberEmail('');
+        setNewMemberSelectedRole('Select Role');
+        notify(Type.success, `Added ${newMemberEmail} as ${newMemberSelectedRole}`);
     }
 
     async function updateMemberRole() {
@@ -121,12 +129,9 @@ export default function ProjectSettings({
                 .map((member) => member.email);
 
             const updatedData = { contributors, admins, owners };
-
             const success = await updateDocInCollection('Projects', documentId, updatedData);
 
-            if (success) {
-                console.log('Members successfully synced to Firebase:', updatedData);
-            } else {
+            if (!success) {
                 console.error('Failed to sync members to Firebase.');
             }
         } catch (error) {
@@ -135,57 +140,68 @@ export default function ProjectSettings({
     }
 
     async function saveChanges() {
-        await updateDocInCollection('Projects', documentId, { project_name: `${projectName}` });
-        await fetchProjectData();
-        updateProjectName(`${projectName}`);
+        try {
+            await updateDocInCollection('Projects', documentId, { project_name: projectName });
+            updateProjectName(projectName);
+            notify(Type.success, 'Project updated successfully');
+            CloseProjectSettings();
+        } catch (error) {
+            notify(Type.error, 'Failed to update project');
+        }
+    }
+
+    async function deleteProject() {
+        try {
+            if (!isOwner) {
+                notify(Type.error, 'Only project owners can delete the project');
+                return;
+            }
+            await updateDocInCollection('Projects', documentId, { deleted: true });
+            notify(Type.success, 'Project deleted successfully');
+            CloseProjectSettings();
+        } catch (error) {
+            notify(Type.error, 'Failed to delete project');
+        }
     }
 
     async function removeMember(email, role) {
-        if (role === 'Owner') {
-            notify(Type.error, 'Cannot remove an owner from the project.');
+        // Only owners can modify owner roles
+        if (role === 'Owner' && !isOwner) {
+            notify(Type.error, 'Only project owners can modify owner roles');
             return;
         }
+
         try {
-            // Map the role to the appropriate Firestore field
-            const field = role.toLowerCase() + 's'; // "Contributor" -> "contributors", "Admin" -> "admins", etc.
-
-            // Get the current list of members in the field
+            const field = role.toLowerCase() + 's';
             const updatedFieldMembers = members
-                .filter((member) => !(member.email === email && member.role === role)) // Remove the matching member
-                .filter((member) => member.role.toLowerCase() + 's' === field) // Filter only those in the same role field
-                .map((member) => member.email); // Only keep the email
+                .filter((member) => !(member.email === email && member.role === role))
+                .filter((member) => member.role.toLowerCase() + 's' === field)
+                .map((member) => member.email);
 
-            // Update Firestore
             const updateData = {
                 [field]: updatedFieldMembers,
             };
             await updateDocInCollection('Projects', documentId, updateData);
 
-            // Update local state
             setMembers((prevMembers) =>
                 prevMembers.filter((member) => !(member.email === email && member.role === role)),
             );
 
-            notify(Type.success, `${email} has been successfully removed as a ${role}.`);
+            notify(Type.success, `${email} has been removed as a ${role}`);
         } catch (err) {
-            console.error(`Error removing member: ${email}`, err);
-            notify(Type.error, `Failed to remove ${email}.`);
+            notify(Type.error, `Failed to remove ${email}`);
         }
     }
 
-    // Component depends on the docID ... we do nothing until that promise resolves.
     if (!documentId) {
         return <div>Loading project settings...</div>;
     }
 
-    // and this if statement as well
     if (!isAuthorized) {
         return (
             <WindowWrapper
                 header={`Manage ${projectNameProp} Project`}
-                onLeftButton={() => {
-                    CloseProjectSettings();
-                }}
+                onLeftButton={CloseProjectSettings}
                 leftButtonText="Close"
             >
                 <div className="p-5">
@@ -195,19 +211,31 @@ export default function ProjectSettings({
             </WindowWrapper>
         );
     }
-    // TODO: remove these comments I just needed the git commit.
+
+    if (showDeleteConfirm) {
+        return (
+            <WindowWrapper
+                header="Confirm Delete Project"
+                onLeftButton={() => setShowDeleteConfirm(false)}
+                onRightButton={deleteProject}
+                leftButtonText="Cancel"
+                rightButtonText="Delete Project"
+            >
+                <div className="p-5">
+                    <p className="text-red-500 font-bold">Are you sure you want to delete this project?</p>
+                    <p>This action cannot be undone.</p>
+                </div>
+            </WindowWrapper>
+        );
+    }
 
     return (
         <WindowWrapper
             header={`Manage ${projectNameProp} Project`}
-            onLeftButton={() => {
-                CloseProjectSettings();
-            }}
-            onRightButton={() => {
-                saveChanges();
-            }}
+            onLeftButton={CloseProjectSettings}
+            onRightButton={saveChanges}
             leftButtonText="Cancel"
-            rightButtonText="Save Project Name"
+            rightButtonText="Save Project"
         >
             <div className="flex flex-col space-y-4 p-5">
                 {/* Project Name Input */}
@@ -247,9 +275,7 @@ export default function ProjectSettings({
                             <select
                                 className="border rounded px-2 py-1"
                                 value={newMemberSelectedRole}
-                                onChange={(e) => {
-                                    setNewMemberSelectedRole(e.target.value);
-                                }}
+                                onChange={(e) => setNewMemberSelectedRole(e.target.value)}
                             >
                                 <option value="Select Role">Select Role</option>
                                 <option value="Contributor">Contributor</option>
@@ -257,15 +283,10 @@ export default function ProjectSettings({
                                 <option value="Owner">Owner</option>
                             </select>
                         }
-                    />{' '}
+                    />
                     <br />
                     <div className="flex justify-end mt-4">
-                        <Button
-                            text="Add member"
-                            onClick={() => {
-                                addMember();
-                            }}
-                        />
+                        <Button text="Add member" onClick={addMember} />
                     </div>
                 </div>
 
@@ -275,41 +296,45 @@ export default function ProjectSettings({
                     <div className="space-y-2">
                         {members.map((member, index) => (
                             <div key={index} className="flex items-center space-x-4 p-2">
-                                {/* Delete Button */}
                                 <button
                                     className="text-red-500 font-bold"
-                                    onClick={() => {
-                                        console.log('Calling remove member');
-                                        removeMember(member.email, member.role);
-                                    }}
+                                    onClick={() => removeMember(member.email, member.role)}
                                 >
                                     <AiFillDelete />
                                 </button>
-                                {/* Email Display */}
                                 <span className="flex-grow">{member.email}</span>
-
-                                {/* Role Selector */}
                                 <DropdownSelector
                                     options={['Owner', 'Admin', 'Contributor']}
                                     selection={member.role}
                                     setSelection={(newRole) => {
-                                        console.log('old members', members);
-                                        const oldMembers = members;
-                                        setMembers(() => {
-                                            return oldMembers.map((m) => {
-                                                if (m.email === member.email) {
-                                                    return { ...m, role: newRole };
-                                                }
-                                                return m;
-                                            });
+                                        if (member.role === 'Owner' && !isOwner) {
+                                            notify(Type.error, 'Only project owners can modify owner roles');
+                                            return;
+                                        }
+                                        const updatedMembers = members.map((m) => {
+                                            if (m.email === member.email) {
+                                                return { ...m, role: newRole };
+                                            }
+                                            return m;
                                         });
-                                        console.log('new members', members);
+                                        setMembers(updatedMembers);
                                     }}
                                 />
                             </div>
                         ))}
                     </div>
                 </div>
+
+                {/* Delete Project Button (Only shown to owners) */}
+                {isOwner && (
+                    <div className="flex justify-end mt-4">
+                        <Button 
+                            text="Delete Project" 
+                            onClick={() => setShowDeleteConfirm(true)}
+                            className="bg-red-600 hover:bg-red-700"
+                        />
+                    </div>
+                )}
             </div>
         </WindowWrapper>
     );
