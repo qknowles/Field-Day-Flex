@@ -145,34 +145,6 @@ export const getProjectNames = async (email) => {
     }
 };
 
-export const getProjectIdByName = async (projectName) => {
-    const projectRef = collection(db, 'Projects');
-    const projectsQuery = query(projectRef, where('project_name', '==', projectName));
-    const querySnapshot = await getDocs(projectsQuery);
-
-    if (!querySnapshot.empty) {
-        const projectDoc = querySnapshot.docs[0];
-        return projectDoc.id;
-    } else {
-        throw new Error('Project not found');
-    }
-};
-
-export const deleteEntry = async (projectName, tabName, entryId) => {
-    try {
-        const projectId = await getProjectIdByName(projectName);
-        if (!projectId) {
-            throw new Error('Project ID not found for the selected project');
-        }
-        const docRef = doc(db, 'Projects', projectId, 'Tabs', tabName, 'Entries', entryId);
-        console.log('Deleting document:', docRef.path); // Log the document path
-        await deleteDoc(docRef);
-    } catch (error) {
-        console.error('Error deleting entry:', error);
-        throw error;
-    }
-};
-
 export const getDocumentIdByProjectName = async (projectName) => {
     try {
         const projectQuery = query(
@@ -701,4 +673,57 @@ export const getUserName = async (email) => {
     console.log('in getUserName', email);
     const user = await getDocs(query(collection(db, 'Users'), where('email', '==', email)));
     return user.docs[0].data().name || 'null';
+};
+
+export const deleteEntry = async (projectName, tabName, entryId) => {
+    try {
+        const projectId = await getDocumentIdByProjectName(projectName);
+        if (!projectId) {
+            throw new Error('Project ID not found for the selected project');
+        }
+        const docRef = doc(db, 'Projects', projectId, 'Tabs', tabName, 'Entries', entryId);
+        console.log('Deleting document:', docRef.path); // Log the document path
+        await deleteDoc(docRef);
+    } catch (error) {
+        console.error('Error deleting entry:', error);
+        throw error;
+    }
+};
+
+export const getEntryDetails = async (projectName, tabName, entryId) => {
+    try {
+        const projectId = await getDocumentIdByProjectName(projectName);
+        if (!projectId) {
+            throw new Error('Project ID not found for the selected project');
+        }
+        const docRef = doc(db, 'Projects', projectId, 'Tabs', tabName, 'Entries', entryId);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+            console.log('Entry details:', docSnap.data()); // Log the entry details
+            return { id: entryId, ...docSnap.data() }; // Ensure the entry ID is included in the returned data
+        } else {
+            console.error('Entry not found');
+            throw new Error('Entry not found');
+        }
+    } catch (error) {
+        console.error('Error fetching entry details:', error);
+        throw error;
+    }
+};
+
+export const updateEntry = async (projectName, tabName, email, entryId, updatedData) => {
+    try {
+        const projectId = await getDocumentIdByProjectName(projectName);
+        if (!projectId) {
+            throw new Error('Project ID not found for the selected project');
+        }
+        const docRef = doc(db, 'Projects', projectId, 'Tabs', tabName, 'Entries', entryId);
+        await updateDoc(docRef, {
+            entry_data: updatedData // Update the entry_data field
+        });
+        console.log('Entry updated:', docRef.path); // Log the document path
+    } catch (error) {
+        console.error('Error updating entry:', error);
+        throw error;
+    }
 };
