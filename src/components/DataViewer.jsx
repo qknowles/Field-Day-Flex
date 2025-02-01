@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo} from 'react';
-import { getColumnsCollection, getEntriesForTab, getProjectFields, deleteEntry } from '../utils/firestore'; // Import deleteEntry
+import { getColumnsCollection, getEntriesForTab, getProjectFields, deleteEntry, getEntryDetails } from '../utils/firestore'; // Import deleteEntry
 import TableTools from '../wrappers/TableTools';
 import { Pagination } from './Pagination';
 import Button from './Button';
@@ -290,17 +290,27 @@ const DataViewer = () => {
             notify(Type.error, 'Faild to save column changes');
         }
     };
-    const handleEdit = async (entry) => {
-        const editWindow = (
-            <NewEntry
-                CloseNewEntry={() => { }}
-                ProjectName={SelectedProject}
-                TabName={SelectedTab}
-                Email={Email}
-                existingEntry={entry}
-            />
-        );
-        // setEditWindow(editWindow);  this is not working
+
+    const handleEdit = async (entryId) => {
+        try {
+            const entryDetails = await getEntryDetails(SelectedProject, SelectedTab, entryId);
+            const editWindow = (
+                <NewEntry
+                    CloseNewEntry={() => setEditWindow(null)}
+                    ProjectName={SelectedProject}
+                    TabName={SelectedTab}
+                    Email={Email}
+                    existingEntry={entryDetails} // Pass the fetched entry details
+                    onEntryUpdated={async () => {
+                        await fetchEntries(); // Refresh entries after editing
+                    }}
+                />
+            );
+            setEditWindow(editWindow);
+        } catch (error) {
+            console.error('Error fetching entry details:', error);
+            notify(Type.error, 'Failed to fetch entry details');
+        }
     };
 
     const handleDelete = async (entryId) => {
@@ -443,7 +453,7 @@ const DataViewer = () => {
                                     <td className="p-2 border-b w-32">
                                         <div className="flex space-x-2">
                                             <Button
-                                                onClick={() => handleEdit(entry)}
+                                                onClick={() => handleEdit(entry.id)}
                                                 icon={AiFillEdit}
                                                 flexible={true}
                                                 className={'flex items-center justify-center'}
@@ -477,7 +487,15 @@ const DataViewer = () => {
                         </tbody>
                     </table>
                 </div>
-
+                {showEditWindow && (
+                    <WindowWrapper
+                        header="Edit Entry"
+                        onLeftButton={() => setEditWindow(null)}
+                        leftButtonText="Close"
+                    >
+                        {showEditWindow}
+                    </WindowWrapper>
+                )}
                 <div className="px-5 py-3 flex items-center w-full">
                     <Pagination
                         currentPage={currentPage}
