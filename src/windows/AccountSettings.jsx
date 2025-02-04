@@ -88,7 +88,7 @@ export default function AccountSettings({ CloseAccountSettings }) {
         const fieldsChanged = await detectChanges();
         if (!fieldsChanged) return;
 
-        const success = saveUserAccountChanges(fieldsChanged, email);
+        const success = await saveUserAccountChanges(fieldsChanged, email);
         if (success) {
             notify(Type.success, 'Successfully updated account.');
             setEmail(changedEmail);
@@ -154,7 +154,7 @@ export default function AccountSettings({ CloseAccountSettings }) {
                             </ol>
                         </div>
                     ),
-                    10000
+                    10000 // ms, 10 seconds
                 );
                 return null;
             }
