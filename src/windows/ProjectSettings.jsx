@@ -49,7 +49,17 @@ export default function ProjectSettings({
     useEffect(() => {
         updateMemberRole();
     }, [members]);
-
+    async function saveChanges() {
+        try {
+            await updateDocInCollection('Projects', documentId, { project_name: projectName });
+            setProjectName(projectName);  // Update Jotai state
+            updateProjectName(projectName);  // Keep legacy support
+            notify(Type.success, 'Project updated successfully');
+            CloseProjectSettings();
+        } catch (error) {
+            notify(Type.error, 'Failed to update project');
+        }
+    }
     const fetchProjectData = async () => {
         try {
             const membersData = await getProjectFields(documentId, [
