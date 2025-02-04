@@ -806,3 +806,48 @@ export const updateEntry = async (projectName, tabName, email, entryId, updatedD
         throw error;
     }
 };
+
+export const saveColumnChanges = async (projectName, tabName, columns, columnsToDelete, editedColumnNames, columnOrder, editedColumnTypes, editedRequiredFields, editedIdentifierDomains, editedDropdownOptions) => {
+    try {
+        const projectId = await getProjectIdByName(projectName);
+        if (!projectId) {
+            throw new Error('Project ID not found for the selected project');
+        }
+
+        const batch = writeBatch(db);
+
+        for (const column of columns) {
+            if (columnsToDelete.includes(column.id)) {
+                // Delete column
+                const columnRef = doc(db, 'Projects', projectId, 'Tabs', tabName, 'Columns', column.id);
+                batch.delete(columnRef);
+
+                // Remove column from all entries
+                const entriesSnapshot = await getDocs(collection(db, 'Projects', projectId, 'Tabs', tabName, 'Entries'));
+                entriesSnapshot.docs.forEach(entryDoc => {
+                    const entryRef = doc(db, 'Projects', projectId, 'Tabs', tabName, 'Entries', entryDoc.id);
+                    const entryData = entryDoc.data();
+                    delete entryData.entry_data[column.name];
+                    batch.update(entryRef, { entry_data: entryData.entry_data });
+                });
+            } else if (!['actions', 'datetime', 'identifier'].includes(column.id)) {
+                // Update column
+                const columnRef = doc(db, 'Projects', projectId, 'Tabs', tabName, 'Columns', column.id);
+                batch.update(columnRef, {
+                    name: editedColumnNames[column.id],
+                    order: columnOrder[column.id],
+                    data_type: editedColumnTypes[column.id],
+                    required_field: editedRequiredFields[column.id],
+                    identifier_domain: editedIdentifierDomains[column.id],
+                    entry_options: editedColumnTypes[column.id] === 'multiple choice' ? 
+                        editedDropdownOptions[column.id] : []
+                });
+            }
+        }
+
+        await batch.commit();
+    } catch (error) {
+        console.error('Error saving column changes:', error);
+        throw error;
+    }
+};
