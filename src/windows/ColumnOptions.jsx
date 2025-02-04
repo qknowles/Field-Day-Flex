@@ -18,7 +18,7 @@ export default function ColumnOptions({
     IdentifierDimension,
     UnwantedCodes,
     UtilizeUnwantedCodes,
-    header = "Column Options",
+    header = 'Column Options',
 }) {
     const [rightButtonText, setRightButtonText] = useState('Next Column');
     const [columnIndex, setColumnIndex] = useState(0);
@@ -95,7 +95,8 @@ export default function ColumnOptions({
                 } else {
                     notify(Type.error, 'Error creating subject column options.');
                 }
-            } else if (GenerateIdentifiers === null) { // This just identifies if ColumnOptions is being used to create a new tab vs just adding a column. See null values in TablePage.
+            } else if (GenerateIdentifiers === null) {
+                // This just identifies if ColumnOptions is being used to create a new tab vs just adding a column. See null values in TablePage.
                 notify(Type.success, 'update tab');
                 OpenNewTab();
             }
@@ -150,10 +151,11 @@ export default function ColumnOptions({
                     label="Column Name"
                     layout="horizontal-single"
                     input={
-                        <input 
+                        <input
                             value={ColumnNames[columnIndex]}
                             onChange={(e) => handleColumnNameChange(e.target.value)}
-                        />}
+                        />
+                    }
                 />
                 <span className="text-sm">Data Entry Type:</span>
                 <RadioButtons

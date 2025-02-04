@@ -78,7 +78,7 @@ export default function TablePage({ Email }) {
     const [showNewEntry, setShowNewEntry] = useState(false);
     const [showManageColumns, setShowManageColumns] = useState(false);
     const [showColumnOptions, setShowColumnOptions] = useState(false);
-    const [newColumn, setNewColumn] = useState([""]);
+    const [newColumn, setNewColumn] = useState(['']);
 
     useEffect(() => {
         currentProject = selectedProject;
@@ -86,7 +86,7 @@ export default function TablePage({ Email }) {
     }, [selectedProject]);
 
     useEffect(() => {
-        setNewColumn([""]);
+        setNewColumn(['']);
     }, [showColumnOptions]);
 
     return (
@@ -148,7 +148,7 @@ export default function TablePage({ Email }) {
                     IdentifierDimension={null}
                     UnwantedCodes={null}
                     UtilizeUnwantedCodes={null}
-                    header = "Add Column"
+                    header="Add Column"
                 />
             )}
             {showManageColumns && (
