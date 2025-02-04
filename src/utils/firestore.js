@@ -151,7 +151,6 @@ export const getDocumentIdByProjectName = async (projectName) => {
             const docId = querySnapshot.docs[0].id;
             return docId;
         } else {
-            console.log(`No document found with project_name "${projectName}"`);
             return null;
         }
     } catch (error) {
@@ -280,7 +279,6 @@ export const createTab = async (
         const tabSnapshot = await getDocs(tabQuery);
 
         if (!tabSnapshot.empty) {
-            console.log('A tab with this name already exists.');
             return false;
         }
 
@@ -347,7 +345,6 @@ export const addColumn = async (
         );
         const projectSnapshot = await getDocs(projectsQuery);
         if (projectSnapshot.empty) {
-            console.log('Project not found or no permissions.');
             return false;
         }
         const projectDoc = projectSnapshot.docs[0];
@@ -356,7 +353,6 @@ export const addColumn = async (
         const tabQuery = query(tabsRef, where('tab_name', '==', tabName));
         const tabSnapshot = await getDocs(tabQuery);
         if (tabSnapshot.empty) {
-            console.log('Tab not found.');
             return false;
         }
         const tabDoc = tabSnapshot.docs[0];
@@ -523,7 +519,6 @@ export const getEntriesForTab = async (projectName, tabName, email) => {
         const projectSnapshot = await getDocs(projectQuery);
 
         if (projectSnapshot.empty) {
-            console.log('No projects found.');
             return false;
         }
 
@@ -544,11 +539,13 @@ export const getEntriesForTab = async (projectName, tabName, email) => {
         const entriesRef = collection(tabDoc.ref, 'Entries');
         const entriesSnapshot = await getDocs(entriesRef);
 
-        return entriesSnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-            entry_date: doc.data().entry_date?.toDate?.() || doc.data().entry_date,
-        }));
+        if (!entriesSnapshot.empty) {
+            return entriesSnapshot.docs.map((doc) => ({
+                id: doc.id,
+                ...doc.data(),
+                entry_date: doc.data().entry_date?.toDate?.() || doc.data().entry_date,
+            }));
+        }
     } catch (error) {
         console.error('Error in getEntriesForTab');
     }
@@ -556,7 +553,6 @@ export const getEntriesForTab = async (projectName, tabName, email) => {
 export const updateDocInCollection = async (collectionName, docId, data) => {
     try {
         await updateDoc(doc(db, collectionName, docId), data);
-        console.log('Document successfully updated!');
         return true;
     } catch (error) {
         console.error('Error updating document:', error);
@@ -591,13 +587,8 @@ export const updateEmailInProjects = async (oldEmail, newEmail) => {
             if (Object.keys(updatedData).length > 0) {
                 const projectRef = doc(db, 'Projects', projectDoc.id);
                 await updateDoc(projectRef, updatedData);
-                console.log(`Updated project: ${projectDoc.id}`);
-            } else {
-                console.log(`No updates needed for project: ${projectDoc.id}`);
             }
         }
-
-        console.log('Email update completed across all projects.');
         return true;
     } catch (error) {
         console.error('Error updating email in projects:', error);
@@ -615,7 +606,6 @@ export async function getDocumentIdByUserName(userEmail) {
             const docId = querySnapshot.docs[0].id;
             return docId;
         } else {
-            console.log(`No document found with email "${userEmail}"`);
             return null;
         }
     } catch (error) {
@@ -733,7 +723,6 @@ export const editMemberships = async (email, projectName) => {
     }
 };
 export const getUserName = async (email) => {
-    console.log('in getUserName', email);
     const user = await getDocs(query(collection(db, 'Users'), where('email', '==', email)));
     return user.docs[0].data().name || 'null';
 };
