@@ -682,8 +682,8 @@ export const deleteEntry = async (projectName, tabName, entryId) => {
             throw new Error('Project ID not found for the selected project');
         }
         const docRef = doc(db, 'Projects', projectId, 'Tabs', tabName, 'Entries', entryId);
-        console.log('Deleting document:', docRef.path); // Log the document path
-        await deleteDoc(docRef);
+        console.log('Setting deleted flag to true for entry:', docRef.path); // Log the document path
+        await updateDoc(docRef, { deleted: true });
     } catch (error) {
         console.error('Error deleting entry:', error);
         throw error;
