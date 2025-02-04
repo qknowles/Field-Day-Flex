@@ -7,6 +7,7 @@ import { tabExists, createTab } from '../utils/firestore';
 
 export default function ColumnOptions({
     ColumnNames,
+    SetColumnNames,
     CancelColumnOptions,
     OpenNewTab,
     Email,
@@ -17,6 +18,7 @@ export default function ColumnOptions({
     IdentifierDimension,
     UnwantedCodes,
     UtilizeUnwantedCodes,
+    header = 'Column Options',
 }) {
     const [rightButtonText, setRightButtonText] = useState('Next Column');
     const [columnIndex, setColumnIndex] = useState(0);
@@ -93,6 +95,10 @@ export default function ColumnOptions({
                 } else {
                     notify(Type.error, 'Error creating subject column options.');
                 }
+            } else if (GenerateIdentifiers === null) {
+                // This just identifies if ColumnOptions is being used to create a new tab vs just adding a column. See null values in TablePage.
+                notify(Type.success, 'update tab');
+                OpenNewTab();
             }
         }
     }, [
@@ -122,13 +128,19 @@ export default function ColumnOptions({
         return columnIndex === ColumnNames.length - 1 ? storeNewTab : goForward;
     }, [columnIndex, storeNewTab, goForward]);
 
+    const handleColumnNameChange = (newName) => {
+        const updatedColumnNames = [...ColumnNames];
+        updatedColumnNames[columnIndex] = newName;
+        SetColumnNames(updatedColumnNames);
+    };
+
     useEffect(() => {
         setRightButtonText(columnIndex === ColumnNames.length - 1 ? 'Finish' : 'Next Column');
     }, [columnIndex, ColumnNames.length]);
 
     return (
         <WindowWrapper
-            header="Column Options"
+            header={header}
             onLeftButton={leftButtonClick}
             onRightButton={rightButtonClick}
             leftButtonText="Go Back"
@@ -138,7 +150,12 @@ export default function ColumnOptions({
                 <InputLabel
                     label="Column Name"
                     layout="horizontal-single"
-                    input={<input disabled={true} value={ColumnNames[columnIndex]} />}
+                    input={
+                        <input
+                            value={ColumnNames[columnIndex]}
+                            onChange={(e) => handleColumnNameChange(e.target.value)}
+                        />
+                    }
                 />
                 <span className="text-sm">Data Entry Type:</span>
                 <RadioButtons
