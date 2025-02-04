@@ -51,9 +51,8 @@ export default function AccountSettings({ CloseAccountSettings, emailProp }) {
 
             // If there are changes to save
             if (Object.keys(fieldsChanged).length > 0) {
-                let userDocId;
+                let userDocId = await getDocumentIdByUserName(originalEmail);
                 if (fieldsChanged.email) {
-                    userDocId = await getDocumentIdByUserName(originalEmail); // Always use the original email here
                     console.log('AccountSettings get docId for user email:', userDocId);
 
                     // Update email in the "Users" collection
@@ -94,6 +93,7 @@ export default function AccountSettings({ CloseAccountSettings, emailProp }) {
 
                 if (updateSuccess) {
                     notify(Type.success, 'Changes saved successfully');
+                    CloseAccountSettings();
                 } else {
                     notify(Type.error, 'Failed to save changes');
                 }
@@ -103,13 +103,6 @@ export default function AccountSettings({ CloseAccountSettings, emailProp }) {
             notify(Type.error, 'An unexpected error occurred while saving changes.');
         }
     }
-
-    // Notify user if passwords do not match
-    useEffect(() => {
-        if (newPassword && confirmPassword && newPassword !== confirmPassword) {
-            notify(Type.error, 'Passwords do not match');
-        }
-    }, [newPassword, confirmPassword]);
 
     // Fetch user's current name
     useEffect(() => {
