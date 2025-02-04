@@ -110,23 +110,26 @@ export default function TablePage({ Email }) {
             />
 
             {/* Table Management Buttons */}
-            {selectedTab && ( <div className="flex items-center pt-3 px-5 pb-3 space-x-6 dark:bg-neutral-950">
-                    <div className="flex items-center space-x-6 pr-32">
-                        <p className="text-2xl">{selectedTab} - Entries</p>
-                        <Button text="New Entry" onClick={() => setShowNewEntry(true)} />
-                    </div>
-                    <Button text="New Column" onClick={() => setShowColumnOptions(true)} />
-                    <Button text="Manage Columns" onClick={() => setShowManageColumns(true)} />
+            {selectedTab && (
+                 <div className="flex items-center justify-between pt-3 px-5 pb-3 dark:bg-neutral-950 w-full">
+                 <div className="flex items-center">
+                     <p className="text-2xl mr-6">{selectedTab} - Entries</p>
+                     <Button text="New Entry" onClick={() => setShowNewEntry(true)} className="mr-32" />
+                     <Button text="New Column" onClick={() => setShowColumnOptions(true)} className="mr-6"/>
+                     <Button text="Manage Columns" onClick={() => setShowManageColumns(true)} />
+                 </div>
+                 
+                 {/* Export Icon */}
+                 <button
+                     onClick={() => setShowExportModal(true)}
+                     className="p-2 text-white hover:bg-neutral-700 rounded ml-auto"
+                     title="Export to CSV"
+                 >
+                     <ExportIcon className="h-6 w-6" />
+                 </button>
+             </div>
+             
 
-                     {/* Export Icon */}
-                   <button
-                   onClick={() => setShowExportModal(true)}
-                   className="p-2 text-white hover:bg-neutral-700 rounded ml-auto"
-                   title="Export to CSV"
-               >
-                   <ExportIcon className="h-6 w-6" />
-               </button>
-                </div>
             )}
 
             {/* Content Area */}
