@@ -5,7 +5,6 @@ import { Pagination } from './Pagination';
 import Button from './Button';
 import WindowWrapper from '../wrappers/WindowWrapper';
 import { Type, notify } from './Notifier';
-import { deleteDoc, doc, writeBatch, collection, getDocs } from 'firebase/firestore';
 import { db } from '../utils/firebase';
 import NewEntry from '../windows/NewEntry';
 import { AiFillEdit, AiFillDelete } from 'react-icons/ai';
@@ -221,73 +220,25 @@ const DataViewer = () => {
         }
 
         try {
-            const batch = writeBatch(db);
-
-            for (const column of columns) {
-                if (columnsToDelete.includes(column.id)) {
-                    // Delete column
-                    const columnRef = doc(
-                        db,
-                        'Projects',
-                        SelectedProject,
-                        'Tabs',
-                        SelectedTab,
-                        'Columns',
-                        column.id,
-                    );
-                    batch.delete(columnRef);
-
-                    // Remove column from all entries
-                    const entriesSnapshot = await getDocs(
-                        collection(db, 'Projects', SelectedProject, 'Tabs', SelectedTab, 'Entries'),
-                    );
-                    entriesSnapshot.docs.forEach((entryDoc) => {
-                        const entryRef = doc(
-                            db,
-                            'Projects',
-                            SelectedProject,
-                            'Tabs',
-                            SelectedTab,
-                            'Entries',
-                            entryDoc.id,
-                        );
-                        const entryData = entryDoc.data();
-                        delete entryData[column.name];
-                        batch.update(entryRef, entryData);
-                    });
-                } else if (!['actions', 'datetime', 'identifier'].includes(column.id)) {
-                    // Update column
-                    const columnRef = doc(
-                        db,
-                        'Projects',
-                        SelectedProject,
-                        'Tabs',
-                        SelectedTab,
-                        'Columns',
-                        column.id,
-                    );
-                    batch.update(columnRef, {
-                        name: editedColumnNames[column.id],
-                        order: columnOrder[column.id],
-                        data_type: editedColumnTypes[column.id],
-                        required_field: editedRequiredFields[column.id],
-                        identifier_domain: editedIdentifierDomains[column.id],
-                        entry_options:
-                            editedColumnTypes[column.id] === 'multple choice'
-                                ? editedDropdownOptions[column.id]
-                                : [],
-                    });
-                }
-            }
-
-            await batch.commit();
+            await saveColumnChanges(
+                SelectedProject,
+                SelectedTab,
+                columns,
+                columnsToDelete,
+                editedColumnNames,
+                columnOrder,
+                editedColumnTypes,
+                editedRequiredFields,
+                editedIdentifierDomains,
+                editedDropdownOptions
+            );
             await fetchColumns();
             await fetchEntries();
             setShowManageColumns(false);
             notify(Type.success, 'Column changes saved successfully');
         } catch (error) {
             console.error('Error saving column changes:', error);
-            notify(Type.error, 'Faild to save column changes');
+            notify(Type.error, 'Failed to save column changes');
         }
     };
 
