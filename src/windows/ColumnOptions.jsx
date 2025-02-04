@@ -3,7 +3,7 @@ import { DropdownFlex, RadioButtons, YesNoSelector } from '../components/FormFie
 import WindowWrapper from '../wrappers/WindowWrapper';
 import InputLabel from '../components/InputLabel';
 import { Type, notify } from '../components/Notifier';
-import { tabExists, createTab } from '../utils/firestore';
+import { tabExists, createTab, addColumn } from '../utils/firestore';
 
 export default function ColumnOptions({
     ColumnNames,
@@ -93,12 +93,26 @@ export default function ColumnOptions({
                     notify(Type.success, 'Tab created.');
                     OpenNewTab(TabName);
                 } else {
-                    notify(Type.error, 'Error creating subject column options.');
+                    notify(Type.error, 'Error creating subject.');
                 }
-            } else if (GenerateIdentifiers === null) {
                 // This just identifies if ColumnOptions is being used to create a new tab vs just adding a column. See null values in TablePage.
-                notify(Type.success, 'update tab');
-                OpenNewTab();
+            } else if (GenerateIdentifiers === null) {
+                const columnAdded = await addColumn(
+                    Email,
+                    SelectedProject,
+                    TabName,
+                    ColumnNames,
+                    dataType,
+                    finalEntryOptions,
+                    identifierDomain,
+                    requiredField,
+                );
+                if (columnAdded) {
+                    notify(Type.success, 'update tab');
+                    OpenNewTab();
+                } else {
+                    notify(Type.error, 'Error creating new column.');
+                }
             }
         }
     }, [
