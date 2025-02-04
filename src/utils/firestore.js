@@ -330,6 +330,85 @@ export const createTab = async (
     }
 };
 
+export const addColumn = async (
+    email,
+    selectedProject,
+    tabName,
+    columnName,
+    columnDataType,
+    columnEntryOptions = [],
+    columnIdentifierDomain = null,
+    columnRequiredField = false
+) => {
+    try {
+        const projectRef = collection(db, 'Projects');
+        const projectsQuery = query(
+            projectRef,
+            and(
+                where('project_name', '==', selectedProject),
+                or(
+                    where('admins', 'array-contains', email),
+                    where('owners', 'array-contains', email)
+                )
+            )
+        );
+        const projectSnapshot = await getDocs(projectsQuery);
+        if (projectSnapshot.empty) {
+            console.log('Project not found or no permissions.');
+            return false;
+        }
+        const projectDoc = projectSnapshot.docs[0];
+        
+        const tabsRef = collection(projectDoc.ref, 'Tabs');
+        const tabQuery = query(tabsRef, where('tab_name', '==', tabName));
+        const tabSnapshot = await getDocs(tabQuery);
+        if (tabSnapshot.empty) {
+            console.log('Tab not found.');
+            return false;
+        }
+        const tabDoc = tabSnapshot.docs[0];
+        
+        const columnsRef = collection(tabDoc.ref, 'Columns');
+        const existingColumns = await getDocs(columnsRef);
+        const columnOrder = existingColumns.size;
+        
+        await addDoc(columnsRef, {
+            name: columnName,
+            data_type: columnDataType,
+            entry_options: columnEntryOptions[0],
+            identifier_domain: columnIdentifierDomain,
+            required_field: columnRequiredField,
+            order: columnOrder,
+        });
+        
+        await addColumnToEntries(tabDoc, columnName);
+        
+        return true;
+    } catch (error) {
+        console.error('Error adding column:', error);
+        return false;
+    }
+};
+
+const addColumnToEntries = async (tabDoc, columnName) => {
+    try {
+        const entriesRef = collection(tabDoc.ref, 'Entries');
+        const entriesSnapshot = await getDocs(entriesRef);
+        
+        const batch = writeBatch(db);
+        entriesSnapshot.forEach((entryDoc) => {
+            const entryRef = doc(entriesRef, entryDoc.id);
+            batch.update(entryRef, {
+                [columnName]: null,
+            });
+        });
+        
+        await batch.commit();
+    } catch (error) {
+        console.error('Error updating entries with new column:', error);
+    }
+};
+
 export const getColumnsCollection = async (projectName, tabName, email) => {
     try {
         console.log('Fetching columns for project:', projectName, 'and tab:', tabName);
