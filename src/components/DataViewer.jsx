@@ -141,9 +141,8 @@ const DataViewer = () => {
 
         try {
             const entriesData = await getEntriesForTab(SelectedProject, SelectedTab, Email);
-            if (entriesData) {
-                setEntries(entriesData);
-            }
+            const filteredEntries = entriesData.filter(entry => !entry.deleted); // Filter out deleted entries
+            setEntries(filteredEntries);
         } catch (err) {
             console.error('Error fetching entries:', err);
             setError('Failed to load entries');
