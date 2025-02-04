@@ -82,6 +82,9 @@ export default function TablePage({ Email }) {
     const [showNewTab, setShowNewTab] = useState(false);
     const [showNewEntry, setShowNewEntry] = useState(false);
     const [showManageColumns, setShowManageColumns] = useState(false);
+
+    const [showColumnOptions, setShowColumnOptions] = useState(false);
+    const [newColumn, setNewColumn] = useState(['']);
     const [columns, setColumns] = useState([]);
     const [showExportModal, setShowExportModal] = useState(false);
 
@@ -92,14 +95,8 @@ export default function TablePage({ Email }) {
     }, [selectedProject]);
 
     useEffect(() => {
-        const loadColumns = async () => {
-            if (selectedProject && selectedTab) {
-                const columnsData = await getColumnsCollection(selectedProject, selectedTab, Email);
-                setColumns(columnsData);
-            }
-        };
-        loadColumns();
-    }, [selectedProject, selectedTab, Email]);
+        setNewColumn(['']);
+    }, [showColumnOptions]);
 
     return (
         <PageWrapper>
@@ -113,23 +110,23 @@ export default function TablePage({ Email }) {
             />
 
             {/* Table Management Buttons */}
-            {selectedTab && (
-               <div className="flex justify-between items-center pt-3 px-5 pb-3 dark:bg-neutral-950 w-full">
-               <div className="flex space-x-4">
-                   <Button text="New Entry" onClick={() => setShowNewEntry(true)} />
-                   <Button text="Manage Columns" onClick={() => setShowManageColumns(true)} />
-               </div>
-           
-               {/* Export Icon */}
-               <button
+            {selectedTab && ( <div className="flex items-center pt-3 px-5 pb-3 space-x-6 dark:bg-neutral-950">
+                    <div className="flex items-center space-x-6 pr-32">
+                        <p className="text-2xl">{selectedTab} - Entries</p>
+                        <Button text="New Entry" onClick={() => setShowNewEntry(true)} />
+                    </div>
+                    <Button text="New Column" onClick={() => setShowColumnOptions(true)} />
+                    <Button text="Manage Columns" onClick={() => setShowManageColumns(true)} />
+
+                     {/* Export Icon */}
+                   <button
                    onClick={() => setShowExportModal(true)}
                    className="p-2 text-white hover:bg-neutral-700 rounded ml-auto"
                    title="Export to CSV"
                >
                    <ExportIcon className="h-6 w-6" />
                </button>
-           </div>
-           
+                </div>
             )}
 
             {/* Content Area */}
@@ -154,6 +151,23 @@ export default function TablePage({ Email }) {
                     ProjectName={selectedProject}
                     TabName={selectedTab}
                     Email={Email}
+                />
+            )}
+            {showColumnOptions && (
+                <ColumnOptions
+                    ColumnNames={newColumn}
+                    SetColumnNames={setNewColumn}
+                    CancelColumnOptions={() => setShowColumnOptions(false)}
+                    OpenNewTab={() => setShowColumnOptions(false)}
+                    Email={Email}
+                    SelectedProject={selectedProject}
+                    TabName={selectedTab}
+                    GenerateIdentifiers={null}
+                    PossibleIdentifiers={null}
+                    IdentifierDimension={null}
+                    UnwantedCodes={null}
+                    UtilizeUnwantedCodes={null}
+                    header="Add Column"
                 />
             )}
             {showManageColumns && (
