@@ -292,7 +292,7 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
     const handleEdit = async (entry) => {
         const editWindow = (
             <NewEntry
-                CloseNewEntry={() => { }}
+                CloseNewEntry={() => {}}
                 ProjectName={SelectedProject}
                 TabName={SelectedTab}
                 Email={Email}
@@ -393,7 +393,7 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
                 const isOwner = projectFields.owners?.includes(Email) || false;
                 setIsAdminOrOwner(isAdmin || isOwner);
             } catch (err) {
-                console.error('Error checking permissions:',);
+                console.error('Error checking permissions:');
                 setIsAdminOrOwner(false);
             }
         };
@@ -421,8 +421,9 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
                                     .map((column) => (
                                         <th
                                             key={column.id}
-                                            className={`p-2 text-left border-b font-semibold cursor-pointer ${column.type === 'identifier' ? 'min-w-[150px]' : ''
-                                                } ${getColumnClass(column.name)}`}
+                                            className={`p-2 text-left border-b font-semibold cursor-pointer ${
+                                                column.type === 'identifier' ? 'min-w-[150px]' : ''
+                                            } ${getColumnClass(column.name)}`}
                                             onClick={() => handleSort(column.name)}
                                         >
                                             {column.name}
@@ -465,10 +466,11 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
                                         .map((column) => (
                                             <td
                                                 key={`${entry.id}-${column.id}`}
-                                                className={`p-2 border-b text-left ${column.type === 'identifier'
+                                                className={`p-2 border-b text-left ${
+                                                    column.type === 'identifier'
                                                         ? 'min-w-[150px]'
                                                         : ''
-                                                    } ${getColumnClass(column.name)}`}
+                                                } ${getColumnClass(column.name)}`}
                                             >
                                                 {entry.entry_data?.[column.name] || 'N/A'}
                                             </td>

@@ -331,7 +331,7 @@ export const addColumn = async (
     columnDataType,
     columnEntryOptions = [],
     columnIdentifierDomain = null,
-    columnRequiredField = false
+    columnRequiredField = false,
 ) => {
     try {
         const projectRef = collection(db, 'Projects');
@@ -341,9 +341,9 @@ export const addColumn = async (
                 where('project_name', '==', selectedProject),
                 or(
                     where('admins', 'array-contains', email),
-                    where('owners', 'array-contains', email)
-                )
-            )
+                    where('owners', 'array-contains', email),
+                ),
+            ),
         );
         const projectSnapshot = await getDocs(projectsQuery);
         if (projectSnapshot.empty) {
@@ -452,7 +452,6 @@ export const getColumnsCollection = async (projectName, tabName, email) => {
         }));
 
         return columns;
-        
     } catch (error) {
         console.error('Error in getColumnsCollection:', error);
         return [];
@@ -695,7 +694,6 @@ export const getDocsFromCollection = async (projectName, tabName, constraints = 
         }));
 
         return columns;
-
     } catch (error) {
         console.error('Error in getDocsFromCollection:', error);
         return [];

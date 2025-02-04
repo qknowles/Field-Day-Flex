@@ -103,7 +103,7 @@ export default function TablePage({ Email }) {
             {/* Table Management Buttons */}
             {selectedTab && (
                 <div className="flex items-center pt-3 px-5 pb-3 space-x-6 dark:bg-neutral-950">
-                    <div className='flex items-center space-x-6 pr-32'>
+                    <div className="flex items-center space-x-6 pr-32">
                         <p className="text-2xl">{selectedTab} - Entries</p>
                         <Button text="New Entry" onClick={() => setShowNewEntry(true)} />
                     </div>
