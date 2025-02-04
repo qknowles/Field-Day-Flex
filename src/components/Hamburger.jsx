@@ -1,23 +1,25 @@
+import { LizardIcon } from '../assets/icons';
 import React, { useState } from 'react';
-import { useAtom } from 'jotai';
-import { currentProjectName } from '../utils/jotai';
-import AccountSettings from '../windows/AccountSettings';
-import ProjectSettings from '../windows/ProjectSettings';
+import Button from './Button';
+import AccountSettings from '../windows/AccountSettings.jsx';
+import ProjectSettings from '../windows/ProjectSettings.jsx';
+import { getCurrentProject } from '../pages/TablePage.jsx';
+import { getDocumentIdByProjectName } from '../utils/firestore.js';
 import ManageMembership from '../windows/MembershipWindow';
-import Button from './Button'; // Import Button component
 
 export default function Hamburger({ Email }) {
-    const [menuOpen, setMenuOpen] = useState(false);
-    const [modalContent, setModalContent] = useState(null);
-    const [currentProject] = useAtom(currentProjectName);
+    const [menuOpen, setMenuOpen] = useState(false); // Hamburger menu state
+    const [modalContent, setModalContent] = useState(null); // Modal content state
     const [setCurrentWindow] = useState('HomePage');
 
     const toggleMenu = () => setMenuOpen((prev) => !prev);
 
+    // Function to handle button clicks and display modal with custom content
     const handleButtonClick = (content) => {
-        setModalContent(content);
+        setModalContent(content); // Set the content to be displayed in the modal
     };
 
+    // Function to close modal
     const closeModal = () => {
         setModalContent(null);
         setMenuOpen(false);
@@ -37,9 +39,9 @@ export default function Hamburger({ Email }) {
             {menuOpen && (
                 <div className="hamburger-menu text-black absolute mt-2 rounded-md shadow-lg p-2 dark:bg-neutral-700">
                     <ul>
-                        <li className="mb-2">
-                            <Button
-                                text="Manage Account"
+                        <li>
+                            <button
+                                className="flex rounded-md p-1.5 text-white whitespace-nowrap bg-asu-maroon border-2 border-transparent items-center mb-2 w-full"
                                 onClick={() =>
                                     handleButtonClick(
                                         <AccountSettings
@@ -48,11 +50,13 @@ export default function Hamburger({ Email }) {
                                         />,
                                     )
                                 }
-                            />
+                            >
+                                Manage Account
+                            </button>
                         </li>
-                        <li className="mb-2">
-                            <Button
-                                text="Memberships"
+                        <li>
+                            <button
+                                className="flex rounded-md p-1.5 text-white whitespace-nowrap bg-asu-maroon border-2 border-transparent items-center mb-2 w-full"
                                 onClick={() =>
                                     handleButtonClick(
                                         <ManageMembership
@@ -62,21 +66,25 @@ export default function Hamburger({ Email }) {
                                         />,
                                     )
                                 }
-                            />
+                            >
+                                Memberships
+                            </button>
                         </li>
                         <li>
-                            <Button
-                                text="Manage Project"
+                            <button
+                                className="flex rounded-md p-1.5 text-white whitespace-nowrap bg-asu-maroon border-2 border-transparent items-center w-full"
                                 onClick={() =>
                                     handleButtonClick(
                                         <ProjectSettings
-                                            projectNameProp={currentProject}
+                                            projectNameProp={getCurrentProject()}
                                             CloseProjectSettings={closeModal}
                                             emailProp={Email}
                                         />,
                                     )
                                 }
-                            />
+                            >
+                                Manage Project
+                            </button>
                         </li>
                     </ul>
                 </div>

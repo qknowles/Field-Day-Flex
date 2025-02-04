@@ -1,39 +1,39 @@
 name: Restrict Branch Creation
 
 on:
-    push:
-        branches-ignore:
-            - main
-            - dev
+  push:
+    branches-ignore:
+      - main
+      - dev
 
 jobs:
-    restrict_main_branching:
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout Repository
-              uses: actions/checkout@v3
-              with:
-                  fetch-depth: 0
+  restrict_main_branching:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
 
-            - name: Fetch All Remote Branches
-              run: git fetch --prune origin "+refs/heads/*:refs/remotes/origin/*"
+      - name: Fetch All Remote Branches
+        run: git fetch --prune origin "+refs/heads/*:refs/remotes/origin/*"
 
-            - name: Check if Branch is Directly Forked from Main
-              run: |
-                  # Extract the branch name
-                  PULLED_FROM=${GITHUB_REF##*/}
-                  echo "Pulled from: $PULLED_FROM"
+      - name: Check if Branch is Directly Forked from Main
+        run: |
+          # Extract the branch name
+          PULLED_FROM=${GITHUB_REF##*/}
+          echo "Pulled from: $PULLED_FROM"
 
-                  # Check if HEAD's immediate parent is from origin/main
-                  IMMEDIATE_PARENT=$(git log --pretty=%P -n 1 HEAD)
-                  MAIN_HEAD=$(git rev-parse origin/main)
+          # Check if HEAD's immediate parent is from origin/main
+          IMMEDIATE_PARENT=$(git log --pretty=%P -n 1 HEAD)
+          MAIN_HEAD=$(git rev-parse origin/main)
 
-                  echo "Immediate Parent Commit: $IMMEDIATE_PARENT"
-                  echo "Main Head Commit: $MAIN_HEAD"
+          echo "Immediate Parent Commit: $IMMEDIATE_PARENT"
+          echo "Main Head Commit: $MAIN_HEAD"
 
-                  if [ "$IMMEDIATE_PARENT" = "$MAIN_HEAD" ]; then
-                    echo "Branch is directly forked from main. Create a new branch off of dev and re-implement."
-                    exit 1
-                  else
-                    echo "Branch is not directly forked from main. Proceeding."
-                  fi
+          if [ "$IMMEDIATE_PARENT" = "$MAIN_HEAD" ]; then
+            echo "Branch is directly forked from main. Create a new branch off of dev and re-implement."
+            exit 1
+          else
+            echo "Branch is not directly forked from main. Proceeding."
+          fi

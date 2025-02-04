@@ -14,8 +14,6 @@ export const currentSessionData = atomWithStorage('currentSessionData', {
     snake: [],
 });
 
-export const currentUserEmail = atomWithStorage('currentUserEmail', null); // null: not logged in
-
 export const currentFormName = atomWithStorage('currentFormName', 'New Data');
 
 export const pastSessionData = atomWithStorage('pastSessionData', []);

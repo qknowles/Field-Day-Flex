@@ -35,28 +35,35 @@ export const projectExists = async (projectName) => {
     return !userSnapshot.empty;
 };
 
-export const getProjectFields = async (projectName, fields) => {
+export const getProjectFields = async (documentId, fields) => {
     try {
-        const projectRef = collection(db, 'Projects');
-        const projectQuery = query(projectRef, where('project_name', '==', projectName));
-        const projectDocs = await getDocs(projectQuery);
+        // Reference the document directly by its ID
+        console.log('Fetching project fields for document ID:', documentId);
+        const projectDocRef = doc(db, 'Projects', documentId);
 
-        if (!projectDocs.empty) {
-            const doc = projectDocs.docs[0];
-            const projectData = doc.data();
-            const selectedFields = fields.reduce((result, field) => {
-                if (field in projectData) {
-                    result[field] = projectData[field];
-                }
-                return result;
-            }, {});
+        // Fetch the document
+        const projectDoc = await getDoc(projectDocRef);
 
-            return selectedFields;
+        if (!projectDoc.exists()) {
+            console.error(`Project with ID "${documentId}" not found.`);
+            return null;
         }
-        return false;
+
+        // Get the document data
+        const projectData = projectDoc.data();
+
+        // Extract and return the requested fields
+        const selectedFields = fields.reduce((result, field) => {
+            if (field in projectData) {
+                result[field] = projectData[field];
+            }
+            return result;
+        }, {});
+
+        return selectedFields;
     } catch (error) {
         console.error('Error retrieving project fields:', error);
-        return false;
+        throw error;
     }
 };
 
@@ -323,87 +330,10 @@ export const createTab = async (
     }
 };
 
-export const addColumn = async (
-    email,
-    selectedProject,
-    tabName,
-    columnName,
-    columnDataType,
-    columnEntryOptions = [],
-    columnIdentifierDomain = null,
-    columnRequiredField = false,
-) => {
-    try {
-        const projectRef = collection(db, 'Projects');
-        const projectsQuery = query(
-            projectRef,
-            and(
-                where('project_name', '==', selectedProject),
-                or(
-                    where('admins', 'array-contains', email),
-                    where('owners', 'array-contains', email),
-                ),
-            ),
-        );
-        const projectSnapshot = await getDocs(projectsQuery);
-        if (projectSnapshot.empty) {
-            console.log('Project not found or no permissions.');
-            return false;
-        }
-        const projectDoc = projectSnapshot.docs[0];
-
-        const tabsRef = collection(projectDoc.ref, 'Tabs');
-        const tabQuery = query(tabsRef, where('tab_name', '==', tabName));
-        const tabSnapshot = await getDocs(tabQuery);
-        if (tabSnapshot.empty) {
-            console.log('Tab not found.');
-            return false;
-        }
-        const tabDoc = tabSnapshot.docs[0];
-
-        const columnsRef = collection(tabDoc.ref, 'Columns');
-        const existingColumns = await getDocs(columnsRef);
-        const columnOrder = existingColumns.size;
-
-        await addDoc(columnsRef, {
-            name: columnName,
-            data_type: columnDataType,
-            entry_options: columnEntryOptions[0],
-            identifier_domain: columnIdentifierDomain,
-            required_field: columnRequiredField,
-            order: columnOrder,
-        });
-
-        await addColumnToEntries(tabDoc, columnName);
-
-        return true;
-    } catch (error) {
-        console.error('Error adding column:', error);
-        return false;
-    }
-};
-
-const addColumnToEntries = async (tabDoc, columnName) => {
-    try {
-        const entriesRef = collection(tabDoc.ref, 'Entries');
-        const entriesSnapshot = await getDocs(entriesRef);
-
-        const batch = writeBatch(db);
-        entriesSnapshot.forEach((entryDoc) => {
-            const entryRef = doc(entriesRef, entryDoc.id);
-            batch.update(entryRef, {
-                [columnName]: null,
-            });
-        });
-
-        await batch.commit();
-    } catch (error) {
-        console.error('Error updating entries with new column:', error);
-    }
-};
-
 export const getColumnsCollection = async (projectName, tabName, email) => {
     try {
+        console.log('Fetching columns for project:', projectName, 'and tab:', tabName);
+
         // Query the Projects collection
         const projectRef = collection(db, 'Projects');
         const projectQuery = query(
@@ -432,6 +362,7 @@ export const getColumnsCollection = async (projectName, tabName, email) => {
         const tabSnapshot = await getDocs(tabQuery);
 
         if (tabSnapshot.empty) {
+            console.error('No matching tab found for:', tabName);
             return [];
         }
 
@@ -442,6 +373,7 @@ export const getColumnsCollection = async (projectName, tabName, email) => {
         const columnsSnapshot = await getDocs(columnsRef);
 
         if (columnsSnapshot.empty) {
+            console.warn('No columns found in the specified tab:', tabName);
             return [];
         }
 
@@ -451,6 +383,7 @@ export const getColumnsCollection = async (projectName, tabName, email) => {
             ...doc.data(),
         }));
 
+        console.log('Fetched columns:', columns);
         return columns;
     } catch (error) {
         console.error('Error in getColumnsCollection:', error);
@@ -486,6 +419,7 @@ export const addEntry = async (projectName, tabName, email, newEntry) => {
         const tabSnapshot = await getDocs(tabsQuery);
 
         if (tabSnapshot.empty) {
+            console.error('No matching tab found in the specified project.');
             return false;
         }
 
@@ -523,8 +457,7 @@ export const getEntriesForTab = async (projectName, tabName, email) => {
         const projectSnapshot = await getDocs(projectQuery);
 
         if (projectSnapshot.empty) {
-            console.log('No projects found.');
-            return false;
+            throw new Error('Project not found');
         }
 
         const projectDoc = projectSnapshot.docs[0];
@@ -535,7 +468,7 @@ export const getEntriesForTab = async (projectName, tabName, email) => {
         const tabSnapshot = await getDocs(tabQuery);
 
         if (tabSnapshot.empty) {
-            return false;
+            throw new Error('Tab not found');
         }
 
         const tabDoc = tabSnapshot.docs[0];
@@ -550,7 +483,8 @@ export const getEntriesForTab = async (projectName, tabName, email) => {
             entry_date: doc.data().entry_date?.toDate?.() || doc.data().entry_date,
         }));
     } catch (error) {
-        console.error('Error in getEntriesForTab');
+        console.error('Error fetching entries:', error);
+        throw error;
     }
 };
 export const updateDocInCollection = async (collectionName, docId, data) => {
@@ -676,6 +610,7 @@ export const getDocsFromCollection = async (projectName, tabName, constraints = 
         const tabSnapshot = await getDocs(tabQuery);
 
         if (tabSnapshot.empty) {
+            console.error('No matching tab found:', tabName);
             return [];
         }
 
@@ -685,6 +620,7 @@ export const getDocsFromCollection = async (projectName, tabName, constraints = 
         const columnsSnapshot = await getDocs(queryConstraints);
 
         if (columnsSnapshot.empty) {
+            console.warn('No columns found in the specified tab:', tabName);
             return [];
         }
 
@@ -693,6 +629,7 @@ export const getDocsFromCollection = async (projectName, tabName, constraints = 
             ...doc.data(),
         }));
 
+        console.log('Fetched columns:', columns);
         return columns;
     } catch (error) {
         console.error('Error in getDocsFromCollection:', error);

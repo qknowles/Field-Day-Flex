@@ -138,7 +138,6 @@ export default function NewTab({ CancelTab, OpenNewTab, Email, SelectedProject }
             {showColumnOptions ? (
                 <ColumnOptions
                     ColumnNames={columnNames}
-                    SetColumnNames={setColumnNames}
                     CancelColumnOptions={closeColumnOptions}
                     OpenNewTab={OpenNewTab}
                     Email={Email}

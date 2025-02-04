@@ -60,11 +60,11 @@ export const TableEntry = forwardRef((props, ref) => {
 const getColumnClassName = (columnName) => {
     const classMap = {
         'Date & Time': 'dateTimeColumn',
-        Site: 'siteColumn',
-        Year: 'yearColumn',
-        Taxa: 'taxaColumn',
-        Genus: 'genusColumn',
-        Species: 'speciesColumn',
+        'Site': 'siteColumn',
+        'Year': 'yearColumn',
+        'Taxa': 'taxaColumn',
+        'Genus': 'genusColumn',
+        'Species': 'speciesColumn'
     };
     return classMap[columnName] || '';
 };
@@ -73,9 +73,9 @@ const EntryItem = ({ columnName, entryUIState, setEntryData, entryData, classNam
     const [editable] = useState(true);
 
     const onChangeHandler = (e) => {
-        setEntryData((prev) => ({
+        setEntryData(prev => ({
             ...prev,
-            [columnName]: e.target.value,
+            [columnName]: e.target.value
         }));
     };
 
@@ -89,9 +89,7 @@ const EntryItem = ({ columnName, entryUIState, setEntryData, entryData, classNam
     const size = value ? String(value).length : 1;
 
     return (
-        <td
-            className={`text-left border-b border-neutral-400 dark:border-neutral-600 p-1 ${className || ''}`}
-        >
+        <td className={`text-left border-b border-neutral-400 dark:border-neutral-600 p-1 ${className || ''}`}>
             <input
                 readOnly={disabled}
                 className="pl-2 w-full read-only:bg-transparent read-only:border-transparent read-only:focus:outline-none"
