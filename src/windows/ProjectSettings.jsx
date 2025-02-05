@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { useAtom } from 'jotai';
+import { currentProjectName } from '../utils/jotai';
 import WindowWrapper from '../wrappers/WindowWrapper.jsx';
 import InputLabel from '../components/InputLabel.jsx';
 import { DropdownSelector } from '../components/FormFields.jsx';
@@ -21,11 +23,11 @@ export default function ProjectSettings({
     const [isAuthorized, setIsAuthorized] = useState(false);
     const [isOwner, setIsOwner] = useState(false);
     const [documentId, setDocumentId] = useState(null);
-    const [projectName, setProjectName] = useState(projectNameProp);
     const [newMemberSelectedRole, setNewMemberSelectedRole] = useState('Select Role');
     const [newMemberEmail, setNewMemberEmail] = useState('');
     const [members, setMembers] = useState([]);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    const [projectName, setProjectName] = useAtom(currentProjectName);
 
     useEffect(() => {
         const fetchDocumentId = async () => {
@@ -49,17 +51,7 @@ export default function ProjectSettings({
     useEffect(() => {
         updateMemberRole();
     }, [members]);
-    async function saveChanges() {
-        try {
-            await updateDocInCollection('Projects', documentId, { project_name: projectName });
-            setProjectName(projectName);  // Update Jotai state
-            updateProjectName(projectName);  // Keep legacy support
-            notify(Type.success, 'Project updated successfully');
-            CloseProjectSettings();
-        } catch (error) {
-            notify(Type.error, 'Failed to update project');
-        }
-    }
+
     const fetchProjectData = async () => {
         try {
             const membersData = await getProjectFields(documentId, [
@@ -93,6 +85,7 @@ export default function ProjectSettings({
             }
         } catch (err) {
             console.error('Error fetching project data:', err);
+            notify(Type.error, 'Failed to fetch project data');
         }
     };
 
@@ -113,17 +106,21 @@ export default function ProjectSettings({
             return;
         }
 
-        await addMemberToProject(
-            documentId,
-            newMemberSelectedRole.toLowerCase() + 's',
-            newMemberEmail,
-        );
-        await fetchProjectData();
-        
-        // Reset fields only on success
-        setNewMemberEmail('');
-        setNewMemberSelectedRole('Select Role');
-        notify(Type.success, `Added ${newMemberEmail} as ${newMemberSelectedRole}`);
+        try {
+            await addMemberToProject(
+                documentId,
+                newMemberSelectedRole.toLowerCase() + 's',
+                newMemberEmail,
+            );
+            await fetchProjectData();
+            
+            // Reset fields only on success
+            setNewMemberEmail('');
+            setNewMemberSelectedRole('Select Role');
+            notify(Type.success, `Added ${newMemberEmail} as ${newMemberSelectedRole}`);
+        } catch (error) {
+            notify(Type.error, 'Failed to add member');
+        }
     }
 
     async function updateMemberRole() {
@@ -142,17 +139,19 @@ export default function ProjectSettings({
             const success = await updateDocInCollection('Projects', documentId, updatedData);
 
             if (!success) {
-                console.error('Failed to sync members to Firebase.');
+                notify(Type.error, 'Failed to update member roles');
             }
         } catch (error) {
             console.error('Error updating Firebase:', error);
+            notify(Type.error, 'Failed to update member roles');
         }
     }
 
     async function saveChanges() {
         try {
             await updateDocInCollection('Projects', documentId, { project_name: projectName });
-            updateProjectName(projectName);
+            setProjectName(projectName); // Update Jotai state
+            updateProjectName(projectName); // Keep legacy support
             notify(Type.success, 'Project updated successfully');
             CloseProjectSettings();
         } catch (error) {
