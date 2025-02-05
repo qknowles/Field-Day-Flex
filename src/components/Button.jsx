@@ -6,7 +6,7 @@ import classNames from 'classnames';
 import { slideInVariant } from '../utils/variants';
 
 export default function Button({ className, flexible, text, onClick, disabled, icon }) {
-    const offset = icon ? 40 : 0;
+    const offset = icon ? 35 : 0;
 
     const buttonControls = useAnimationControls();
     const textControls = useAnimationControls();

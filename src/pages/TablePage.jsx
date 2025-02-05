@@ -6,7 +6,10 @@ import { LizardIcon } from '../assets/icons';
 import NewProject from '../windows/NewProject';
 import NewTab from '../windows/NewTab';
 import NewEntry from '../windows/NewEntry';
+import ColumnOptions from '../windows/ColumnOptions';
 import Button from '../components/Button';
+import { getColumnsCollection } from '../utils/firestore';
+import ManageColumns from '../windows/MangeColumns';
 
 const NoProjectDisplay = () => (
     <div className="w-full text-center">
@@ -62,10 +65,6 @@ const NoTabsDisplay = () => (
     </div>
 );
 
-/**
- * Quick and dirty way to get the Current Project to TopNav for ProjectSettings.jsx
- * @type {string}
- */
 let currentProject = 'null';
 export function getCurrentProject() {
     return currentProject;
@@ -77,11 +76,18 @@ export default function TablePage({ Email }) {
     const [showNewProject, setShowNewProject] = useState(false);
     const [showNewTab, setShowNewTab] = useState(false);
     const [showNewEntry, setShowNewEntry] = useState(false);
+    const [showManageColumns, setShowManageColumns] = useState(false);
+    const [showColumnOptions, setShowColumnOptions] = useState(false);
+    const [newColumn, setNewColumn] = useState(['']);
 
     useEffect(() => {
         currentProject = selectedProject;
         setSelectedTab('');
     }, [selectedProject]);
+
+    useEffect(() => {
+        setNewColumn(['']);
+    }, [showColumnOptions]);
 
     return (
         <PageWrapper>
@@ -92,15 +98,17 @@ export default function TablePage({ Email }) {
                 SetSelectedProject={setSelectedProject}
                 SelectedTab={selectedTab}
                 SetSelectedTab={setSelectedTab}
-                OnNewProject={() => setShowNewProject(true)}
-                OnNewTab={() => setShowNewTab(true)}
             />
 
             {/* Table Management Buttons */}
             {selectedTab && (
                 <div className="flex items-center pt-3 px-5 pb-3 space-x-6 dark:bg-neutral-950">
-                    <p className="text-2xl">{selectedTab} - Entries</p>
-                    <Button text="New Entry" onClick={() => setShowNewEntry(true)} />
+                    <div className="flex items-center space-x-6 pr-32">
+                        <p className="text-2xl">{selectedTab} - Entries</p>
+                        <Button text="New Entry" onClick={() => setShowNewEntry(true)} />
+                    </div>
+                    <Button text="New Column" onClick={() => setShowColumnOptions(true)} />
+                    <Button text="Manage Columns" onClick={() => setShowManageColumns(true)} />
                 </div>
             )}
 
@@ -119,34 +127,38 @@ export default function TablePage({ Email }) {
                 )}
             </div>
 
-            {/* Modals */}
-            {showNewProject && (
-                <NewProject
-                    CancelProject={() => setShowNewProject(false)}
-                    OpenNewProject={(projectName) => {
-                        setShowNewProject(false);
-                        setSelectedProject(projectName);
-                    }}
-                    Email={Email}
-                />
-            )}
-            {showNewTab && (
-                <NewTab
-                    CancelTab={() => setShowNewTab(false)}
-                    OpenNewTab={(tabName) => {
-                        setShowNewTab(false);
-                        setSelectedTab(tabName);
-                    }}
-                    Email={Email}
-                    SelectedProject={selectedProject}
-                />
-            )}
+            {/* Pages */}
             {showNewEntry && (
                 <NewEntry
                     CloseNewEntry={() => setShowNewEntry(false)}
                     ProjectName={selectedProject}
                     TabName={selectedTab}
                     Email={Email}
+                />
+            )}
+            {showColumnOptions && (
+                <ColumnOptions
+                    ColumnNames={newColumn}
+                    SetColumnNames={setNewColumn}
+                    CancelColumnOptions={() => setShowColumnOptions(false)}
+                    OpenNewTab={() => setShowColumnOptions(false)}
+                    Email={Email}
+                    SelectedProject={selectedProject}
+                    TabName={selectedTab}
+                    GenerateIdentifiers={null}
+                    PossibleIdentifiers={null}
+                    IdentifierDimension={null}
+                    UnwantedCodes={null}
+                    UtilizeUnwantedCodes={null}
+                    header="Add Column"
+                />
+            )}
+            {showManageColumns && (
+                <ManageColumns
+                    CloseManageColumns={() => setShowManageColumns(false)}
+                    Email={Email}
+                    SelectedProject={selectedProject}
+                    TabName={selectedTab}
                 />
             )}
         </PageWrapper>

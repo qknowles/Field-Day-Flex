@@ -10,7 +10,7 @@ import { Type, notify } from './Notifier';
 import { deleteDoc, doc, writeBatch, collection, getDocs } from 'firebase/firestore';
 import { db } from '../utils/firebase';
 import NewEntry from '../windows/NewEntry';
-import { AiFillEdit } from 'react-icons/ai';
+import { AiFillEdit, AiFillDelete } from 'react-icons/ai';
 //import InputLabel from '../components/InputLabel';
 //import { DropdownSelector } from '../components/FormFields';
 //import PageWrapper from '../wrappers/PageWrapper';
@@ -141,7 +141,9 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
 
         try {
             const entriesData = await getEntriesForTab(SelectedProject, SelectedTab, Email);
-            setEntries(entriesData);
+            if (entriesData) {
+                setEntries(entriesData);
+            }
         } catch (err) {
             console.error('Error fetching entries:', err);
             setError('Failed to load entries');
@@ -383,16 +385,15 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
             try {
                 const projectFields = await getProjectFields(SelectedProject, ['owners', 'admins']);
                 if (!projectFields) {
-                    console.log('No project fields found');
+                    console.error('No project fields found');
                     setIsAdminOrOwner(false);
                     return;
                 }
-
                 const isAdmin = projectFields.admins?.includes(Email) || false;
                 const isOwner = projectFields.owners?.includes(Email) || false;
                 setIsAdminOrOwner(isAdmin || isOwner);
             } catch (err) {
-                console.error('Error checking permissions:', err);
+                console.error('Error checking permissions:');
                 setIsAdminOrOwner(false);
             }
         };
@@ -450,8 +451,10 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
                                                 className={'flex items-center justify-center'}
                                             />
                                             <Button
-                                                text="Delete"
                                                 onClick={() => handleDelete(entry.id)}
+                                                icon={AiFillDelete}
+                                                flexible={true}
+                                                className={'flex items-center justify-center'}
                                             />
                                         </div>
                                     </td>
