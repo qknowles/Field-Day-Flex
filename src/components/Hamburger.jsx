@@ -43,7 +43,6 @@ export default function Hamburger({ Email }) {
                                 onClick={() =>
                                     handleButtonClick(
                                         <AccountSettings
-                                            emailProp={Email}
                                             CloseAccountSettings={closeModal}
                                         />,
                                     )

@@ -82,7 +82,7 @@ export default function ProjectSettings({
 
                 // This was accidentally commited in the same commit as Task 420. These lines are for Task 418:
                 const currUser = updatedMembers.find((member) => member.email === emailProp);
-                if (currUser && (currUser.role === 'Owner' || currUser.role === 'Admin')) {
+                if(currUser && ((currUser.role === "Owner") || (currUser.role === "Admin"))) {
                     setIsAuthorized(true);
                 } else setIsAuthorized(false);
             }
@@ -178,14 +178,11 @@ export default function ProjectSettings({
         return <div>Loading project settings...</div>;
     }
 
-    // and this if statement as well
     if (!isAuthorized) {
         return (
             <WindowWrapper
                 header={`Manage ${projectNameProp} Project`}
-                onLeftButton={() => {
-                    CloseProjectSettings();
-                }}
+                onLeftButton={() => { CloseProjectSettings() }}
                 leftButtonText="Close"
             >
                 <div className="p-5">
@@ -195,7 +192,7 @@ export default function ProjectSettings({
             </WindowWrapper>
         );
     }
-    // TODO: remove these comments I just needed the git commit.
+
 
     return (
         <WindowWrapper

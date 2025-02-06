@@ -6,16 +6,18 @@ import { DropdownSelector } from './FormFields';
 import { Type, notify } from '../components/Notifier';
 import NewProject from '../windows/NewProject';
 import NewTab from '../windows/NewTab';
+import { useAtom } from 'jotai';
+import { currentUserEmail } from '../utils/jotai.js';
 
 export let updateProjectName = null;
 
 export default function TabBar({
-    Email,
     SelectedTab,
     SetSelectedTab,
     SelectedProject,
     SetSelectedProject,
 }) {
+    const [Email, setEmail] = useAtom(currentUserEmail);
     const [showNewTab, setShowNewTab] = useState(false);
     const [showNewProject, setShowNewProject] = useState(false);
 
