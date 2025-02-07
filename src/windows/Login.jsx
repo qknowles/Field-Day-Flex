@@ -4,13 +4,10 @@ import InputLabel from '../components/InputLabel';
 import { Type, notify } from '../components/Notifier';
 import { accountExists, verifyPassword } from '../utils/firestore';
 import CryptoJS from 'crypto-js';
-import { useSetAtom } from 'jotai';
-import { currentUserEmail } from '../utils/jotai.js';
 
-export default function Login({ CancelLogin, OpenAccount }) {
+export default function Login({ CancelLogin, OpenAccount, SetEmail }) {
     const [thisEmail, setThisEmail] = useState('');
     const [password, setPassword] = useState('');
-    const setEmail = useSetAtom(currentUserEmail);
 
     const attemptLogin = async () => {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -28,7 +25,7 @@ export default function Login({ CancelLogin, OpenAccount }) {
             const hashedPassword = CryptoJS.SHA256(password).toString();
             const passwordIsCorrect = await verifyPassword(thisEmail, hashedPassword);
             if (passwordIsCorrect) {
-                setEmail(thisEmail);
+                SetEmail(thisEmail);
                 notify(Type.success, 'Login successful.');
                 OpenAccount();
             } else {

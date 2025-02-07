@@ -3,29 +3,21 @@ import { DropdownFlex, RadioButtons, YesNoSelector } from '../components/FormFie
 import WindowWrapper from '../wrappers/WindowWrapper';
 import InputLabel from '../components/InputLabel';
 import { Type, notify } from '../components/Notifier';
-import { tabExists, createTab, addColumn } from '../utils/firestore';
-import { useAtomValue } from 'jotai';
-import { currentUserEmail, currentProjectName, currentTableName } from '../utils/jotai.js';
+import { tabExists, createTab } from '../utils/firestore';
 
 export default function ColumnOptions({
     ColumnNames,
-    SetColumnNames,
     CancelColumnOptions,
     OpenNewTab,
-    tabName = '',
+    Email,
+    SelectedProject,
+    TabName,
     GenerateIdentifiers,
     PossibleIdentifiers,
     IdentifierDimension,
     UnwantedCodes,
     UtilizeUnwantedCodes,
-    header = 'Column Options',
 }) {
-
-    const SelectedProject = useAtomValue(currentProjectName);
-    const storedTabName = useAtomValue(currentTableName);
-    const TabName = tabName || storedTabName;
-    const Email = useAtomValue(currentUserEmail);
-
     const [rightButtonText, setRightButtonText] = useState('Next Column');
     const [columnIndex, setColumnIndex] = useState(0);
     const [tempEntryOptions, setTempEntryOptions] = useState([]);
@@ -99,25 +91,7 @@ export default function ColumnOptions({
                     notify(Type.success, 'Tab created.');
                     OpenNewTab(TabName);
                 } else {
-                    notify(Type.error, 'Error creating subject.');
-                }
-                // This just identifies if ColumnOptions is being used to create a new tab vs just adding a column. See null values in TablePage.
-            } else if (GenerateIdentifiers === null) {
-                const columnAdded = await addColumn(
-                    Email,
-                    SelectedProject,
-                    TabName,
-                    ColumnNames,
-                    dataType,
-                    finalEntryOptions,
-                    identifierDomain,
-                    requiredField,
-                );
-                if (columnAdded) {
-                    notify(Type.success, 'update tab');
-                    OpenNewTab();
-                } else {
-                    notify(Type.error, 'Error creating new column.');
+                    notify(Type.error, 'Error creating subject column options.');
                 }
             }
         }
@@ -148,19 +122,13 @@ export default function ColumnOptions({
         return columnIndex === ColumnNames.length - 1 ? storeNewTab : goForward;
     }, [columnIndex, storeNewTab, goForward]);
 
-    const handleColumnNameChange = (newName) => {
-        const updatedColumnNames = [...ColumnNames];
-        updatedColumnNames[columnIndex] = newName;
-        SetColumnNames(updatedColumnNames);
-    };
-
     useEffect(() => {
         setRightButtonText(columnIndex === ColumnNames.length - 1 ? 'Finish' : 'Next Column');
     }, [columnIndex, ColumnNames.length]);
 
     return (
         <WindowWrapper
-            header={header}
+            header="Column Options"
             onLeftButton={leftButtonClick}
             onRightButton={rightButtonClick}
             leftButtonText="Go Back"
@@ -170,12 +138,7 @@ export default function ColumnOptions({
                 <InputLabel
                     label="Column Name"
                     layout="horizontal-single"
-                    input={
-                        <input
-                            value={ColumnNames[columnIndex]}
-                            onChange={(e) => handleColumnNameChange(e.target.value)}
-                        />
-                    }
+                    input={<input disabled={true} value={ColumnNames[columnIndex]} />}
                 />
                 <span className="text-sm">Data Entry Type:</span>
                 <RadioButtons

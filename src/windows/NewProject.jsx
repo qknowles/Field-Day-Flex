@@ -4,13 +4,8 @@ import WindowWrapper from '../wrappers/WindowWrapper';
 import InputLabel from '../components/InputLabel';
 import { projectExists, createProject } from '../utils/firestore';
 import { Type, notify } from '../components/Notifier';
-import { useAtomValue } from 'jotai';
-import { currentUserEmail } from '../utils/jotai.js';
 
-export default function NewProject({ CancelProject, OpenNewProject }) {
-
-    const Email = useAtomValue(currentUserEmail);
-
+export default function NewProject({ CancelProject, OpenNewProject, Email }) {
     const [projectName, setProjectName] = useState('');
     const [contributors, setContributors] = useState([]);
     const [administrators, setAdministrators] = useState([]);

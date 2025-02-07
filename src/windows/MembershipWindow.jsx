@@ -3,26 +3,23 @@ import { editMemberships, getProjectNames } from '../utils/firestore';
 import Button from '../components/Button';
 import WindowWrapper from '../wrappers/WindowWrapper';
 import { Type, notify } from '../components/Notifier';
-import { useAtomValue } from 'jotai';
-import { currentUserEmail } from '../utils/jotai.js';
 
-export default function ManageMembership({ CancelMemberships, setCurrentWindow }) {
+export default function ManageMembership({ Email, CancelMemberships, setCurrentWindow }) {
     const [userProjectData, setUserProjectData] = useState([]);
-    const email = useAtomValue(currentUserEmail);
 
     useEffect(() => {
         const loadProjects = async () => {
-            const projects = await getProjectNames(email);
+            const projects = await getProjectNames(Email);
             setUserProjectData(projects);
         };
         loadProjects();
-    }, [email]);
+    }, [Email]);
 
     const handleLeaveProject = async (project) => {
-        const success = await editMemberships(email, project);
+        const success = await editMemberships(Email, project);
         if (success) {
             notify(Type.success, `Left project: ${project}`);
-            const updatedProjects = await getProjectNames(email);
+            const updatedProjects = await getProjectNames(Email);
             setUserProjectData(updatedProjects);
             if (updatedProjects.length === 0) {
                 setCurrentWindow('HomePage');

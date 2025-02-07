@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const Table = ({ entries, columns, onEdit, onDelete }) => {
+const Table = ({ Email, SelectedProject, SelectedTab, entries, columns, onEdit, onDelete }) => {
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
 
     const handleSort = (key) => {
