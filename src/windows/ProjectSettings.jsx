@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { useAtom } from 'jotai';
 import { currentProjectName } from '../utils/jotai';
 import WindowWrapper from '../wrappers/WindowWrapper.jsx';
 import InputLabel from '../components/InputLabel.jsx';
@@ -16,11 +15,10 @@ import { notify, Type } from '../components/Notifier.jsx';
 import { updateProjectName } from '../components/TabBar.jsx';
 import { db } from '../utils/firebase';
 import { doc, collection, getDocs, writeBatch, deleteDoc } from 'firebase/firestore';
-export default function ProjectSettings({
-    projectNameProp = 'NoNamePassed',
-    CloseProjectSettings,
-    emailProp,
-}) {
+import { useAtomValue, useAtom } from 'jotai';
+import { currentUserEmail } from '../utils/jotai.js';
+
+export default function ProjectSettings({ projectNameProp = 'NoNamePassed', CloseProjectSettings }) {
     // State definitions
     const [loading, setLoading] = useState(true);
     const [isAuthorized, setIsAuthorized] = useState(false);
@@ -33,6 +31,7 @@ export default function ProjectSettings({
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [projectName, setProjectName] = useAtom(currentProjectName);
     const [isInitialLoad, setIsInitialLoad] = useState(true);
+    const userEmail = useAtomValue(currentUserEmail);
 
     // Initialize project name from prop
     useEffect(() => {
@@ -110,9 +109,9 @@ export default function ProjectSettings({
                 console.log('Setting members:', updatedMembers);
                 setMembers(updatedMembers);
 
-                const currUser = updatedMembers.find((member) => member.email === emailProp);
-                const isUserOwner = owners.includes(emailProp);
-                const isUserAdmin = admins.includes(emailProp);
+                const currUser = updatedMembers.find((member) => member.email === userEmail);
+                const isUserOwner = owners.includes(userEmail);
+                const isUserAdmin = admins.includes(userEmail);
                 setIsOwner(isUserOwner);
                 setCanEdit(isUserOwner || isUserAdmin);
                 setIsAuthorized(!!currUser);
@@ -334,6 +333,7 @@ export default function ProjectSettings({
             </WindowWrapper>
         );
     }
+
     const renderMembersList = () => {
         console.log('Rendering members list with:', members);
         if (!members || members.length === 0) {
@@ -375,6 +375,7 @@ export default function ProjectSettings({
             </div>
         ));
     };
+
     return (
         <WindowWrapper
             header={`Manage ${projectName} Project`}
