@@ -2,41 +2,59 @@ import React, { useState, useEffect } from 'react';
 import { DropdownSelector } from '../components/FormFields';
 import WindowWrapper from '../wrappers/WindowWrapper';
 import InputLabel from '../components/InputLabel';
-import { getColumnsCollection, addEntry, updateEntry } from '../utils/firestore';
+import { getColumnsCollection, addEntry } from '../utils/firestore';
 import { Type, notify } from '../components/Notifier';
+import { useAtomValue } from 'jotai';
+import { currentUserEmail, currentProjectName, currentTableName } from '../utils/jotai.js';
 
-export default function NewEntry({ CloseNewEntry, ProjectName, TabName, Email, existingEntry, onEntryUpdated }) {
+export default function NewEntry({ CloseNewEntry }) {
     const [columnsCollection, setColumnsCollection] = useState([]);
     const [userEntries, setUserEntries] = useState({});
 
-    useEffect(() => {
-        loadCollection();
-    }, [ProjectName, Email]);
+    const projectName = useAtomValue(currentProjectName);
+    const tabName = useAtomValue(currentTableName);
+    const email = useAtomValue(currentUserEmail);
 
     useEffect(() => {
-        if (existingEntry && existingEntry.entry_data) {
-            setUserEntries(existingEntry.entry_data);
-        }
-    }, [existingEntry]);
+        const fetchData = async () => {
+            await loadCollection();
+        };
+        fetchData();
+    }, [projectName, tabName, email]);
+
+    const formatDateTime = (date) => {
+        const d = new Date(date);
+        return (
+            d.getFullYear() +
+            '/' +
+            String(d.getMonth() + 1).padStart(2, '0') +
+            '/' +
+            String(d.getDate()).padStart(2, '0') +
+            ' ' +
+            String(d.getHours()).padStart(2, '0') +
+            ':' +
+            String(d.getMinutes()).padStart(2, '0') +
+            ':' +
+            String(d.getSeconds()).padStart(2, '0')
+        );
+    };
 
     const loadCollection = async () => {
-        const columns = await getColumnsCollection(ProjectName, TabName, Email);
+        const columns = await getColumnsCollection(projectName, tabName, email);
         setColumnsCollection(columns);
 
-        if (!existingEntry) {
-            const defaultEntries = {};
-            columns.forEach((column) => {
-                const { name, data_type } = column;
-                if (data_type === 'date') {
-                    defaultEntries[name] = new Date().toISOString().split('T')[0];
-                } else if (data_type === 'multiple choice') {
-                    defaultEntries[name] = 'Select';
-                } else {
-                    defaultEntries[name] = '';
-                }
-            });
-            setUserEntries(defaultEntries);
-        }
+        const defaultEntries = {};
+        columns.forEach((column) => {
+            const { name, data_type } = column;
+            if (data_type === 'date') {
+                defaultEntries[name] = formatDateTime(new Date());
+            } else if (data_type === 'multiple choice') {
+                defaultEntries[name] = 'Select';
+            } else {
+                defaultEntries[name] = '';
+            }
+        });
+        setUserEntries(defaultEntries);
     };
 
     const handleInputChange = (name, value) => {
@@ -44,6 +62,12 @@ export default function NewEntry({ CloseNewEntry, ProjectName, TabName, Email, e
             ...prev,
             [name]: value,
         }));
+    };
+
+    const parseDateTimeInput = (input) => {
+        if (!input || typeof input !== 'string' || !input.includes(' ')) return '';
+        const [date, time] = input.split(' ');
+        return date.replace(/\//g, '-') + 'T' + time;
     };
 
     const validEntries = () => {
@@ -56,8 +80,11 @@ export default function NewEntry({ CloseNewEntry, ProjectName, TabName, Email, e
                 return false;
             }
 
-            if (data_type === 'date' && isNaN(Date.parse(value))) {
-                notify(Type.error, `The field "${name}" must be a valid date.`);
+            if (data_type === 'date' && !/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}$/.test(value)) {
+                notify(
+                    Type.error,
+                    `The field "${name}" must be in the format YYYY/MM/DD HH:MM:SS.`,
+                );
                 return false;
             }
 
@@ -72,22 +99,17 @@ export default function NewEntry({ CloseNewEntry, ProjectName, TabName, Email, e
 
     const submitEntry = async () => {
         if (validEntries()) {
-            if (existingEntry) {
-                await updateEntry(ProjectName, TabName, Email, existingEntry.id, userEntries);
-                notify(Type.success, `Entry updated.`);
-            } else {
-                await addEntry(ProjectName, TabName, Email, userEntries);
-                notify(Type.success, `Entry submitted.`);
-            }
+            await addEntry(projectName, tabName, email, userEntries);
+            notify(Type.success, `Entry submitted.`);
             CloseNewEntry();
-            if (onEntryUpdated) {
-                onEntryUpdated();
-            }
         }
     };
 
     const renderDynamicInputs = () => {
-        return columnsCollection.map((column, index) => {
+        // Ensure columns are sorted using the same `order` field as the table
+        const sortedColumns = [...columnsCollection].sort((a, b) => a.order - b.order);
+
+        return sortedColumns.map((column, index) => {
             const { name, data_type, entry_options, required_field } = column;
 
             if (data_type === 'multiple choice') {
@@ -104,7 +126,11 @@ export default function NewEntry({ CloseNewEntry, ProjectName, TabName, Email, e
             }
 
             const inputType =
-                data_type === 'number' ? 'number' : data_type === 'date' ? 'date' : 'text';
+                data_type === 'number'
+                    ? 'number'
+                    : data_type === 'date'
+                      ? 'datetime-local'
+                      : 'text';
 
             return (
                 <InputLabel
@@ -116,8 +142,18 @@ export default function NewEntry({ CloseNewEntry, ProjectName, TabName, Email, e
                             type={inputType}
                             placeholder={name}
                             required={required_field}
-                            value={userEntries[name]}
-                            onChange={(e) => handleInputChange(name, e.target.value)}
+                            value={
+                                data_type === 'date'
+                                    ? parseDateTimeInput(userEntries[name])
+                                    : userEntries[name] || ''
+                            }
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                handleInputChange(
+                                    name,
+                                    data_type === 'date' ? formatDateTime(value) : value,
+                                );
+                            }}
                         />
                     }
                 />
@@ -127,11 +163,11 @@ export default function NewEntry({ CloseNewEntry, ProjectName, TabName, Email, e
 
     return (
         <WindowWrapper
-            header={existingEntry ? "Edit Entry" : "New Entry"}
+            header="New Entry"
             onLeftButton={CloseNewEntry}
             onRightButton={submitEntry}
             leftButtonText="Cancel"
-            rightButtonText={existingEntry ? "Update Entry" : "Submit Entry"}
+            rightButtonText="Submit Entry"
         >
             <div className="flex flex-col space-y-4">{renderDynamicInputs()}</div>
         </WindowWrapper>

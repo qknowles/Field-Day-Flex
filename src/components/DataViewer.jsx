@@ -2,8 +2,6 @@ import React, { useState, useEffect, useCallback, useMemo} from 'react';
 import { getColumnsCollection, getEntriesForTab, getProjectFields, deleteEntry, getEntryDetails } from '../utils/firestore'; // Import deleteEntry
 import TableTools from '../wrappers/TableTools';
 import { Pagination } from './Pagination';
-import { useAtom } from 'jotai';
-import { currentProjectName, currentTableName, currentBatchSize } from '../utils/jotai';
 import Button from './Button';
 import WindowWrapper from '../wrappers/WindowWrapper';
 import { Type, notify } from './Notifier';
@@ -13,15 +11,21 @@ import NewEntry from '../windows/NewEntry';
 //import { DropdownSelector } from '../components/FormFields';
 //import PageWrapper from '../wrappers/PageWrapper';
 //import TabBar from '../components/TabBar';
+import { AiFillEdit, AiFillDelete } from 'react-icons/ai';
+import { useAtom, useAtomValue } from 'jotai';
+import { currentUserEmail, currentProjectName, currentTableName, currentBatchSize } from '../utils/jotai';
 
 const STATIC_COLUMNS = [
     { id: 'actions', name: 'Actions', type: 'actions', order: -3 },
     { id: 'datetime', name: 'Date & Time', type: 'datetime', order: -2 }
 ];
 
+const DataViewer = () => {
 
-const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
-    
+    const SelectedProject = useAtomValue(currentProjectName);
+    const SelectedTab = useAtomValue(currentTableName);
+    const Email = useAtomValue(currentUserEmail);
+
     const [entries, setEntries] = useState([]);
     const [columns, setColumns] = useState([]);
     const [loading, setLoading] = useState(true);

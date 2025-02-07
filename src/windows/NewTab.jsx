@@ -5,8 +5,14 @@ import InputLabel from '../components/InputLabel';
 import { Type, notify } from '../components/Notifier';
 import { tabExists, createTab } from '../utils/firestore';
 import ColumnOptions from './ColumnOptions.jsx';
+import { useAtomValue } from 'jotai';
+import { currentUserEmail, currentProjectName } from '../utils/jotai.js';
 
-export default function NewTab({ CancelTab, OpenNewTab, Email, SelectedProject }) {
+export default function NewTab({ CancelTab, OpenNewTab }) {
+
+    const SelectedProject = useAtomValue(currentProjectName);
+    const Email = useAtomValue(currentUserEmail);
+
     const [tabName, setTabName] = useState('');
     const [generateIdentifiers, setGenerateIdentifiers] = useState(false);
     const [possibleIdentifiers, setPossibleIdentifiers] = useState([]);
@@ -140,9 +146,7 @@ export default function NewTab({ CancelTab, OpenNewTab, Email, SelectedProject }
                     ColumnNames={columnNames}
                     CancelColumnOptions={closeColumnOptions}
                     OpenNewTab={OpenNewTab}
-                    Email={Email}
-                    SelectedProject={SelectedProject}
-                    TabName={tabName}
+                    tabName={tabName}
                     GenerateIdentifiers={generateIdentifiers}
                     PossibleIdentifiers={possibleIdentifiers}
                     IdentifierDimension={identifierDimension}

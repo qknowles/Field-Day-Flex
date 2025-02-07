@@ -6,15 +6,16 @@ import ProjectSettings from '../windows/ProjectSettings.jsx';
 import { getCurrentProject } from '../pages/TablePage.jsx';
 import { getDocumentIdByProjectName } from '../utils/firestore.js';
 import ManageMembership from '../windows/MembershipWindow';
+import Button from './Button';
 
-export default function Hamburger({ Email }) {
-    const [menuOpen, setMenuOpen] = useState(false); // Hamburger menu state
-    const [modalContent, setModalContent] = useState(null); // Modal content state
+export default function Hamburger() {
+    const [menuOpen, setMenuOpen] = useState(false);
+    const [modalContent, setModalContent] = useState(null);
+    const [currentProject] = useAtom(currentProjectName);
     const [setCurrentWindow] = useState('HomePage');
-
+    
     const toggleMenu = () => setMenuOpen((prev) => !prev);
-
-    // Function to handle button clicks and display modal with custom content
+    
     const handleButtonClick = (content) => {
         setModalContent(content); // Set the content to be displayed in the modal
     };
@@ -45,7 +46,6 @@ export default function Hamburger({ Email }) {
                                 onClick={() =>
                                     handleButtonClick(
                                         <AccountSettings
-                                            emailProp={Email}
                                             CloseAccountSettings={closeModal}
                                         />,
                                     )
@@ -60,7 +60,6 @@ export default function Hamburger({ Email }) {
                                 onClick={() =>
                                     handleButtonClick(
                                         <ManageMembership
-                                            Email={Email}
                                             CancelMemberships={closeModal}
                                             setCurrentWindow={setCurrentWindow}
                                         />,
@@ -78,7 +77,6 @@ export default function Hamburger({ Email }) {
                                         <ProjectSettings
                                             projectNameProp={getCurrentProject()}
                                             CloseProjectSettings={closeModal}
-                                            emailProp={Email}
                                         />,
                                     )
                                 }
