@@ -1,9 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { getColumnsCollection, getEntriesForTab, getProjectFields } from '../utils/firestore';
-import TableTools from '../wrappers/TableTools';
 import { Pagination } from './Pagination';
-import { useAtom } from 'jotai';
-import { currentProjectName, currentTableName, currentBatchSize } from '../utils/jotai';
 import Button from './Button';
 import WindowWrapper from '../wrappers/WindowWrapper';
 import { Type, notify } from './Notifier';
@@ -11,17 +8,20 @@ import { deleteDoc, doc, writeBatch, collection, getDocs } from 'firebase/firest
 import { db } from '../utils/firebase';
 import NewEntry from '../windows/NewEntry';
 import { AiFillEdit, AiFillDelete } from 'react-icons/ai';
-//import InputLabel from '../components/InputLabel';
-//import { DropdownSelector } from '../components/FormFields';
-//import PageWrapper from '../wrappers/PageWrapper';
-//import TabBar from '../components/TabBar';
+import { useAtom, useAtomValue } from 'jotai';
+import { currentUserEmail, currentProjectName, currentTableName, currentBatchSize } from '../utils/jotai';
 
 const STATIC_COLUMNS = [
     { id: 'actions', name: 'Actions', type: 'actions', order: -3 },
     { id: 'datetime', name: 'Date & Time', type: 'datetime', order: -2 },
 ];
 
-const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
+const DataViewer = () => {
+
+    const SelectedProject = useAtomValue(currentProjectName);
+    const SelectedTab = useAtomValue(currentTableName);
+    const Email = useAtomValue(currentUserEmail);
+
     const [entries, setEntries] = useState([]);
     const [columns, setColumns] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -141,7 +141,9 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
 
         try {
             const entriesData = await getEntriesForTab(SelectedProject, SelectedTab, Email);
-            setEntries(entriesData);
+            if (entriesData) {
+                setEntries(entriesData);
+            }
         } catch (err) {
             console.error('Error fetching entries:', err);
             setError('Failed to load entries');
@@ -290,7 +292,7 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
     const handleEdit = async (entry) => {
         const editWindow = (
             <NewEntry
-                CloseNewEntry={() => {}}
+                CloseNewEntry={() => { }}
                 ProjectName={SelectedProject}
                 TabName={SelectedTab}
                 Email={Email}
@@ -383,16 +385,15 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
             try {
                 const projectFields = await getProjectFields(SelectedProject, ['owners', 'admins']);
                 if (!projectFields) {
-                    console.log('No project fields found');
+                    console.error('No project fields found');
                     setIsAdminOrOwner(false);
                     return;
                 }
-
                 const isAdmin = projectFields.admins?.includes(Email) || false;
                 const isOwner = projectFields.owners?.includes(Email) || false;
                 setIsAdminOrOwner(isAdmin || isOwner);
             } catch (err) {
-                console.error('Error checking permissions:', err);
+                console.error('Error checking permissions:');
                 setIsAdminOrOwner(false);
             }
         };
@@ -420,9 +421,8 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
                                     .map((column) => (
                                         <th
                                             key={column.id}
-                                            className={`p-2 text-left border-b font-semibold cursor-pointer ${
-                                                column.type === 'identifier' ? 'min-w-[150px]' : ''
-                                            } ${getColumnClass(column.name)}`}
+                                            className={`p-2 text-left border-b font-semibold cursor-pointer ${column.type === 'identifier' ? 'min-w-[150px]' : ''
+                                                } ${getColumnClass(column.name)}`}
                                             onClick={() => handleSort(column.name)}
                                         >
                                             {column.name}
@@ -465,11 +465,10 @@ const DataViewer = ({ Email, SelectedProject, SelectedTab }) => {
                                         .map((column) => (
                                             <td
                                                 key={`${entry.id}-${column.id}`}
-                                                className={`p-2 border-b text-left ${
-                                                    column.type === 'identifier'
+                                                className={`p-2 border-b text-left ${column.type === 'identifier'
                                                         ? 'min-w-[150px]'
                                                         : ''
-                                                } ${getColumnClass(column.name)}`}
+                                                    } ${getColumnClass(column.name)}`}
                                             >
                                                 {entry.entry_data?.[column.name] || 'N/A'}
                                             </td>

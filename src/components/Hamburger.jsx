@@ -4,16 +4,16 @@ import { currentProjectName } from '../utils/jotai';
 import AccountSettings from '../windows/AccountSettings';
 import ProjectSettings from '../windows/ProjectSettings';
 import ManageMembership from '../windows/MembershipWindow';
-import Button from './Button'; // Import Button component
+import Button from './Button';
 
-export default function Hamburger({ Email }) {
+export default function Hamburger() {
     const [menuOpen, setMenuOpen] = useState(false);
     const [modalContent, setModalContent] = useState(null);
     const [currentProject] = useAtom(currentProjectName);
     const [setCurrentWindow] = useState('HomePage');
-
+    
     const toggleMenu = () => setMenuOpen((prev) => !prev);
-
+    
     const handleButtonClick = (content) => {
         setModalContent(content);
     };
@@ -43,7 +43,6 @@ export default function Hamburger({ Email }) {
                                 onClick={() =>
                                     handleButtonClick(
                                         <AccountSettings
-                                            emailProp={Email}
                                             CloseAccountSettings={closeModal}
                                         />,
                                     )
@@ -56,7 +55,6 @@ export default function Hamburger({ Email }) {
                                 onClick={() =>
                                     handleButtonClick(
                                         <ManageMembership
-                                            Email={Email}
                                             CancelMemberships={closeModal}
                                             setCurrentWindow={setCurrentWindow}
                                         />,
@@ -72,7 +70,6 @@ export default function Hamburger({ Email }) {
                                         <ProjectSettings
                                             projectNameProp={currentProject}
                                             CloseProjectSettings={closeModal}
-                                            emailProp={Email}
                                         />,
                                     )
                                 }

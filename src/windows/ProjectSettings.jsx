@@ -12,13 +12,12 @@ import {
 } from '../utils/firestore.js';
 import Button from '../components/Button.jsx';
 import { notify, Type } from '../components/Notifier.jsx';
-import { updateProjectName } from '../components/TabBar.jsx';
 import { db } from '../utils/firebase';
 import { doc, collection, getDocs, writeBatch, deleteDoc } from 'firebase/firestore';
 import { useAtomValue, useAtom } from 'jotai';
 import { currentUserEmail } from '../utils/jotai.js';
 
-export default function ProjectSettings({ projectNameProp = 'NoNamePassed', CloseProjectSettings }) {
+export default function ProjectSettings({ CloseProjectSettings }) {
     // State definitions
     const [loading, setLoading] = useState(true);
     const [isAuthorized, setIsAuthorized] = useState(false);
@@ -33,27 +32,19 @@ export default function ProjectSettings({ projectNameProp = 'NoNamePassed', Clos
     const [isInitialLoad, setIsInitialLoad] = useState(true);
     const userEmail = useAtomValue(currentUserEmail);
 
-    // Initialize project name from prop
-    useEffect(() => {
-        if (projectNameProp && projectName !== projectNameProp) {
-            console.log('initializing with projectNameProp:', projectNameProp);
-            setProjectName(projectNameProp);
-        }
-    }, [projectNameProp, projectName, setProjectName]);
-
     // Fetch document ID when project name is available
     useEffect(() => {
         let isMounted = true;
-        console.log('fetching doc ID for project:', projectNameProp);
+        console.log('fetching doc ID for project:', projectName);
         
         const fetchDocId = async () => {
             try {
-                const docId = await getDocumentIdByProjectName(projectNameProp);
+                const docId = await getDocumentIdByProjectName(projectName);
                 console.log('got doc ID:', docId);
                 if (docId && isMounted) {
                     setDocumentId(docId);
                 } else if (isMounted) {
-                    console.error('No document ID found for project:', projectNameProp);
+                    console.error('No document ID found for project:', projectName);
                     notify(Type.error, 'Project not found');
                 }
             } catch (err) {
@@ -64,12 +55,12 @@ export default function ProjectSettings({ projectNameProp = 'NoNamePassed', Clos
             }
         };
 
-        if (projectNameProp) {
+        if (projectName) {
             fetchDocId();
         }
 
         return () => { isMounted = false; };
-    }, [projectNameProp]);
+    }, [projectName]);
 
     // Fetch project data when document ID is available
     useEffect(() => {
@@ -84,13 +75,14 @@ export default function ProjectSettings({ projectNameProp = 'NoNamePassed', Clos
             setLoading(true);
             console.log('Fetching project data for:', projectName);
             
-            const membersData = await getProjectFields(documentId, [
+            const membersData = await getProjectFields(projectName, [
                 'contributors',
                 'admins',
                 'owners',
             ]);
 
             if (membersData) {
+                console.log('In if(membersData');
                 const { contributors = [], admins = [], owners = [] } = membersData;
                 const updatedMembers = [
                     ...contributors.map((email) => ({ email, role: 'Contributor' })),
@@ -225,8 +217,7 @@ export default function ProjectSettings({ projectNameProp = 'NoNamePassed', Clos
     async function saveChanges() {
         try {
             await updateDocInCollection('Projects', documentId, { project_name: projectName });
-            setProjectName(projectName); // Update Jotai state
-            updateProjectName(projectName); // Keep legacy support
+            setProjectName(projectName);
             notify(Type.success, 'Project updated successfully');
             CloseProjectSettings();
         } catch (error) {
