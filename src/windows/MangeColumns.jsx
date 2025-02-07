@@ -1,14 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { RadioButtons, YesNoSelector, DropdownFlex } from '../components/FormFields';
 import WindowWrapper from '../wrappers/WindowWrapper';
-import InputLabel from '../components/InputLabel';
 import { Type, notify } from '../components/Notifier';
 import { getColumnsCollection } from '../utils/firestore';
 import Button from '../components/Button';
-import { collection, deleteDoc, doc, getDocs, writeBatch } from 'firebase/firestore';
+import { collection, doc, getDocs, writeBatch } from 'firebase/firestore';
 import { db } from '../utils/firebase';
+import { useAtomValue } from 'jotai';
+import { currentUserEmail, currentProjectName, currentTableName } from '../utils/jotai.js';
 
-export default function ManageColumns({ CloseManageColumns, Email, SelectedProject, TabName }) {
+export default function ManageColumns({ CloseManageColumns }) {
+
+    const SelectedProject = useAtomValue(currentProjectName);
+    const TabName = useAtomValue(currentTableName);
+    const Email = useAtomValue(currentUserEmail);
+
     // Column data state
     const [columns, setColumns] = useState([]);
     const [editingColumn, setEditingColumn] = useState(null);
