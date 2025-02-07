@@ -540,13 +540,12 @@ export const getEntriesForTab = async (projectName, tabName, email) => {
         const entriesRef = collection(tabDoc.ref, 'Entries');
         const entriesSnapshot = await getDocs(entriesRef);
 
-        if (!entriesSnapshot.empty) {
-            return entriesSnapshot.docs.map((doc) => ({
-                id: doc.id,
-                ...doc.data(),
-                entry_date: doc.data().entry_date?.toDate?.() || doc.data().entry_date,
-            }));
-        }
+        return entriesSnapshot.docs.map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+            entry_date: doc.data().entry_date?.toDate?.() || doc.data().entry_date,
+        }));
+        
     } catch (error) {
         console.error('Error in getEntriesForTab');
     }

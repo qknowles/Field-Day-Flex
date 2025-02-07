@@ -4,9 +4,13 @@ import PageWrapper from '../wrappers/PageWrapper';
 import { LizardIcon } from '../assets/icons';
 import NewAccount from '../windows/NewAccount';
 import Login from '../windows/Login';
-import TopNav from '../components/TopNav';
+import { useSetAtom } from 'jotai';
+import { isAuthenticated } from '../utils/jotai.js';
 
-export default function HomePage({ SetAuthenticated, SetEmail }) {
+export default function HomePage() {
+
+    const setAuthenticated = useSetAtom(isAuthenticated);
+
     const [showNewAccount, setShowNewAccount] = useState(false);
     const [showLogin, setShowLogin] = useState(false);
 
@@ -19,20 +23,19 @@ export default function HomePage({ SetAuthenticated, SetEmail }) {
     const openAccount = () => {
         if (showNewAccount) setShowNewAccount(false);
         if (showLogin) setShowLogin(false);
-        SetAuthenticated(true);
+        setAuthenticated(true);
     };
 
     return (
-        <PageWrapper hideMenu={true} SetEmail={SetEmail} SetAuthenticated={SetAuthenticated}>
+        <PageWrapper >
             {showNewAccount && (
                 <NewAccount
                     CancelAccount={closeNewAccount}
                     OpenNewAccount={openAccount}
-                    SetEmail={SetEmail}
                 />
             )}
             {showLogin && (
-                <Login CancelLogin={closeLogin} OpenAccount={openAccount} SetEmail={SetEmail} />
+                <Login CancelLogin={closeLogin} OpenAccount={openAccount} />
             )}
             {!showNewAccount && !showLogin && (
                 <HomeScreen OpenLogin={openLogin} OpenNewAccount={openNewAccount} />

@@ -4,17 +4,23 @@ import WindowWrapper from '../wrappers/WindowWrapper';
 import InputLabel from '../components/InputLabel';
 import { getColumnsCollection, addEntry } from '../utils/firestore';
 import { Type, notify } from '../components/Notifier';
+import { useAtomValue } from 'jotai';
+import { currentUserEmail, currentProjectName, currentTableName } from '../utils/jotai.js';
 
-export default function NewEntry({ CloseNewEntry, ProjectName, TabName, Email }) {
+export default function NewEntry({ CloseNewEntry }) {
     const [columnsCollection, setColumnsCollection] = useState([]);
     const [userEntries, setUserEntries] = useState({});
+
+    const projectName = useAtomValue(currentProjectName);
+    const tabName = useAtomValue(currentTableName);
+    const email = useAtomValue(currentUserEmail);
 
     useEffect(() => {
         const fetchData = async () => {
             await loadCollection();
         };
         fetchData();
-    }, [ProjectName, TabName, Email]);
+    }, [projectName, tabName, email]);
 
     const formatDateTime = (date) => {
         const d = new Date(date);
@@ -34,7 +40,7 @@ export default function NewEntry({ CloseNewEntry, ProjectName, TabName, Email })
     };
 
     const loadCollection = async () => {
-        const columns = await getColumnsCollection(ProjectName, TabName, Email);
+        const columns = await getColumnsCollection(projectName, tabName, email);
         setColumnsCollection(columns);
 
         const defaultEntries = {};
@@ -93,7 +99,7 @@ export default function NewEntry({ CloseNewEntry, ProjectName, TabName, Email })
 
     const submitEntry = async () => {
         if (validEntries()) {
-            await addEntry(ProjectName, TabName, Email, userEntries);
+            await addEntry(projectName, tabName, email, userEntries);
             notify(Type.success, `Entry submitted.`);
             CloseNewEntry();
         }

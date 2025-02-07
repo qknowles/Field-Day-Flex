@@ -12,14 +12,13 @@ import {
 import Button from '../components/Button.jsx';
 import { notify, Type } from '../components/Notifier.jsx';
 import { updateProjectName } from '../components/TabBar.jsx';
+import { useAtomValue } from 'jotai';
+import { currentUserEmail } from '../utils/jotai.js';
 
-export default function ProjectSettings({
-    projectNameProp = 'NoNamePassed',
-    CloseProjectSettings,
-    emailProp,
-}) {
+export default function ProjectSettings({ projectNameProp = 'NoNamePassed', CloseProjectSettings }) {
+
     const [isAuthorized, setIsAuthorized] = useState(false);
-    const [documentId, setDocumentId] = useState(null); // Start with null, indicating it's unresolved
+    const [documentId, setDocumentId] = useState(null);
     const [projectName, setProjectName] = useState(projectNameProp);
     const [newMemberSelectedRole, setNewMemberSelectedRole] = useState('Select Role');
     const [newMemberEmail, setNewMemberEmail] = useState('');
@@ -27,6 +26,7 @@ export default function ProjectSettings({
         { email: 'There is no project selected!', role: 'Contributor' },
         { email: 'Does the project exist in the DB?', role: 'Owner' },
     ]);
+    const userEmail = useAtomValue(currentUserEmail);
 
     useEffect(() => {
         // Fetch document ID on mount
@@ -81,8 +81,8 @@ export default function ProjectSettings({
                 setMembers(updatedMembers);
 
                 // This was accidentally commited in the same commit as Task 420. These lines are for Task 418:
-                const currUser = updatedMembers.find((member) => member.email === emailProp);
-                if(currUser && ((currUser.role === "Owner") || (currUser.role === "Admin"))) {
+                const currUser = updatedMembers.find((member) => member.email === userEmail);
+                if (currUser && ((currUser.role === "Owner") || (currUser.role === "Admin"))) {
                     setIsAuthorized(true);
                 } else setIsAuthorized(false);
             }

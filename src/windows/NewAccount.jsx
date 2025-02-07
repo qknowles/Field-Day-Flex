@@ -4,12 +4,16 @@ import InputLabel from '../components/InputLabel';
 import { Type, notify } from '../components/Notifier';
 import { accountExists, createAccount } from '../utils/firestore';
 import CryptoJS from 'crypto-js';
+import { useSetAtom } from 'jotai';
+import { currentUserEmail } from '../utils/jotai';
 
-export default function NewAccount({ CancelAccount, OpenNewAccount, SetEmail }) {
+export default function NewAccount({ CancelAccount, OpenNewAccount }) {
     const [name, setName] = useState('');
     const [thisEmail, setThisEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+
+    const setEmail = useSetAtom(currentUserEmail);
 
     const createClick = async () => {
         if (name.trim().length === 0) {
@@ -42,7 +46,7 @@ export default function NewAccount({ CancelAccount, OpenNewAccount, SetEmail }) 
             const hashedPassword = CryptoJS.SHA256(password).toString();
             const created = await createAccount(name, thisEmail, hashedPassword);
             if (created) {
-                SetEmail(thisEmail);
+                setEmail(thisEmail);
                 notify(Type.success, 'Account created successfully.');
                 OpenNewAccount();
             } else {
