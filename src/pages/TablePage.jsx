@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef} from 'react';
 import TabBar from '../components/TabBar';
 import DataViewer from '../components/DataViewer';
 import PageWrapper from '../wrappers/PageWrapper';
@@ -8,16 +8,45 @@ import ColumnOptions from '../windows/ColumnOptions';
 import Button from '../components/Button';
 import ManageColumns from '../windows/MangeColumns';
 import { useAtomValue } from 'jotai';
-import { currentProjectName, currentTableName } from '../utils/jotai.js';
+import { currentProjectName, currentTableName, currentUserEmail} from '../utils/jotai.js';
+import { ExportIcon } from '../assets/icons';
+import { generateCSVData } from '../components/ExportService.jsx';
+import { CSVLink } from 'react-csv';
+
 
 export default function TablePage() {
     const selectedProject = useAtomValue(currentProjectName);
     const selectedTab = useAtomValue(currentTableName);
+    const email = useAtomValue(currentUserEmail);
     
     const [showNewEntry, setShowNewEntry] = useState(false);
     const [showManageColumns, setShowManageColumns] = useState(false);
     const [showColumnOptions, setShowColumnOptions] = useState(false);
     const [newColumn, setNewColumn] = useState(['']);
+    const [showExportModal, setShowExportModal] = useState(false);
+    const [triggerExport, setTriggerExport] = useState(false);
+    const [csvData, setCsvData] = useState([]);
+    const [headers, setHeaders] = useState([]);
+    const csvDownloadRef = useRef(null);
+
+    const handleExport = async () => {
+        if (!selectedProject || !selectedTab) {
+            console.error("Project or Tab not selected");
+            return;
+        }
+
+        const { headers, data } = await generateCSVData(selectedProject, selectedTab, email);
+        if (data.length > 0) {
+            setHeaders(headers);
+            setCsvData(data);
+
+            setTimeout(() => {
+                if (csvDownloadRef.current) {
+                    csvDownloadRef.current.link.click();
+                }
+            }, 500);
+        }
+    };
 
     useEffect(() => {
         setNewColumn(['']);
@@ -30,16 +59,39 @@ export default function TablePage() {
 
             {/* Table Management Buttons */}
             {selectedTab && (
-                <div className="flex items-center pt-3 px-5 pb-3 space-x-6 dark:bg-neutral-950">
-                    <div className="flex items-center space-x-6 pr-32">
-                        <p className="text-2xl">{selectedTab} - Entries</p>
-                        <Button text="New Entry" onClick={() => setShowNewEntry(true)} />
-                    </div>
-                    <Button text="New Column" onClick={() => setShowColumnOptions(true)} />
-                    <Button text="Manage Columns" onClick={() => setShowManageColumns(true)} />
-                </div>
+                 <div className="flex items-center justify-between pt-3 px-5 pb-3 dark:bg-neutral-950 w-full">
+                 <div className="flex items-center">
+                     <p className="text-2xl mr-6">{selectedTab} - Entries</p>
+                     <Button text="New Entry" onClick={() => setShowNewEntry(true)} className="mr-32" />
+                     <Button text="New Column" onClick={() => setShowColumnOptions(true)} className="mr-6"/>
+                     <Button text="Manage Columns" onClick={() => setShowManageColumns(true)} />
+                 </div>
+                 
+                     {/* Export Icon */}
+                     <button
+                        onClick={handleExport}
+                        className="p-2 text-white hover:bg-neutral-700 rounded ml-auto"
+                        title="Export to CSV"
+                    >
+                        <ExportIcon className="h-6 w-6" />
+                    </button>
+
+                    {/* CSV Link Download */}
+                    {csvData.length > 0 && (
+                        <CSVLink
+                            data={csvData}
+                            headers={headers}
+                            filename={`${selectedProject}_${selectedTab}_${new Date().toISOString().split('T')[0]}.csv`}
+                            className="hidden"
+                            ref={csvDownloadRef}
+                        />
+                    )}
+             </div>
+             
+
             )}
 
+           
             {/* Content Area */}
             <div className="flex-grow bg-white dark:bg-neutral-950">
                 {!selectedProject ? (
