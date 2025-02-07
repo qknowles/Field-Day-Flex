@@ -2,12 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { DropdownSelector } from '../components/FormFields';
 import WindowWrapper from '../wrappers/WindowWrapper';
 import InputLabel from '../components/InputLabel';
-import { getColumnsCollection, addEntry } from '../utils/firestore';
+import { getColumnsCollection, addEntry, updateEntry } from '../utils/firestore';
 import { Type, notify } from '../components/Notifier';
 import { useAtomValue } from 'jotai';
 import { currentUserEmail, currentProjectName, currentTableName } from '../utils/jotai.js';
 
-export default function NewEntry({ CloseNewEntry }) {
+export default function NewEntry({ CloseNewEntry, existingEntry, onEntryUpdated }) {
     const [columnsCollection, setColumnsCollection] = useState([]);
     const [userEntries, setUserEntries] = useState({});
 
@@ -39,22 +39,30 @@ export default function NewEntry({ CloseNewEntry }) {
         );
     };
 
+    useEffect(() => {
+        if (existingEntry && existingEntry.entry_data) {
+            setUserEntries(existingEntry.entry_data);
+        }
+    }, [existingEntry]);
+
     const loadCollection = async () => {
         const columns = await getColumnsCollection(projectName, tabName, email);
         setColumnsCollection(columns);
 
-        const defaultEntries = {};
-        columns.forEach((column) => {
-            const { name, data_type } = column;
-            if (data_type === 'date') {
-                defaultEntries[name] = formatDateTime(new Date());
-            } else if (data_type === 'multiple choice') {
-                defaultEntries[name] = 'Select';
-            } else {
-                defaultEntries[name] = '';
-            }
-        });
-        setUserEntries(defaultEntries);
+        if (!existingEntry) {
+            const defaultEntries = {};
+            columns.forEach((column) => {
+                const { name, data_type } = column;
+                if (data_type === 'date') {
+                    defaultEntries[name] = formatDateTime(new Date());
+                } else if (data_type === 'multiple choice') {
+                    defaultEntries[name] = 'Select';
+                } else {
+                    defaultEntries[name] = '';
+                }
+            });
+            setUserEntries(defaultEntries);
+        }
     };
 
     const handleInputChange = (name, value) => {
@@ -99,9 +107,17 @@ export default function NewEntry({ CloseNewEntry }) {
 
     const submitEntry = async () => {
         if (validEntries()) {
-            await addEntry(projectName, tabName, email, userEntries);
-            notify(Type.success, `Entry submitted.`);
+            if (existingEntry) {
+                await updateEntry(projectName, tabName, email, existingEntry.id, userEntries);
+                notify(Type.success, `Entry updated.`);
+            } else {
+                await addEntry(projectName, tabName, email, userEntries);
+                notify(Type.success, `Entry submitted.`);
+            }
             CloseNewEntry();
+            if (onEntryUpdated) {
+                onEntryUpdated();
+            }
         }
     };
 
@@ -163,11 +179,11 @@ export default function NewEntry({ CloseNewEntry }) {
 
     return (
         <WindowWrapper
-            header="New Entry"
+            header={existingEntry ? "Edit Entry" : "New Entry"}
             onLeftButton={CloseNewEntry}
             onRightButton={submitEntry}
             leftButtonText="Cancel"
-            rightButtonText="Submit Entry"
+            rightButtonText={existingEntry ? "Update Entry" : "Submit Entry"}
         >
             <div className="flex flex-col space-y-4">{renderDynamicInputs()}</div>
         </WindowWrapper>

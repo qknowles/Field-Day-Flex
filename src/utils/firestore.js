@@ -754,3 +754,100 @@ export async function saveUserAccountChanges(fieldsChanged, originalEmail) {
         return false;
     }
 }
+export const deleteEntry = async (projectName, tabName, entryId) => {
+    try {
+        const projectId = await getDocumentIdByProjectName(projectName);
+        if (!projectId) {
+            throw new Error('Project ID not found for the selected project');
+        }
+        const docRef = doc(db, 'Projects', projectId, 'Tabs', tabName, 'Entries', entryId);
+        console.log('Setting deleted flag to true for entry:', docRef.path); // Log the document path
+        await updateDoc(docRef, { deleted: true });
+    } catch (error) {
+        console.error('Error deleting entry:', error);
+        throw error;
+    }
+};
+
+export const getEntryDetails = async (projectName, tabName, entryId) => {
+    try {
+        const projectId = await getDocumentIdByProjectName(projectName);
+        if (!projectId) {
+            throw new Error('Project ID not found for the selected project');
+        }
+        const docRef = doc(db, 'Projects', projectId, 'Tabs', tabName, 'Entries', entryId);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+            console.log('Entry details:', docSnap.data()); // Log the entry details
+            return { id: entryId, ...docSnap.data() }; // Ensure the entry ID is included in the returned data
+        } else {
+            console.error('Entry not found');
+            throw new Error('Entry not found');
+        }
+    } catch (error) {
+        console.error('Error fetching entry details:', error);
+        throw error;
+    }
+};
+
+export const updateEntry = async (projectName, tabName, email, entryId, updatedData) => {
+    try {
+        const projectId = await getDocumentIdByProjectName(projectName);
+        if (!projectId) {
+            throw new Error('Project ID not found for the selected project');
+        }
+        const docRef = doc(db, 'Projects', projectId, 'Tabs', tabName, 'Entries', entryId);
+        await updateDoc(docRef, {
+            entry_data: updatedData // Update the entry_data field
+        });
+        console.log('Entry updated:', docRef.path); // Log the document path
+    } catch (error) {
+        console.error('Error updating entry:', error);
+        throw error;
+    }
+};
+
+export const saveColumnChanges = async (projectName, tabName, columns, columnsToDelete, editedColumnNames, columnOrder, editedColumnTypes, editedRequiredFields, editedIdentifierDomains, editedDropdownOptions) => {
+    try {
+        const projectId = await getProjectIdByName(projectName);
+        if (!projectId) {
+            throw new Error('Project ID not found for the selected project');
+        }
+
+        const batch = writeBatch(db);
+
+        for (const column of columns) {
+            if (columnsToDelete.includes(column.id)) {
+                // Delete column
+                const columnRef = doc(db, 'Projects', projectId, 'Tabs', tabName, 'Columns', column.id);
+                batch.delete(columnRef);
+
+                // Remove column from all entries
+                const entriesSnapshot = await getDocs(collection(db, 'Projects', projectId, 'Tabs', tabName, 'Entries'));
+                entriesSnapshot.docs.forEach(entryDoc => {
+                    const entryRef = doc(db, 'Projects', projectId, 'Tabs', tabName, 'Entries', entryDoc.id);
+                    const entryData = entryDoc.data();
+                    delete entryData.entry_data[column.name];
+                    batch.update(entryRef, { entry_data: entryData.entry_data });
+                });
+            } else if (!['actions', 'datetime', 'identifier'].includes(column.id)) {
+                // Update column
+                const columnRef = doc(db, 'Projects', projectId, 'Tabs', tabName, 'Columns', column.id);
+                batch.update(columnRef, {
+                    name: editedColumnNames[column.id],
+                    order: columnOrder[column.id],
+                    data_type: editedColumnTypes[column.id],
+                    required_field: editedRequiredFields[column.id],
+                    identifier_domain: editedIdentifierDomains[column.id],
+                    entry_options: editedColumnTypes[column.id] === 'multiple choice' ? 
+                        editedDropdownOptions[column.id] : []
+                });
+            }
+        }
+
+        await batch.commit();
+    } catch (error) {
+        console.error('Error saving column changes:', error);
+        throw error;
+    }
+};

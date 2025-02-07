@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { getColumnsCollection, getEntriesForTab, getProjectFields } from '../utils/firestore';
+import React, { useState, useEffect, useCallback, useMemo} from 'react';
+import { getColumnsCollection, getEntriesForTab, getProjectFields, deleteEntry, getEntryDetails } from '../utils/firestore'; // Import deleteEntry
+import TableTools from '../wrappers/TableTools';
 import { Pagination } from './Pagination';
 import Button from './Button';
 import WindowWrapper from '../wrappers/WindowWrapper';
 import { Type, notify } from './Notifier';
-import { deleteDoc, doc, writeBatch, collection, getDocs } from 'firebase/firestore';
 import { db } from '../utils/firebase';
 import NewEntry from '../windows/NewEntry';
 import { AiFillEdit, AiFillDelete } from 'react-icons/ai';
@@ -141,9 +141,8 @@ const DataViewer = () => {
 
         try {
             const entriesData = await getEntriesForTab(SelectedProject, SelectedTab, Email);
-            if (entriesData) {
-                setEntries(entriesData);
-            }
+            const filteredEntries = entriesData.filter(entry => !entry.deleted); // Filter out deleted entries
+            setEntries(filteredEntries);
         } catch (err) {
             console.error('Error fetching entries:', err);
             setError('Failed to load entries');
@@ -220,86 +219,48 @@ const DataViewer = () => {
         }
 
         try {
-            const batch = writeBatch(db);
-
-            for (const column of columns) {
-                if (columnsToDelete.includes(column.id)) {
-                    // Delete column
-                    const columnRef = doc(
-                        db,
-                        'Projects',
-                        SelectedProject,
-                        'Tabs',
-                        SelectedTab,
-                        'Columns',
-                        column.id,
-                    );
-                    batch.delete(columnRef);
-
-                    // Remove column from all entries
-                    const entriesSnapshot = await getDocs(
-                        collection(db, 'Projects', SelectedProject, 'Tabs', SelectedTab, 'Entries'),
-                    );
-                    entriesSnapshot.docs.forEach((entryDoc) => {
-                        const entryRef = doc(
-                            db,
-                            'Projects',
-                            SelectedProject,
-                            'Tabs',
-                            SelectedTab,
-                            'Entries',
-                            entryDoc.id,
-                        );
-                        const entryData = entryDoc.data();
-                        delete entryData[column.name];
-                        batch.update(entryRef, entryData);
-                    });
-                } else if (!['actions', 'datetime', 'identifier'].includes(column.id)) {
-                    // Update column
-                    const columnRef = doc(
-                        db,
-                        'Projects',
-                        SelectedProject,
-                        'Tabs',
-                        SelectedTab,
-                        'Columns',
-                        column.id,
-                    );
-                    batch.update(columnRef, {
-                        name: editedColumnNames[column.id],
-                        order: columnOrder[column.id],
-                        data_type: editedColumnTypes[column.id],
-                        required_field: editedRequiredFields[column.id],
-                        identifier_domain: editedIdentifierDomains[column.id],
-                        entry_options:
-                            editedColumnTypes[column.id] === 'multple choice'
-                                ? editedDropdownOptions[column.id]
-                                : [],
-                    });
-                }
-            }
-
-            await batch.commit();
+            await saveColumnChanges(
+                SelectedProject,
+                SelectedTab,
+                columns,
+                columnsToDelete,
+                editedColumnNames,
+                columnOrder,
+                editedColumnTypes,
+                editedRequiredFields,
+                editedIdentifierDomains,
+                editedDropdownOptions
+            );
             await fetchColumns();
             await fetchEntries();
             setShowManageColumns(false);
             notify(Type.success, 'Column changes saved successfully');
         } catch (error) {
             console.error('Error saving column changes:', error);
-            notify(Type.error, 'Faild to save column changes');
+            notify(Type.error, 'Failed to save column changes');
         }
     };
-    const handleEdit = async (entry) => {
-        const editWindow = (
-            <NewEntry
-                CloseNewEntry={() => { }}
-                ProjectName={SelectedProject}
-                TabName={SelectedTab}
-                Email={Email}
-                existingEntry={entry}
-            />
-        );
-        // setEditWindow(editWindow);  this is not working
+
+    const handleEdit = async (entryId) => {
+        try {
+            const entryDetails = await getEntryDetails(SelectedProject, SelectedTab, entryId);
+            const editWindow = (
+                <NewEntry
+                    CloseNewEntry={() => setEditWindow(null)}
+                    ProjectName={SelectedProject}
+                    TabName={SelectedTab}
+                    Email={Email}
+                    existingEntry={entryDetails} // Pass the fetched entry details
+                    onEntryUpdated={async () => {
+                        await fetchEntries(); // Refresh entries after editing
+                    }}
+                />
+            );
+            setEditWindow(editWindow);
+        } catch (error) {
+            console.error('Error fetching entry details:', error);
+            notify(Type.error, 'Failed to fetch entry details');
+        }
     };
 
     const handleDelete = async (entryId) => {
@@ -307,9 +268,7 @@ const DataViewer = () => {
         if (!confirmed) return;
 
         try {
-            await deleteDoc(
-                doc(db, 'Projects', SelectedProject, 'Tabs', SelectedTab, 'Entries', entryId),
-            );
+            await deleteEntry(SelectedProject, SelectedTab, entryId);
             await fetchEntries(); // Refresh entries
             notify(Type.success, 'Entry deleted successfully');
         } catch (error) {
@@ -444,7 +403,7 @@ const DataViewer = () => {
                                     <td className="p-2 border-b w-32">
                                         <div className="flex space-x-2">
                                             <Button
-                                                onClick={() => handleEdit(entry)}
+                                                onClick={() => handleEdit(entry.id)}
                                                 icon={AiFillEdit}
                                                 flexible={true}
                                                 className={'flex items-center justify-center'}
@@ -478,7 +437,15 @@ const DataViewer = () => {
                         </tbody>
                     </table>
                 </div>
-
+                {showEditWindow && (
+                    <WindowWrapper
+                        header="Edit Entry"
+                        onLeftButton={() => setEditWindow(null)}
+                        leftButtonText="Close"
+                    >
+                        {showEditWindow}
+                    </WindowWrapper>
+                )}
                 <div className="px-5 py-3 flex items-center w-full">
                     <Pagination
                         currentPage={currentPage}
