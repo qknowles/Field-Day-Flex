@@ -7,7 +7,7 @@ import { Type, notify } from '../components/Notifier';
 import { useAtomValue } from 'jotai';
 import { currentUserEmail, currentProjectName, currentTableName } from '../utils/jotai.js';
 
-export default function NewEntry({ CloseNewEntry, ProjectName, TabName, Email, existingEntry, onEntryUpdated }) {
+export default function NewEntry({ CloseNewEntry, existingEntry, onEntryUpdated }) {
     const [columnsCollection, setColumnsCollection] = useState([]);
     const [userEntries, setUserEntries] = useState({});
 
@@ -108,10 +108,10 @@ export default function NewEntry({ CloseNewEntry, ProjectName, TabName, Email, e
     const submitEntry = async () => {
         if (validEntries()) {
             if (existingEntry) {
-                await updateEntry(ProjectName, TabName, Email, existingEntry.id, userEntries);
+                await updateEntry(projectName, tabName, email, existingEntry.id, userEntries);
                 notify(Type.success, `Entry updated.`);
             } else {
-                await addEntry(ProjectName, TabName, Email, userEntries);
+                await addEntry(projectName, tabName, email, userEntries);
                 notify(Type.success, `Entry submitted.`);
             }
             CloseNewEntry();
