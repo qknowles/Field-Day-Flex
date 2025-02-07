@@ -49,18 +49,20 @@ export default function NewEntry({ CloseNewEntry, ProjectName, TabName, Email, e
         const columns = await getColumnsCollection(projectName, tabName, email);
         setColumnsCollection(columns);
 
-        const defaultEntries = {};
-        columns.forEach((column) => {
-            const { name, data_type } = column;
-            if (data_type === 'date') {
-                defaultEntries[name] = formatDateTime(new Date());
-            } else if (data_type === 'multiple choice') {
-                defaultEntries[name] = 'Select';
-            } else {
-                defaultEntries[name] = '';
-            }
-        });
-        setUserEntries(defaultEntries);
+        if (!existingEntry) {
+            const defaultEntries = {};
+            columns.forEach((column) => {
+                const { name, data_type } = column;
+                if (data_type === 'date') {
+                    defaultEntries[name] = formatDateTime(new Date());
+                } else if (data_type === 'multiple choice') {
+                    defaultEntries[name] = 'Select';
+                } else {
+                    defaultEntries[name] = '';
+                }
+            });
+            setUserEntries(defaultEntries);
+        }
     };
 
     const handleInputChange = (name, value) => {
