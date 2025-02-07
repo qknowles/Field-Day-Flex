@@ -14,7 +14,8 @@ import {
 import Button from '../components/Button.jsx';
 import { notify, Type } from '../components/Notifier.jsx';
 import { updateProjectName } from '../components/TabBar.jsx';
-
+import { db } from '../utils/firebase';
+import { doc, collection, getDocs, writeBatch, deleteDoc } from 'firebase/firestore';
 export default function ProjectSettings({
     projectNameProp = 'NoNamePassed',
     CloseProjectSettings,
@@ -187,6 +188,17 @@ export default function ProjectSettings({
             return;
         }
 
+        // Check permissions for role assignment
+        if (newMemberSelectedRole === 'Owner' && !isOwner) {
+            notify(Type.error, 'Only owners can add new owners');
+            return;
+        }
+
+        if (newMemberSelectedRole === 'Admin' && !isOwner) {
+            notify(Type.error, 'Only owners can add new admins');
+            return;
+        }
+
         // Check if member already exists in any role
         const existingMember = members.find(member => member.email === newMemberEmail);
         if (existingMember) {
@@ -223,68 +235,105 @@ export default function ProjectSettings({
         }
     }
 
+   
     async function deleteProject() {
+        if (!isOwner) {
+            notify(Type.error, 'Only project owners can delete the project');
+            return;
+        }
+    
+        if (!documentId) {
+            notify(Type.error, 'Project not found');
+            return;
+        }
+    
         try {
-            if (!isOwner) {
-                notify(Type.error, 'Only project owners can delete the project');
-                return;
-            }
+            setLoading(true);
+            const projectRef = doc(db, 'Projects', documentId);
             
-            if (!documentId) {
-                notify(Type.error, 'Project not found');
-                return;
-            }
-
-            await updateDocInCollection('Projects', documentId, { 
-                deleted: true,
-                deletedAt: new Date().toISOString()
-            });
+            // Get all tabs
+            const tabsRef = collection(projectRef, 'Tabs');
+            const tabsSnapshot = await getDocs(tabsRef);
             
+            // Batch setup
+            let currentBatch = writeBatch(db);
+            let operationCount = 0;
+            const MAX_OPERATIONS = 400;
+    
+            const commitBatchIfNeeded = async () => {
+                if (operationCount >= MAX_OPERATIONS) {
+                    await currentBatch.commit();
+                    currentBatch = writeBatch(db);
+                    operationCount = 0;
+                }
+            };
+    
+            // Delete all tabs and their contents
+            for (const tabDoc of tabsSnapshot.docs) {
+                const columnsRef = collection(tabDoc.ref, 'Columns');
+                const columnsSnapshot = await getDocs(columnsRef);
+                for (const columnDoc of columnsSnapshot.docs) {
+                    currentBatch.delete(columnDoc.ref);
+                    operationCount++;
+                    await commitBatchIfNeeded();
+                }
+    
+                const entriesRef = collection(tabDoc.ref, 'Entries');
+                const entriesSnapshot = await getDocs(entriesRef);
+                for (const entryDoc of entriesSnapshot.docs) {
+                    currentBatch.delete(entryDoc.ref);
+                    operationCount++;
+                    await commitBatchIfNeeded();
+                }
+    
+                currentBatch.delete(tabDoc.ref);
+                operationCount++;
+                await commitBatchIfNeeded();
+            }
+    
+            // Delete the project document
+            currentBatch.delete(projectRef);
+            await currentBatch.commit(); // Commit the final batch
+    
             notify(Type.success, 'Project deleted successfully');
             CloseProjectSettings();
-            // Force refresh project list
-            window.location.reload();
+    
+            // Update state instead of reloading
+            setProjectName(null); // Reset current project
+            // Add any additional state updates here to refresh the UI
+    
         } catch (error) {
             console.error('Error deleting project:', error);
-            notify(Type.error, 'Failed to delete project');
+            notify(Type.error, 'Failed to delete project: ' + error.message);
+        } finally {
+            setLoading(false);
         }
     }
 
-    async function removeMember(email, role) {
-        // Check if trying to remove last owner
-        if (role === 'Owner' && members.filter(m => m.role === 'Owner').length <= 1) {
-            notify(Type.error, 'Cannot remove the last owner');
-            return;
-        }
-
-        // Check if user has permission to modify owner roles
-        if (role === 'Owner' && !isOwner) {
-            notify(Type.error, 'Only project owners can modify owner roles');
-            return;
-        }
-
-        try {
-            const field = role.toLowerCase() + 's';
-            const updatedFieldMembers = members
-                .filter((member) => !(member.email === email && member.role === role))
-                .filter((member) => member.role.toLowerCase() + 's' === field)
-                .map((member) => member.email);
-
-            const updateData = {
-                [field]: updatedFieldMembers,
-            };
-            await updateDocInCollection('Projects', documentId, updateData);
-
-            setMembers((prevMembers) =>
-                prevMembers.filter((member) => !(member.email === email && member.role === role))
-            );
-
-            notify(Type.success, `${email} has been removed as a ${role}`);
-        } catch (err) {
-            notify(Type.error, `Failed to remove ${email}`);
-        }
+    // Confirmation dialog for project deletion
+    if (showDeleteConfirm) {
+        return (
+            <WindowWrapper
+                header="Confirm Delete Project"
+                onLeftButton={() => setShowDeleteConfirm(false)}
+                onRightButton={deleteProject}
+                leftButtonText="Cancel"
+                rightButtonText="Delete Project"
+            >
+                <div className="p-5 space-y-4">
+                    <p className="text-red-500 font-bold">Are you sure you want to delete this project?</p>
+                    <p>This will permanently delete:</p>
+                    <ul className="list-disc pl-5 space-y-2">
+                        <li>All project data</li>
+                        <li>All tabs and their contents</li>
+                        <li>All member associations</li>
+                    </ul>
+                    <p className="font-bold">This action cannot be undone.</p>
+                    {loading && <p className="text-yellow-500">Deleting project... Please wait...</p>}
+                </div>
+            </WindowWrapper>
+        );
     }
-
     const renderMembersList = () => {
         console.log('Rendering members list with:', members);
         if (!members || members.length === 0) {
