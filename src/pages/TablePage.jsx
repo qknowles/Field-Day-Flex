@@ -81,7 +81,7 @@ export default function TablePage() {
                         <CSVLink
                             data={csvData}
                             headers={headers}
-                            filename={`${selectedTab}.csv`}
+                            filename={`${selectedProject}_${selectedTab}_${new Date().toISOString().split('T')[0]}.csv`}
                             className="hidden"
                             ref={csvDownloadRef}
                         />

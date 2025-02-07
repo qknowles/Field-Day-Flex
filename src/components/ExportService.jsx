@@ -8,7 +8,11 @@ export const generateCSVData = async (selectedProject, selectedTab, email) => {
 
     try {
         // Fetch columns dynamically
-        const columns = await getColumnsCollection(selectedProject, selectedTab, email);
+        let columns = await getColumnsCollection(selectedProject, selectedTab, email);
+
+        // Ensure columns are sorted by the 'order' field
+        columns.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
         const columnHeaders = columns.map(col => ({
             label: col.name,
             key: col.name
