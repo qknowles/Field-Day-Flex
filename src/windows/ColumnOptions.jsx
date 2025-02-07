@@ -4,15 +4,15 @@ import WindowWrapper from '../wrappers/WindowWrapper';
 import InputLabel from '../components/InputLabel';
 import { Type, notify } from '../components/Notifier';
 import { tabExists, createTab, addColumn } from '../utils/firestore';
+import { useAtomValue } from 'jotai';
+import { currentUserEmail, currentProjectName, currentTableName } from '../utils/jotai.js';
 
 export default function ColumnOptions({
     ColumnNames,
     SetColumnNames,
     CancelColumnOptions,
     OpenNewTab,
-    Email,
-    SelectedProject,
-    TabName,
+    tabName = '',
     GenerateIdentifiers,
     PossibleIdentifiers,
     IdentifierDimension,
@@ -20,6 +20,12 @@ export default function ColumnOptions({
     UtilizeUnwantedCodes,
     header = 'Column Options',
 }) {
+
+    const SelectedProject = useAtomValue(currentProjectName);
+    const storedTabName = useAtomValue(currentTableName);
+    const TabName = tabName || storedTabName;
+    const Email = useAtomValue(currentUserEmail);
+
     const [rightButtonText, setRightButtonText] = useState('Next Column');
     const [columnIndex, setColumnIndex] = useState(0);
     const [tempEntryOptions, setTempEntryOptions] = useState([]);

@@ -1,37 +1,34 @@
 import { atomWithStorage } from 'jotai/utils';
+import { RESET } from 'jotai/utils';
 
-export const currentSessionData = atomWithStorage('currentSessionData', {
-    captureStatus: '',
-    array: '',
-    project: '',
-    site: '',
-    handler: '',
-    recorder: '',
-    arthropod: [],
-    amphibian: [],
-    lizard: [],
-    mammal: [],
-    snake: [],
-});
+export const currentUserEmail = atomWithStorage('currentUserEmail', false);
 
-export const currentUserEmail = atomWithStorage('currentUserEmail', null); // null: not logged in
+export const isAuthenticated = atomWithStorage('isAuthenticated', false);
 
-export const currentFormName = atomWithStorage('currentFormName', 'New Data');
+export const currentTableName = atomWithStorage('currentTableName', '');
 
-export const pastSessionData = atomWithStorage('pastSessionData', []);
+export const allTableNames = atomWithStorage('allTableNames', []);
 
-export const currentPageName = atomWithStorage('currentPageName', 'Home');
+export const currentProjectName = atomWithStorage('currentProjectName', '');
 
-export const currentTableName = atomWithStorage('currentTableName', 'Turtle');
-
-export const editingPrevious = atomWithStorage('editingPrevious', false);
-
-export const pastEntryIndex = atomWithStorage('pastEntryIndex', -1);
-
-export const notificationText = atomWithStorage('notificationText', '');
-
-export const currentProjectName = atomWithStorage('currentProject', 'Gateway');
+export const allProjectNames = atomWithStorage('allProjectNames', []);
 
 export const currentBatchSize = atomWithStorage('currentBatchSize', 15);
 
-export const appMode = atomWithStorage('appMode', 'test');
+export const clearLocalStorage = ({
+    setUserEmail,
+    setIsAuthenticated,
+    setTableName,
+    setAllTableNames,
+    setProjectName,
+    setAllProjectNames,
+    setBatchSize,
+}) => {
+    setUserEmail(RESET);
+    setIsAuthenticated(RESET);
+    setTableName(RESET);
+    setAllTableNames(RESET);
+    setProjectName(RESET);
+    setAllProjectNames(RESET);
+    setBatchSize(RESET);
+};
