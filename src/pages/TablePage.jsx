@@ -79,12 +79,13 @@ export default function TablePage() {
                     {/* CSV Link Download */}
                     {csvData.length > 0 && (
                         <CSVLink
-                            data={csvData}
-                            headers={headers}
-                            filename={`${selectedProject}_${selectedTab}_${new Date().toISOString().split('T')[0]}.csv`}
-                            className="hidden"
-                            ref={csvDownloadRef}
-                        />
+                        data={csvData}
+                        headers={headers}
+                        filename={`${selectedProject ?? 'Project'}_${selectedTab ?? 'Table'}_${new Date().toISOString().split('T')[0]}.csv`}
+                        className="hidden"
+                        ref={csvDownloadRef}
+                    />
+                    
                     )}
              </div>
              

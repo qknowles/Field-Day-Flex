@@ -12,10 +12,9 @@ export const generateCSVData = async (selectedProject, selectedTab, email) => {
 
         // Ensure columns are sorted by the 'order' field
         columns.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
-
         const columnHeaders = columns.map(col => ({
-            label: col.name,
-            key: col.name
+            label: col.name ? String(col.name) : "Unknown Column",
+            key: col.name ? String(col.name) : "Unknown_Column"
         }));
 
         const headers = [{ label: "Date & Time", key: "entry_date" }, ...columnHeaders];
@@ -23,10 +22,23 @@ export const generateCSVData = async (selectedProject, selectedTab, email) => {
         // Fetch entries dynamically
         const entries = await getEntriesForTab(selectedProject, selectedTab, email);
         const formattedData = entries.map(entry => {
-            let formattedEntry = { entry_date: entry.entry_date.toISOString() };
+            let formattedEntry = {
+                entry_date: entry.entry_date?.toISOString?.() || "N/A"  
+            };
+
             columns.forEach(col => {
-                formattedEntry[col.name] = entry.entry_data[col.name] || "N/A";
+                let value = entry.entry_data?.[col.name];
+
+                // ✅ Ensure all data values are strings
+                if (value === undefined || value === null) {
+                    formattedEntry[col.name] = "N/A";
+                } else if (typeof value === "object" && value.toDate) {
+                    formattedEntry[col.name] = value.toDate().toISOString(); 
+                } else {
+                    formattedEntry[col.name] = String(value); 
+                }
             });
+
             return formattedEntry;
         });
 
