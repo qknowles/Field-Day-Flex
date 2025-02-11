@@ -6,7 +6,7 @@ import classNames from 'classnames';
 import { slideInVariant } from '../utils/variants';
 
 export default function Button({ className, flexible, text, onClick, disabled, icon }) {
-    const offset = icon ? 40 : 0;
+    const offset = icon ? 35 : 0;
 
     const buttonControls = useAnimationControls();
     const textControls = useAnimationControls();
@@ -49,10 +49,11 @@ export default function Button({ className, flexible, text, onClick, disabled, i
                 animate={buttonControls}
             >
                 {icon && (
-                    <motion.div layout key="icon" className="text-2xl rounded-md">
-                        {icon}
+                    <motion.div layout key="icon" className="rounded-md ml-2">
+                        {typeof icon === 'function' ? React.createElement(icon) : icon}
                     </motion.div>
                 )}
+
                 {flexible ? (
                     <motion.div
                         variants={slideInVariant}

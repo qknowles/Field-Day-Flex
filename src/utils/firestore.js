@@ -15,6 +15,7 @@ import {
     or,
     and,
     getCountFromServer,
+    runTransaction
 } from 'firebase/firestore';
 import { db } from './firebase';
 import { Type } from '../components/Notifier';
@@ -35,35 +36,28 @@ export const projectExists = async (projectName) => {
     return !userSnapshot.empty;
 };
 
-export const getProjectFields = async (documentId, fields) => {
+export const getProjectFields = async (projectName, fields) => {
     try {
-        // Reference the document directly by its ID
-        console.log('Fetching project fields for document ID:', documentId);
-        const projectDocRef = doc(db, 'Projects', documentId);
+        const projectRef = collection(db, 'Projects');
+        const projectQuery = query(projectRef, where('project_name', '==', projectName));
+        const projectDocs = await getDocs(projectQuery);
 
-        // Fetch the document
-        const projectDoc = await getDoc(projectDocRef);
+        if (!projectDocs.empty) {
+            const doc = projectDocs.docs[0];
+            const projectData = doc.data();
+            const selectedFields = fields.reduce((result, field) => {
+                if (field in projectData) {
+                    result[field] = projectData[field];
+                }
+                return result;
+            }, {});
 
-        if (!projectDoc.exists()) {
-            console.error(`Project with ID "${documentId}" not found.`);
-            return null;
+            return selectedFields;
         }
-
-        // Get the document data
-        const projectData = projectDoc.data();
-
-        // Extract and return the requested fields
-        const selectedFields = fields.reduce((result, field) => {
-            if (field in projectData) {
-                result[field] = projectData[field];
-            }
-            return result;
-        }, {});
-
-        return selectedFields;
+        return false;
     } catch (error) {
         console.error('Error retrieving project fields:', error);
-        throw error;
+        return false;
     }
 };
 
@@ -158,7 +152,6 @@ export const getDocumentIdByProjectName = async (projectName) => {
             const docId = querySnapshot.docs[0].id;
             return docId;
         } else {
-            console.log(`No document found with project_name "${projectName}"`);
             return null;
         }
     } catch (error) {
@@ -287,7 +280,6 @@ export const createTab = async (
         const tabSnapshot = await getDocs(tabQuery);
 
         if (!tabSnapshot.empty) {
-            console.log('A tab with this name already exists.');
             return false;
         }
 
@@ -330,10 +322,85 @@ export const createTab = async (
     }
 };
 
+export const addColumn = async (
+    email,
+    selectedProject,
+    tabName,
+    columnName,
+    columnDataType,
+    columnEntryOptions = [],
+    columnIdentifierDomain = null,
+    columnRequiredField = false,
+) => {
+    try {
+        const projectRef = collection(db, 'Projects');
+        const projectsQuery = query(
+            projectRef,
+            and(
+                where('project_name', '==', selectedProject),
+                or(
+                    where('admins', 'array-contains', email),
+                    where('owners', 'array-contains', email),
+                ),
+            ),
+        );
+        const projectSnapshot = await getDocs(projectsQuery);
+        if (projectSnapshot.empty) {
+            return false;
+        }
+        const projectDoc = projectSnapshot.docs[0];
+
+        const tabsRef = collection(projectDoc.ref, 'Tabs');
+        const tabQuery = query(tabsRef, where('tab_name', '==', tabName));
+        const tabSnapshot = await getDocs(tabQuery);
+        if (tabSnapshot.empty) {
+            return false;
+        }
+        const tabDoc = tabSnapshot.docs[0];
+
+        const columnsRef = collection(tabDoc.ref, 'Columns');
+        const existingColumns = await getDocs(columnsRef);
+        const columnOrder = existingColumns.size;
+
+        await addDoc(columnsRef, {
+            name: columnName,
+            data_type: columnDataType,
+            entry_options: columnEntryOptions[0],
+            identifier_domain: columnIdentifierDomain,
+            required_field: columnRequiredField,
+            order: columnOrder,
+        });
+
+        await addColumnToEntries(tabDoc, columnName);
+
+        return true;
+    } catch (error) {
+        console.error('Error adding column:', error);
+        return false;
+    }
+};
+
+const addColumnToEntries = async (tabDoc, columnName) => {
+    try {
+        const entriesRef = collection(tabDoc.ref, 'Entries');
+        const entriesSnapshot = await getDocs(entriesRef);
+
+        const batch = writeBatch(db);
+        entriesSnapshot.forEach((entryDoc) => {
+            const entryRef = doc(entriesRef, entryDoc.id);
+            batch.update(entryRef, {
+                [columnName]: null,
+            });
+        });
+
+        await batch.commit();
+    } catch (error) {
+        console.error('Error updating entries with new column:', error);
+    }
+};
+
 export const getColumnsCollection = async (projectName, tabName, email) => {
     try {
-        console.log('Fetching columns for project:', projectName, 'and tab:', tabName);
-
         // Query the Projects collection
         const projectRef = collection(db, 'Projects');
         const projectQuery = query(
@@ -362,7 +429,6 @@ export const getColumnsCollection = async (projectName, tabName, email) => {
         const tabSnapshot = await getDocs(tabQuery);
 
         if (tabSnapshot.empty) {
-            console.error('No matching tab found for:', tabName);
             return [];
         }
 
@@ -373,7 +439,6 @@ export const getColumnsCollection = async (projectName, tabName, email) => {
         const columnsSnapshot = await getDocs(columnsRef);
 
         if (columnsSnapshot.empty) {
-            console.warn('No columns found in the specified tab:', tabName);
             return [];
         }
 
@@ -383,7 +448,6 @@ export const getColumnsCollection = async (projectName, tabName, email) => {
             ...doc.data(),
         }));
 
-        console.log('Fetched columns:', columns);
         return columns;
     } catch (error) {
         console.error('Error in getColumnsCollection:', error);
@@ -419,7 +483,6 @@ export const addEntry = async (projectName, tabName, email, newEntry) => {
         const tabSnapshot = await getDocs(tabsQuery);
 
         if (tabSnapshot.empty) {
-            console.error('No matching tab found in the specified project.');
             return false;
         }
 
@@ -457,7 +520,7 @@ export const getEntriesForTab = async (projectName, tabName, email) => {
         const projectSnapshot = await getDocs(projectQuery);
 
         if (projectSnapshot.empty) {
-            throw new Error('Project not found');
+            return false;
         }
 
         const projectDoc = projectSnapshot.docs[0];
@@ -468,7 +531,7 @@ export const getEntriesForTab = async (projectName, tabName, email) => {
         const tabSnapshot = await getDocs(tabQuery);
 
         if (tabSnapshot.empty) {
-            throw new Error('Tab not found');
+            return false;
         }
 
         const tabDoc = tabSnapshot.docs[0];
@@ -482,15 +545,14 @@ export const getEntriesForTab = async (projectName, tabName, email) => {
             ...doc.data(),
             entry_date: doc.data().entry_date?.toDate?.() || doc.data().entry_date,
         }));
+        
     } catch (error) {
-        console.error('Error fetching entries:', error);
-        throw error;
+        console.error('Error in getEntriesForTab');
     }
 };
 export const updateDocInCollection = async (collectionName, docId, data) => {
     try {
         await updateDoc(doc(db, collectionName, docId), data);
-        console.log('Document successfully updated!');
         return true;
     } catch (error) {
         console.error('Error updating document:', error);
@@ -498,6 +560,7 @@ export const updateDocInCollection = async (collectionName, docId, data) => {
     }
 };
 
+// TODO: Update this function to use Firestore's Transactions.
 export const updateEmailInProjects = async (oldEmail, newEmail) => {
     try {
         const projectsRef = collection(db, 'Projects');
@@ -525,13 +588,8 @@ export const updateEmailInProjects = async (oldEmail, newEmail) => {
             if (Object.keys(updatedData).length > 0) {
                 const projectRef = doc(db, 'Projects', projectDoc.id);
                 await updateDoc(projectRef, updatedData);
-                console.log(`Updated project: ${projectDoc.id}`);
-            } else {
-                console.log(`No updates needed for project: ${projectDoc.id}`);
             }
         }
-
-        console.log('Email update completed across all projects.');
         return true;
     } catch (error) {
         console.error('Error updating email in projects:', error);
@@ -549,7 +607,6 @@ export async function getDocumentIdByUserName(userEmail) {
             const docId = querySnapshot.docs[0].id;
             return docId;
         } else {
-            console.log(`No document found with email "${userEmail}"`);
             return null;
         }
     } catch (error) {
@@ -610,7 +667,6 @@ export const getDocsFromCollection = async (projectName, tabName, constraints = 
         const tabSnapshot = await getDocs(tabQuery);
 
         if (tabSnapshot.empty) {
-            console.error('No matching tab found:', tabName);
             return [];
         }
 
@@ -620,7 +676,6 @@ export const getDocsFromCollection = async (projectName, tabName, constraints = 
         const columnsSnapshot = await getDocs(queryConstraints);
 
         if (columnsSnapshot.empty) {
-            console.warn('No columns found in the specified tab:', tabName);
             return [];
         }
 
@@ -629,7 +684,6 @@ export const getDocsFromCollection = async (projectName, tabName, constraints = 
             ...doc.data(),
         }));
 
-        console.log('Fetched columns:', columns);
         return columns;
     } catch (error) {
         console.error('Error in getDocsFromCollection:', error);
@@ -670,7 +724,130 @@ export const editMemberships = async (email, projectName) => {
     }
 };
 export const getUserName = async (email) => {
-    console.log('in getUserName', email);
     const user = await getDocs(query(collection(db, 'Users'), where('email', '==', email)));
     return user.docs[0].data().name || 'null';
+};
+
+export async function saveUserAccountChanges(fieldsChanged, originalEmail) {
+    try {
+        const userDocRef = doc(db, "Users", await getDocumentIdByUserName(originalEmail));
+        await runTransaction(db, async (transaction) => {
+            const userDoc = await transaction.get(userDocRef);
+            if (!userDoc.exists()) {
+                console.error("User does not exist in saveUserAccountChanges", originalEmail);
+                throw new Error("User document does not exist.");
+            }
+            // TODO: Once updateEmailInProjects uses transactions, refactor this to use that change.
+            transaction.update(userDocRef, {
+                ...fieldsChanged,
+                lastUpdated: new Date()
+            });
+            if(fieldsChanged.email) {
+                console.log("email field changed");
+                await updateEmailInProjects(originalEmail, fieldsChanged.email);
+            }
+            console.log("Transaction completed successfully:", fieldsChanged);
+        });
+        return true;
+    } catch (error) {
+        console.error("Error in saveUserAccountChanges:", error);
+        return false;
+    }
+}
+export const deleteEntry = async (projectName, tabName, entryId) => {
+    try {
+        const projectId = await getDocumentIdByProjectName(projectName);
+        if (!projectId) {
+            throw new Error('Project ID not found for the selected project');
+        }
+        const docRef = doc(db, 'Projects', projectId, 'Tabs', tabName, 'Entries', entryId);
+        console.log('Setting deleted flag to true for entry:', docRef.path); // Log the document path
+        await updateDoc(docRef, { deleted: true });
+    } catch (error) {
+        console.error('Error deleting entry:', error);
+        throw error;
+    }
+};
+
+export const getEntryDetails = async (projectName, tabName, entryId) => {
+    try {
+        const projectId = await getDocumentIdByProjectName(projectName);
+        if (!projectId) {
+            throw new Error('Project ID not found for the selected project');
+        }
+        const docRef = doc(db, 'Projects', projectId, 'Tabs', tabName, 'Entries', entryId);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+            console.log('Entry details:', docSnap.data()); // Log the entry details
+            return { id: entryId, ...docSnap.data() }; // Ensure the entry ID is included in the returned data
+        } else {
+            console.error('Entry not found');
+            throw new Error('Entry not found');
+        }
+    } catch (error) {
+        console.error('Error fetching entry details:', error);
+        throw error;
+    }
+};
+
+export const updateEntry = async (projectName, tabName, email, entryId, updatedData) => {
+    try {
+        const projectId = await getDocumentIdByProjectName(projectName);
+        if (!projectId) {
+            throw new Error('Project ID not found for the selected project');
+        }
+        const docRef = doc(db, 'Projects', projectId, 'Tabs', tabName, 'Entries', entryId);
+        await updateDoc(docRef, {
+            entry_data: updatedData // Update the entry_data field
+        });
+        console.log('Entry updated:', docRef.path); // Log the document path
+    } catch (error) {
+        console.error('Error updating entry:', error);
+        throw error;
+    }
+};
+
+export const saveColumnChanges = async (projectName, tabName, columns, columnsToDelete, editedColumnNames, columnOrder, editedColumnTypes, editedRequiredFields, editedIdentifierDomains, editedDropdownOptions) => {
+    try {
+        const projectId = await getProjectIdByName(projectName);
+        if (!projectId) {
+            throw new Error('Project ID not found for the selected project');
+        }
+
+        const batch = writeBatch(db);
+
+        for (const column of columns) {
+            if (columnsToDelete.includes(column.id)) {
+                // Delete column
+                const columnRef = doc(db, 'Projects', projectId, 'Tabs', tabName, 'Columns', column.id);
+                batch.delete(columnRef);
+
+                // Remove column from all entries
+                const entriesSnapshot = await getDocs(collection(db, 'Projects', projectId, 'Tabs', tabName, 'Entries'));
+                entriesSnapshot.docs.forEach(entryDoc => {
+                    const entryRef = doc(db, 'Projects', projectId, 'Tabs', tabName, 'Entries', entryDoc.id);
+                    const entryData = entryDoc.data();
+                    delete entryData.entry_data[column.name];
+                    batch.update(entryRef, { entry_data: entryData.entry_data });
+                });
+            } else if (!['actions', 'datetime', 'identifier'].includes(column.id)) {
+                // Update column
+                const columnRef = doc(db, 'Projects', projectId, 'Tabs', tabName, 'Columns', column.id);
+                batch.update(columnRef, {
+                    name: editedColumnNames[column.id],
+                    order: columnOrder[column.id],
+                    data_type: editedColumnTypes[column.id],
+                    required_field: editedRequiredFields[column.id],
+                    identifier_domain: editedIdentifierDomains[column.id],
+                    entry_options: editedColumnTypes[column.id] === 'multiple choice' ? 
+                        editedDropdownOptions[column.id] : []
+                });
+            }
+        }
+
+        await batch.commit();
+    } catch (error) {
+        console.error('Error saving column changes:', error);
+        throw error;
+    }
 };

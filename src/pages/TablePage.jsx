@@ -1,12 +1,137 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef} from 'react';
 import TabBar from '../components/TabBar';
 import DataViewer from '../components/DataViewer';
 import PageWrapper from '../wrappers/PageWrapper';
 import { LizardIcon } from '../assets/icons';
-import NewProject from '../windows/NewProject';
-import NewTab from '../windows/NewTab';
 import NewEntry from '../windows/NewEntry';
+import ColumnOptions from '../windows/ColumnOptions';
 import Button from '../components/Button';
+import ManageColumns from '../windows/MangeColumns';
+import { useAtomValue } from 'jotai';
+import { currentProjectName, currentTableName, currentUserEmail} from '../utils/jotai.js';
+import { ExportIcon } from '../assets/icons';
+import { generateCSVData } from '../components/ExportService.jsx';
+import { CSVLink } from 'react-csv';
+
+
+export default function TablePage() {
+    const selectedProject = useAtomValue(currentProjectName);
+    const selectedTab = useAtomValue(currentTableName);
+    const email = useAtomValue(currentUserEmail);
+    
+    const [showNewEntry, setShowNewEntry] = useState(false);
+    const [showManageColumns, setShowManageColumns] = useState(false);
+    const [showColumnOptions, setShowColumnOptions] = useState(false);
+    const [newColumn, setNewColumn] = useState(['']);
+    const [showExportModal, setShowExportModal] = useState(false);
+    const [triggerExport, setTriggerExport] = useState(false);
+    const [csvData, setCsvData] = useState([]);
+    const [headers, setHeaders] = useState([]);
+    const csvDownloadRef = useRef(null);
+
+    const handleExport = async () => {
+        if (!selectedProject || !selectedTab) {
+            console.error("Project or Tab not selected");
+            return;
+        }
+
+        const { headers, data } = await generateCSVData(selectedProject, selectedTab, email);
+        if (data.length > 0) {
+            setHeaders(headers);
+            setCsvData(data);
+
+            setTimeout(() => {
+                if (csvDownloadRef.current) {
+                    csvDownloadRef.current.link.click();
+                }
+            }, 500);
+        }
+    };
+
+    useEffect(() => {
+        setNewColumn(['']);
+    }, [showColumnOptions]);
+
+    return (
+        <PageWrapper>
+            {/* Tab Navigation */}
+            <TabBar />
+
+            {/* Table Management Buttons */}
+            {selectedTab && (
+                 <div className="flex items-center justify-between pt-3 px-5 pb-3 dark:bg-neutral-950 w-full">
+                 <div className="flex items-center">
+                     <p className="text-2xl mr-6">{selectedTab} - Entries</p>
+                     <Button text="New Entry" onClick={() => setShowNewEntry(true)} className="mr-32" />
+                     <Button text="New Column" onClick={() => setShowColumnOptions(true)} className="mr-6"/>
+                     <Button text="Manage Columns" onClick={() => setShowManageColumns(true)} />
+                 </div>
+                 
+                     {/* Export Icon */}
+                     <button
+                        onClick={handleExport}
+                        className="p-2 text-white hover:bg-neutral-700 rounded ml-auto"
+                        title="Export to CSV"
+                    >
+                        <ExportIcon className="h-6 w-6" />
+                    </button>
+
+                    {/* CSV Link Download */}
+                    {csvData.length > 0 && (
+                        <CSVLink
+                        data={csvData}
+                        headers={headers}
+                        filename={`${selectedProject ?? 'Project'}_${selectedTab ?? 'Table'}_${new Date().toISOString().split('T')[0]}.csv`}
+                        className="hidden"
+                        ref={csvDownloadRef}
+                    />
+                    
+                    )}
+             </div>
+             
+
+            )}
+
+           
+            {/* Content Area */}
+            <div className="flex-grow bg-white dark:bg-neutral-950">
+                {!selectedProject ? (
+                    <NoProjectDisplay />
+                ) : !selectedTab ? (
+                    <NoTabsDisplay />
+                ) : (
+                    <DataViewer />
+                )}
+            </div>
+
+            {/* Pages */}
+            {showNewEntry && (
+                <NewEntry
+                    CloseNewEntry={() => setShowNewEntry(false)}
+                />
+            )}
+            {showColumnOptions && (
+                <ColumnOptions
+                    ColumnNames={newColumn}
+                    SetColumnNames={setNewColumn}
+                    CancelColumnOptions={() => setShowColumnOptions(false)}
+                    OpenNewTab={() => setShowColumnOptions(false)}
+                    GenerateIdentifiers={null}
+                    PossibleIdentifiers={null}
+                    IdentifierDimension={null}
+                    UnwantedCodes={null}
+                    UtilizeUnwantedCodes={null}
+                    header="Add Column"
+                />
+            )}
+            {showManageColumns && (
+                <ManageColumns
+                    CloseManageColumns={() => setShowManageColumns(false)}
+                />
+            )}
+        </PageWrapper>
+    );
+}
 
 const NoProjectDisplay = () => (
     <div className="w-full text-center">
@@ -61,94 +186,3 @@ const NoTabsDisplay = () => (
         </p>
     </div>
 );
-
-/**
- * Quick and dirty way to get the Current Project to TopNav for ProjectSettings.jsx
- * @type {string}
- */
-let currentProject = 'null';
-export function getCurrentProject() {
-    return currentProject;
-}
-
-export default function TablePage({ Email }) {
-    const [selectedProject, setSelectedProject] = useState('');
-    const [selectedTab, setSelectedTab] = useState('');
-    const [showNewProject, setShowNewProject] = useState(false);
-    const [showNewTab, setShowNewTab] = useState(false);
-    const [showNewEntry, setShowNewEntry] = useState(false);
-
-    useEffect(() => {
-        currentProject = selectedProject;
-        setSelectedTab('');
-    }, [selectedProject]);
-
-    return (
-        <PageWrapper>
-            {/* Tab Navigation */}
-            <TabBar
-                Email={Email}
-                SelectedProject={selectedProject}
-                SetSelectedProject={setSelectedProject}
-                SelectedTab={selectedTab}
-                SetSelectedTab={setSelectedTab}
-                OnNewProject={() => setShowNewProject(true)}
-                OnNewTab={() => setShowNewTab(true)}
-            />
-
-            {/* Table Management Buttons */}
-            {selectedTab && (
-                <div className="flex items-center pt-3 px-5 pb-3 space-x-6 dark:bg-neutral-950">
-                    <p className="text-2xl">{selectedTab} - Entries</p>
-                    <Button text="New Entry" onClick={() => setShowNewEntry(true)} />
-                </div>
-            )}
-
-            {/* Content Area */}
-            <div className="flex-grow bg-white dark:bg-neutral-950">
-                {!selectedProject ? (
-                    <NoProjectDisplay />
-                ) : !selectedTab ? (
-                    <NoTabsDisplay />
-                ) : (
-                    <DataViewer
-                        Email={Email}
-                        SelectedProject={selectedProject}
-                        SelectedTab={selectedTab}
-                    />
-                )}
-            </div>
-
-            {/* Modals */}
-            {showNewProject && (
-                <NewProject
-                    CancelProject={() => setShowNewProject(false)}
-                    OpenNewProject={(projectName) => {
-                        setShowNewProject(false);
-                        setSelectedProject(projectName);
-                    }}
-                    Email={Email}
-                />
-            )}
-            {showNewTab && (
-                <NewTab
-                    CancelTab={() => setShowNewTab(false)}
-                    OpenNewTab={(tabName) => {
-                        setShowNewTab(false);
-                        setSelectedTab(tabName);
-                    }}
-                    Email={Email}
-                    SelectedProject={selectedProject}
-                />
-            )}
-            {showNewEntry && (
-                <NewEntry
-                    CloseNewEntry={() => setShowNewEntry(false)}
-                    ProjectName={selectedProject}
-                    TabName={selectedTab}
-                    Email={Email}
-                />
-            )}
-        </PageWrapper>
-    );
-}
