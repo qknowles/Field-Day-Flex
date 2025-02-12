@@ -1,30 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { editMemberships, getProjectNames } from '../utils/firestore';
+import React from 'react';
+import { editMemberships } from '../utils/firestore';
 import Button from '../components/Button';
 import WindowWrapper from '../wrappers/WindowWrapper';
 import { Type, notify } from '../components/Notifier';
-import { useAtomValue } from 'jotai';
-import { currentUserEmail } from '../utils/jotai.js';
+import { useAtomValue, useAtom } from 'jotai';
+import { currentUserEmail, allProjectNames } from '../utils/jotai.js';
 
 export default function ManageMembership({ CancelMemberships, setCurrentWindow }) {
-    const [userProjectData, setUserProjectData] = useState([]);
+    const [projectNames, setProjectNames] = useAtom(allProjectNames);
     const email = useAtomValue(currentUserEmail);
-
-    useEffect(() => {
-        const loadProjects = async () => {
-            const projects = await getProjectNames(email);
-            setUserProjectData(projects);
-        };
-        loadProjects();
-    }, [email]);
 
     const handleLeaveProject = async (project) => {
         const success = await editMemberships(email, project);
         if (success) {
             notify(Type.success, `Left project: ${project}`);
-            const updatedProjects = await getProjectNames(email);
-            setUserProjectData(updatedProjects);
-            if (updatedProjects.length === 0) {
+            setProjectNames((prevProjectNames) => [
+                ...(prevProjectNames || []).filter((p) => p !== project)
+              ]);
+            if (projectNames.length === 0) {
                 setCurrentWindow('HomePage');
             }
         } else {
@@ -42,10 +35,10 @@ export default function ManageMembership({ CancelMemberships, setCurrentWindow }
             leftButtonText="Close"
         >
             <div className="flex flex-col space-y-4 p-4">
-                {userProjectData.length === 0 ? (
+                {projectNames.length === 0 ? (
                     <p className="text-center">You are not a member of any projects</p>
                 ) : (
-                    userProjectData.map((project) => (
+                    projectNames.map((project) => (
                         <div
                             key={project}
                             className="flex justify-between items-center p-4 bg-white dark:bg-neutral-800 rounded-lg shadow"

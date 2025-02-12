@@ -1,6 +1,6 @@
 import Tab from './Tab';
 import React, { useEffect, useState } from 'react';
-import { getTabNames, getProjectNames } from '../utils/firestore';
+import { getTabNames } from '../utils/firestore';
 import Button from './Button';
 import { DropdownSelector } from './FormFields';
 import { Type, notify } from '../components/Notifier';
@@ -39,22 +39,6 @@ export default function TabBar() {
         setSelectedTab(tabName);
     };
 
-    const initializeTabs = async () => {
-        setProjects(await getProjectNames(email));
-
-        if (projects.length > 0) {
-            const defaultProject = selectedProject || projects[0];
-            setSelectedProject(defaultProject);
-
-            setTabNames(await getTabNames(email, selectedProject));
-
-            if (tabNames.length > 0) {
-                const defaultTab = tabNames[0];
-                setSelectedTab(defaultTab);
-            }
-        }
-    };
-
     // when we update project name in ProjectSettings.jsx we need to propagate that change here too
     updateProjectName = (newProjectName) => {
         setSelectedProject(newProjectName);
@@ -64,8 +48,21 @@ export default function TabBar() {
     };
 
     useEffect(() => {
-        initializeTabs();
-    }, [email, selectedProject]);
+        const fetchTabNames = async () => {
+            if (selectedProject) {
+                try {
+                    const tabs = await getTabNames(selectedProject);
+                    setTabNames(tabs);
+                } catch (error) {
+                    console.error('Failed to fetch tab names.');
+                }
+            } else {
+                setTabNames([]);
+            }
+        };
+
+        fetchTabNames();
+    }, [selectedProject]);
 
     useEffect(() => {
         const activeStatusMap = tabNames.reduce((map, tab) => {
@@ -73,7 +70,7 @@ export default function TabBar() {
             return map;
         }, {});
         setActiveTabs(activeStatusMap);
-    }, [selectedTab]);
+    }, [selectedTab, tabNames]);
 
     return (
         <>
