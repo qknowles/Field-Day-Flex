@@ -7,16 +7,19 @@ import NewEntry from '../windows/NewEntry';
 import ColumnOptions from '../windows/ColumnOptions';
 import Button from '../components/Button';
 import ManageColumns from '../windows/MangeColumns';
-import { useAtomValue } from 'jotai';
-import { currentProjectName, currentTableName, currentUserEmail} from '../utils/jotai.js';
+import { useAtomValue, useAtom } from 'jotai';
+import { currentProjectName, currentTableName, currentUserEmail, allProjectNames, allTableNames } from '../utils/jotai.js';
 import { ExportIcon } from '../assets/icons';
 import { generateCSVData } from '../components/ExportService.jsx';
 import { CSVLink } from 'react-csv';
+import { getProjectNames, getTabNames } from '../utils/firestore.js'
 
 
 export default function TablePage() {
-    const selectedProject = useAtomValue(currentProjectName);
-    const selectedTab = useAtomValue(currentTableName);
+    const [selectedProject, setSelectedProject] = useAtom(currentProjectName);
+    const [selectedTab, setSelectedTab] = useAtom(currentTableName);
+    const [tabNames, setTabNames] = useAtom(allTableNames);
+    const [projectNames, setProjectNames] = useAtom(allProjectNames);
     const email = useAtomValue(currentUserEmail);
     
     const [showNewEntry, setShowNewEntry] = useState(false);
@@ -47,6 +50,27 @@ export default function TablePage() {
             }, 500);
         }
     };
+
+    useEffect(() => {
+        const getFirstProject = async () => {
+            try {
+                const allProjectNames = await getProjectNames(email);
+                if (allProjectNames) {
+                    setProjectNames(allProjectNames);
+                    setSelectedProject(allProjectNames[0]);
+                    const allTabNames = await getTabNames(email, allProjectNames[0]);
+                    if (allTabNames) {
+                        setTabNames(allTabNames);
+                        setSelectedTab(allTabNames[0]);
+                    }
+                }
+            } catch (error) {
+                console.error("Error fetching project names or tabs in TablePage.")
+            }
+        }
+
+        getFirstProject();
+    }, [email]);
 
     useEffect(() => {
         setNewColumn(['']);
