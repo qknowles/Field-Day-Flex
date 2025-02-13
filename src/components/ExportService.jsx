@@ -20,7 +20,11 @@ export const generateCSVData = async (selectedProject, selectedTab, email) => {
         const headers = [{ label: "Date & Time", key: "entry_date" }, ...columnHeaders];
 
         // Fetch entries dynamically
-        const entries = await getEntriesForTab(selectedProject, selectedTab, email);
+        let entries = await getEntriesForTab(selectedProject, selectedTab, email);
+
+        //**Filter out deleted entries**
+        entries = entries.filter(entry => !entry.deleted || entry.deleted === false);
+
         const formattedData = entries.map(entry => {
             let formattedEntry = {
                 entry_date: entry.entry_date?.toISOString?.() || "N/A"  
@@ -29,7 +33,6 @@ export const generateCSVData = async (selectedProject, selectedTab, email) => {
             columns.forEach(col => {
                 let value = entry.entry_data?.[col.name];
 
-                // ✅ Ensure all data values are strings
                 if (value === undefined || value === null) {
                     formattedEntry[col.name] = "N/A";
                 } else if (typeof value === "object" && value.toDate) {
