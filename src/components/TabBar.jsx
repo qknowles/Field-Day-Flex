@@ -43,7 +43,7 @@ export default function TabBar() {
         const fetchTabNames = async () => {
             if (selectedProject) {
                 try {
-                    const tabs = await getTabNames(selectedProject);
+                    const tabs = await getTabNames(email, selectedProject);
                     setTabNames(tabs);
                 } catch (error) {
                     console.error('Failed to fetch tab names.');
