@@ -39,14 +39,6 @@ export default function TabBar() {
         setSelectedTab(tabName);
     };
 
-    // when we update project name in ProjectSettings.jsx we need to propagate that change here too
-    updateProjectName = (newProjectName) => {
-        setSelectedProject(newProjectName);
-        if (!projects.includes(newProjectName)) {
-            setProjects((prevProjectNames) => [...prevProjectNames, newProjectName]);
-        }
-    };
-
     useEffect(() => {
         const fetchTabNames = async () => {
             if (selectedProject) {
