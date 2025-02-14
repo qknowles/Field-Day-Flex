@@ -1,190 +1,150 @@
 import React, { useEffect, useState } from 'react';
+import { useAtom, useAtomValue } from 'jotai';
+import { currentProjectName, currentUserEmail } from '../utils/jotai.js';
 import WindowWrapper from '../wrappers/WindowWrapper.jsx';
 import InputLabel from '../components/InputLabel.jsx';
-import { DropdownSelector } from '../components/FormFields.jsx';
 import { AiFillDelete } from 'react-icons/ai';
-import {
-    getProjectFields,
-    updateDocInCollection,
-    addMemberToProject,
-    getDocumentIdByProjectName,
-} from '../utils/firestore.js';
+import { getProjectFields, updateDocInCollection, addMemberToProject, getDocumentIdByProjectName } from '../utils/firestore.js';
 import Button from '../components/Button.jsx';
 import { notify, Type } from '../components/Notifier.jsx';
 import { updateProjectName } from '../components/TabBar.jsx';
+import { entries } from 'lodash';
 
-export default function ProjectSettings({
-    projectNameProp = 'NoNamePassed',
-    CloseProjectSettings,
-    emailProp,
-}) {
+export default function ProjectSettings({ CloseProjectSettings }) {
+    // Jotai State
+    const [projectName, setProjectName] = useAtom(currentProjectName);
+    const userEmail = useAtomValue(currentUserEmail);
+
+    // Local State
+    const [documentId, setDocumentId] = useState(null);
     const [isAuthorized, setIsAuthorized] = useState(false);
-    const [documentId, setDocumentId] = useState(null); // Start with null, indicating it's unresolved
-    const [projectName, setProjectName] = useState(projectNameProp);
-    const [newMemberSelectedRole, setNewMemberSelectedRole] = useState('Select Role');
+    const [members, setMembers] = useState([]);
     const [newMemberEmail, setNewMemberEmail] = useState('');
-    const [members, setMembers] = useState([
-        { email: 'There is no project selected!', role: 'Contributor' },
-        { email: 'Does the project exist in the DB?', role: 'Owner' },
-    ]);
+    const [newMemberSelectedRole, setNewMemberSelectedRole] = useState('Select Role');
+    const [loading, setLoading] = useState(true);
 
+    // Fetch Project Data on Mount
     useEffect(() => {
-        // Fetch document ID on mount
-        const fetchDocumentId = async () => {
+        const fetchProjectData = async () => {
             try {
-                const docId = await getDocumentIdByProjectName(projectNameProp);
+                setLoading(true);
+
+                // Fetch Document ID
+                const docId = await getDocumentIdByProjectName(projectName);
+                if (!docId) {
+                    notify(Type.error, 'Project not found');
+                    setLoading(false);
+                    return;
+                }
                 setDocumentId(docId);
-            } catch (err) {
-                console.error(`Error fetching docId for project ${projectNameProp}`, err);
+
+                // Fetch Project Members
+                const membersData = await getProjectFields(projectName, ['contributors', 'admins', 'owners']);
+                console.log('Members:', membersData);
+                if (!membersData) {
+                    notify(Type.error, 'Failed to load project data');
+                    setLoading(false);
+                    return;
+                }
+
+                const formattedMembers = formatMembers(membersData);
+                setMembers(formattedMembers);
+
+                // Determine User Authorization
+                const userRole = getUserRole(membersData, userEmail);
+                setIsAuthorized(userRole === 'Owner' || userRole === 'Admin');
+
+            } catch (error) {
+                console.error('Error loading project:', error);
+                notify(Type.error, 'Error loading project');
+            } finally {
+                setLoading(false);
             }
         };
 
-        fetchDocumentId();
-    }, [projectNameProp]);
+        fetchProjectData();
+    }, [projectName, userEmail]);
 
-    // on component mount we fetch everything.. but we need docId first.
-    useEffect(() => {
-        if (documentId) {
-            fetchProjectData();
-        }
-    }, [documentId]); // we run this whenever docId gets resolved from the promise
-
-    useEffect(() => {
-        updateMemberRole();
-    }, [members]);
-
-    const fetchProjectData = async () => {
-        try {
-            const membersData = await getProjectFields(documentId, [
-                'contributors',
-                'admins',
-                'owners',
-            ]);
-
-            if (membersData) {
-                const { contributors = [], admins = [], owners = [] } = membersData;
-                const updatedMembers = [
-                    ...contributors.map((email) => ({ email, role: 'Contributor' })),
-                    ...admins.map((email) => ({ email, role: 'Admin' })),
-                    ...owners.map((email) => ({ email, role: 'Owner' })),
-                ];
-
-                updatedMembers.sort((a, b) => {
-                    const rolePriority = { Owner: 1, Admin: 2, Contributor: 3 };
-
-                    if (rolePriority[a.role] !== rolePriority[b.role]) {
-                        return rolePriority[a.role] - rolePriority[b.role];
-                    }
-                    return a.email.localeCompare(b.email);
-                });
-
-                setMembers(updatedMembers);
-
-                // This was accidentally commited in the same commit as Task 420. These lines are for Task 418:
-                const currUser = updatedMembers.find((member) => member.email === emailProp);
-                if(currUser && ((currUser.role === "Owner") || (currUser.role === "Admin"))) {
-                    setIsAuthorized(true);
-                } else setIsAuthorized(false);
-            }
-        } catch (err) {
-            console.error('Error fetching project data:', err);
-        }
+    // Helper Functions
+    const formatMembers = (membersData) => {
+        const { contributors = [], admins = [], owners = [] } = membersData;
+        return [
+            ...contributors.map((email) => ({ email, role: 'Contributor' })),
+            ...admins.map((email) => ({ email, role: 'Admin' })),
+            ...owners.map((email) => ({ email, role: 'Owner' })),
+        ].sort((a, b) => {
+            const rolePriority = { Owner: 1, Admin: 2, Contributor: 3 };
+            return rolePriority[a.role] - rolePriority[b.role] || a.email.localeCompare(b.email);
+        });
     };
 
-    async function addMember() {
-        if (!newMemberEmail || newMemberEmail.length === 0) {
-            notify(Type.error, 'Please enter member email.');
+    const getUserRole = (membersData, userEmail) => {
+        if (!userEmail) return 'None';
+        if (membersData.owners?.includes(userEmail)) return 'Owner';
+        if (membersData.admins?.includes(userEmail)) return 'Admin';
+        return 'None';
+    };
+
+    const handleAddMember = async () => {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!newMemberEmail || !emailRegex.test(newMemberEmail)) {
+            notify(Type.error, 'Please enter a valid member email.');
             return;
         }
         if (newMemberSelectedRole === 'Select Role') {
             notify(Type.error, 'Please select a role.');
             return;
         }
-        await addMemberToProject(
-            documentId,
-            newMemberSelectedRole.toLowerCase() + 's',
-            newMemberEmail,
-        );
-        await fetchProjectData();
-    }
 
-    async function updateMemberRole() {
         try {
-            const contributors = members
-                .filter((member) => member.role === 'Contributor')
-                .map((member) => member.email);
-            const admins = members
-                .filter((member) => member.role === 'Admin')
-                .map((member) => member.email);
-            const owners = members
-                .filter((member) => member.role === 'Owner')
-                .map((member) => member.email);
-
-            const updatedData = { contributors, admins, owners };
-
-            const success = await updateDocInCollection('Projects', documentId, updatedData);
-
-            if (success) {
-                console.log('Members successfully synced to Firebase:', updatedData);
-            } else {
-                console.error('Failed to sync members to Firebase.');
-            }
+            await addMemberToProject(documentId, newMemberSelectedRole.toLowerCase() + 's', newMemberEmail);
+            setNewMemberEmail('');
+            setNewMemberSelectedRole('Select Role');
+            notify(Type.success, `Added ${newMemberEmail} as ${newMemberSelectedRole}`);
+            setMembers(await getProjectFields(projectName, ['contributors', 'admins', 'owners'])); // Refresh members
         } catch (error) {
-            console.error('Error updating Firebase:', error);
+            notify(Type.error, 'Failed to add member');
+            console.log("ERROR", error);
         }
-    }
+    };
 
-    async function saveChanges() {
-        await updateDocInCollection('Projects', documentId, { project_name: `${projectName}` });
-        await fetchProjectData();
-        updateProjectName(`${projectName}`);
-    }
+    const handleSaveChanges = async () => {
+        try {
+            await updateDocInCollection('Projects', documentId, { project_name: projectName });
+            updateProjectName(projectName);
+            notify(Type.success, 'Project updated successfully');
+        } catch (error) {
+            notify(Type.error, 'Failed to update project');
+        }
+    };
 
-    async function removeMember(email, role) {
+    const handleRemoveMember = async (email, role) => {
         if (role === 'Owner') {
             notify(Type.error, 'Cannot remove an owner from the project.');
             return;
         }
+
         try {
-            // Map the role to the appropriate Firestore field
-            const field = role.toLowerCase() + 's'; // "Contributor" -> "contributors", "Admin" -> "admins", etc.
+            const field = role.toLowerCase() + 's';
+            const updatedMembers = members
+                .filter((member) => member.email !== email || member.role !== role)
+                .filter((member) => member.role.toLowerCase() + 's' === field)
+                .map((member) => member.email);
 
-            // Get the current list of members in the field
-            const updatedFieldMembers = members
-                .filter((member) => !(member.email === email && member.role === role)) // Remove the matching member
-                .filter((member) => member.role.toLowerCase() + 's' === field) // Filter only those in the same role field
-                .map((member) => member.email); // Only keep the email
+            await updateDocInCollection('Projects', documentId, { [field]: updatedMembers });
 
-            // Update Firestore
-            const updateData = {
-                [field]: updatedFieldMembers,
-            };
-            await updateDocInCollection('Projects', documentId, updateData);
-
-            // Update local state
-            setMembers((prevMembers) =>
-                prevMembers.filter((member) => !(member.email === email && member.role === role)),
-            );
-
-            notify(Type.success, `${email} has been successfully removed as a ${role}.`);
-        } catch (err) {
-            console.error(`Error removing member: ${email}`, err);
+            setMembers((prev) => prev.filter((member) => member.email !== email || member.role !== role));
+            notify(Type.success, `${email} has been removed as a ${role}.`);
+        } catch (error) {
             notify(Type.error, `Failed to remove ${email}.`);
         }
-    }
+    };
 
-    // Component depends on the docID ... we do nothing until that promise resolves.
-    if (!documentId) {
-        return <div>Loading project settings...</div>;
-    }
+    if (loading) return <div>Loading project settings...</div>;
 
     if (!isAuthorized) {
         return (
-            <WindowWrapper
-                header={`Manage ${projectNameProp} Project`}
-                onLeftButton={() => { CloseProjectSettings() }}
-                leftButtonText="Close"
-            >
+            <WindowWrapper header={`Manage ${projectName} Project`} onLeftButton={CloseProjectSettings} leftButtonText="Close">
                 <div className="p-5">
                     <p>You do not have permission to view this page.</p>
                     <p>You must be the project owner or an administrator.</p>
@@ -193,20 +153,15 @@ export default function ProjectSettings({
         );
     }
 
-
     return (
         <WindowWrapper
-            header={`Manage ${projectNameProp} Project`}
-            onLeftButton={() => {
-                CloseProjectSettings();
-            }}
-            onRightButton={() => {
-                saveChanges();
-            }}
-            leftButtonText="Cancel"
-            rightButtonText="Save Project Name"
+            header={`Manage ${projectName} Project`}
+            onLeftButton={CloseProjectSettings}
+            onRightButton={handleSaveChanges()}
+            leftButtonText="Close"
+            rightButtonText="Save Project"
         >
-            <div className="flex flex-col space-y-4 p-5">
+            <div className="flex flex-col space-y-4 p-5 text-neutral-900 dark:text-white">
                 {/* Project Name Input */}
                 <InputLabel
                     label="Project Name"
@@ -214,99 +169,92 @@ export default function ProjectSettings({
                     input={
                         <input
                             type="text"
-                            className="border rounded px-2 py-1"
+                            className="border rounded px-2 py-1 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
                             value={projectName}
                             onChange={(e) => setProjectName(e.target.value)}
                         />
                     }
                 />
 
-                {/* Add a new member */}
-                <div>
-                    <h3 className="font-semibold">Add a new Member:</h3>
-                    <InputLabel
-                        label="Member Email"
-                        layout="horizontal-single"
-                        input={
-                            <input
-                                type="text"
-                                className="border rounded px-2 py-1"
-                                value={newMemberEmail}
-                                onChange={(e) => setNewMemberEmail(e.target.value)}
-                            />
-                        }
-                    />
-                    <br />
-                    <InputLabel
-                        label="Member Role"
-                        layout="horizontal-single"
-                        input={
-                            <select
-                                className="border rounded px-2 py-1"
-                                value={newMemberSelectedRole}
-                                onChange={(e) => {
-                                    setNewMemberSelectedRole(e.target.value);
-                                }}
-                            >
-                                <option value="Select Role">Select Role</option>
-                                <option value="Contributor">Contributor</option>
-                                <option value="Admin">Admin</option>
-                                <option value="Owner">Owner</option>
-                            </select>
-                        }
-                    />{' '}
-                    <br />
-                    <div className="flex justify-end mt-4">
-                        <Button
-                            text="Add member"
-                            onClick={() => {
-                                addMember();
-                            }}
-                        />
-                    </div>
-                </div>
-
                 {/* Members List */}
                 <div>
                     <h3 className="font-semibold">Members</h3>
-                    <div className="space-y-2">
-                        {members.map((member, index) => (
-                            <div key={index} className="flex items-center space-x-4 p-2">
-                                {/* Delete Button */}
-                                <button
-                                    className="text-red-500 font-bold"
-                                    onClick={() => {
-                                        console.log('Calling remove member');
-                                        removeMember(member.email, member.role);
-                                    }}
-                                >
-                                    <AiFillDelete />
-                                </button>
-                                {/* Email Display */}
-                                <span className="flex-grow">{member.email}</span>
-
-                                {/* Role Selector */}
-                                <DropdownSelector
-                                    options={['Owner', 'Admin', 'Contributor']}
-                                    selection={member.role}
-                                    setSelection={(newRole) => {
-                                        console.log('old members', members);
-                                        const oldMembers = members;
-                                        setMembers(() => {
-                                            return oldMembers.map((m) => {
-                                                if (m.email === member.email) {
-                                                    return { ...m, role: newRole };
-                                                }
-                                                return m;
-                                            });
-                                        });
-                                        console.log('new members', members);
-                                    }}
-                                />
-                            </div>
-                        ))}
+                    <div className="space-y-4">
+                        {members && Object.keys(members).length > 0 ? (
+                            Object.keys(members).map((role) => (
+                                <div key={role}>
+                                    <h4 className="font-semibold">{role.charAt(0).toUpperCase() + role.slice(1)}</h4>
+                                    <div className="space-y-2">
+                                        {Array.isArray(members[role]) && members[role].map((email) => (
+                                            <div key={email} className="flex items-center space-x-4 p-2">
+                                                <button className="text-red-500 font-bold" onClick={() => handleRemoveMember(email, role)}>
+                                                    <AiFillDelete />
+                                                </button>
+                                                <span className="flex-grow">{email}</span>
+                                                <span className="px-3 py-1 bg-neutral-200 dark:bg-neutral-700 rounded">
+                                    {role.charAt(0).toUpperCase() + role.slice(1, -1)}
+                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div>No members found</div>
+                        )}
                     </div>
                 </div>
+
+
+                {/* Add new member section - only visible to admins/owners */}
+                {<div>
+                        <h3 className="font-semibold">Add a new Member:</h3>
+                        <InputLabel
+                            label="Member Email"
+                            layout="horizontal-single"
+                            input={
+                                <input
+                                    type="text"
+                                    className="border rounded px-2 py-1 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
+                                    value={newMemberEmail}
+                                    onChange={(e) => setNewMemberEmail(e.target.value)}
+                                />
+                            }
+                        />
+                        <br />
+                        <InputLabel
+                            label="Member Role"
+                            layout="horizontal-single"
+                            input={
+                                <select
+                                    className="border rounded px-2 py-1 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
+                                    value={newMemberSelectedRole}
+                                    onChange={(e) => setNewMemberSelectedRole(e.target.value)}
+                                >
+                                    <option value="Select Role">Select Role</option>
+                                    <option value="Contributor">Contributor</option>
+                                    <option value="Admin">Admin</option>
+                                    <option value="Owner">Owner</option>
+                                </select>
+                            }
+                        />
+                        <br />
+                        <div className="flex justify-end mt-4">
+                            <Button text="Add member" onClick={handleAddMember()} />
+                        </div>
+                    </div>
+                }
+
+                {/* Delete Project Button (Only shown to owners) */}
+
+                    <div className="flex justify-end mt-4">
+                        <Button
+                            text="Delete Project"
+                            onClick={() => setShowDeleteConfirm(true)}
+                            className="bg-red-600 hover:bg-red-700"
+                        />
+                    </div>
+
             </div>
         </WindowWrapper>
     );

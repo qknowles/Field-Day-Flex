@@ -69,11 +69,8 @@ export default function Hamburger({ Email }) {
                                 onClick={() =>
                                     handleButtonClick(
                                         <ProjectSettings
-                                            projectNameProp={currentProject}
                                             CloseProjectSettings={closeModal}
-                                            emailProp={Email}
-                                        />,
-                                    )
+                                        />)
                                 }
                             />
                         </li>

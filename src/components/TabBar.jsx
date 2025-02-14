@@ -7,7 +7,7 @@ import { Type, notify } from '../components/Notifier';
 import NewProject from '../windows/NewProject';
 import NewTab from '../windows/NewTab';
 import { useAtom } from 'jotai';
-import { currentUserEmail } from '../utils/jotai.js';
+import { currentUserEmail, currentProjectName } from '../utils/jotai.js';
 
 export let updateProjectName = null;
 
@@ -18,6 +18,7 @@ export default function TabBar({
     SetSelectedProject,
 }) {
     const [Email, setEmail] = useAtom(currentUserEmail);
+    const [ProjectName, setProjectName] = useAtom(currentProjectName);
     const [showNewTab, setShowNewTab] = useState(false);
     const [showNewProject, setShowNewProject] = useState(false);
 
@@ -46,6 +47,7 @@ export default function TabBar({
         if (projects.length > 0) {
             const defaultProject = SelectedProject || projects[0];
             SetSelectedProject(defaultProject);
+            setProjectName(defaultProject); // set jotai state too
 
             const tabs = await getTabNames(Email, defaultProject);
             setTabNames(tabs);
@@ -60,6 +62,7 @@ export default function TabBar({
     // when we update project name in ProjectSettings.jsx we need to propagate that change here too
     updateProjectName = (newProjectName) => {
         SetSelectedProject(newProjectName);
+        setProjectName(newProjectName);
         if (!projectNames.includes(newProjectName)) {
             setProjectNames((prevProjectNames) => [...prevProjectNames, newProjectName]);
         }
