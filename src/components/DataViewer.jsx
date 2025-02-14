@@ -10,6 +10,7 @@ import NewEntry from '../windows/NewEntry';
 import { AiFillEdit, AiFillDelete } from 'react-icons/ai';
 import { useAtom, useAtomValue } from 'jotai';
 import { currentUserEmail, currentProjectName, currentTableName, currentBatchSize } from '../utils/jotai';
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 
 const STATIC_COLUMNS = [
     { id: 'actions', name: 'Actions', type: 'actions', order: -3 },
