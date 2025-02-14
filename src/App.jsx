@@ -3,17 +3,14 @@ import TablePage from './pages/TablePage';
 import HomePage from './pages/HomePage';
 import TopNav from './components/TopNav';
 import { Notifier } from './components/Notifier';
-import { useAtom } from 'jotai';
-import {currentUserEmail} from './utils/jotai.js';
-
 export let updateUserEmail = null;
 
 function App() {
     const [authenticated, setAuthenticated] = useState(false);
-    const [email, setEmail] = useAtom(currentUserEmail);
-    updateUserEmail = (email) => {
+    const [email, setEmail] = useState('');
+    updateUserEmail = email => {
         setEmail(email);
-    };
+    }
 
     return (
         <div className="flex flex-col w-full min-h-screen text-neutral-800 dark:text-neutral-200 select-none">
@@ -36,3 +33,5 @@ function App() {
 }
 
 export default App;
+
+// A change to test main branch security settings! -EH
