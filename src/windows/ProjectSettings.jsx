@@ -243,9 +243,10 @@ export default function ProjectSettings({ CloseProjectSettings }) {
 
             if (deleted) {
                 notify(Type.success, 'Project deleted successfully');
+                const tempProjectNames = (projectNames.filter((name) => name !== projectName));
+                setProjectNames(tempProjectNames);
+                setProjectName(tempProjectNames[0] || '');
                 CloseProjectSettings();
-                setProjectNames(projectNames.filter((name) => name !== projectName));
-                setProjectName('');
             }
 
         } catch (error) {
