@@ -11,6 +11,7 @@ import { currentUserEmail, currentProjectName, currentTableName, currentBatchSiz
 import { visibleColumnsAtom } from '../utils/jotai';
 import { searchQueryAtom, filteredEntriesAtom } from './SearchBar';
 import { filterEntriesBySearch, highlightSearchTerms } from '../utils/searchUtils';
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 
 
 
