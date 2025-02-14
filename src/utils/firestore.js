@@ -71,6 +71,7 @@ export const createProject = async (projectName, email, contributors, administra
             admins: administrators,
             created_at: new Date(),
             next_tab: 0,
+            deleted: false,
         });
 
         return true;
@@ -117,14 +118,16 @@ export const createAccount = async (name, email, hashedPassword) => {
 export const getProjectNames = async (email) => {
     try {
         const projectsRef = collection(db, 'Projects');
-        ('owners');
         const combinedQuery = query(
             projectsRef,
-            or(
-                where('contributors', 'array-contains', email),
-                where('admins', 'array-contains', email),
-                where('owners', 'array-contains', email),
-            ),
+            and(
+                or(
+                    where('contributors', 'array-contains', email),
+                    where('admins', 'array-contains', email),
+                    where('owners', 'array-contains', email),
+                ),
+                where('deleted', '==', false),
+            )
         );
         const projectSnapshot = await getDocs(combinedQuery);
         const projectNames = Array.from(
@@ -139,11 +142,19 @@ export const getProjectNames = async (email) => {
     }
 };
 
-export const getDocumentIdByProjectName = async (projectName) => {
+export const getDocumentIdByEmailAndProjectName = async (email, projectName) => {
     try {
+        const projectRef = collection(db, 'Projects');
         const projectQuery = query(
-            collection(db, 'Projects'),
-            where('project_name', '==', projectName),
+            projectRef,
+            and(
+                where('project_name', '==', projectName),
+                or(
+                    where('contributors', 'array-contains', email),
+                    where('admins', 'array-contains', email),
+                    where('owners', 'array-contains', email),
+                ),
+            ),
         );
 
         const querySnapshot = await getDocs(projectQuery);
@@ -180,6 +191,17 @@ export async function addMemberToProject(projectId, field, newMemberEmail) {
         console.error(`Error updating ${field}:`, error);
     }
 }
+
+export const deleteProjectWithDocId = async (docId) => {
+    try {
+        const docRef = doc(db, "Projects", docId);
+        await updateDoc(docRef, { deleted: true });
+        return true;
+    } catch (error) {
+        console.error("Error updating document:", error);
+        return false;
+    }
+};
 
 export const getTabNames = async (email, projectName) => {
     try {
@@ -545,7 +567,7 @@ export const getEntriesForTab = async (projectName, tabName, email) => {
             ...doc.data(),
             entry_date: doc.data().entry_date?.toDate?.() || doc.data().entry_date,
         }));
-        
+
     } catch (error) {
         console.error('Error in getEntriesForTab');
     }
@@ -742,7 +764,7 @@ export async function saveUserAccountChanges(fieldsChanged, originalEmail) {
                 ...fieldsChanged,
                 lastUpdated: new Date()
             });
-            if(fieldsChanged.email) {
+            if (fieldsChanged.email) {
                 console.log("email field changed");
                 await updateEmailInProjects(originalEmail, fieldsChanged.email);
             }
@@ -754,9 +776,9 @@ export async function saveUserAccountChanges(fieldsChanged, originalEmail) {
         return false;
     }
 }
-export const deleteEntry = async (projectName, tabName, entryId) => {
+export const deleteEntry = async (email, projectName, tabName, entryId) => {
     try {
-        const projectId = await getDocumentIdByProjectName(projectName);
+        const projectId = await getDocumentIdByEmailAndProjectName(email, projectName);
         if (!projectId) {
             throw new Error('Project ID not found for the selected project');
         }
@@ -769,9 +791,9 @@ export const deleteEntry = async (projectName, tabName, entryId) => {
     }
 };
 
-export const getEntryDetails = async (projectName, tabName, entryId) => {
+export const getEntryDetails = async (email, projectName, tabName, entryId) => {
     try {
-        const projectId = await getDocumentIdByProjectName(projectName);
+        const projectId = await getDocumentIdByEmailAndProjectName(email, projectName);
         if (!projectId) {
             throw new Error('Project ID not found for the selected project');
         }
@@ -792,7 +814,7 @@ export const getEntryDetails = async (projectName, tabName, entryId) => {
 
 export const updateEntry = async (projectName, tabName, email, entryId, updatedData) => {
     try {
-        const projectId = await getDocumentIdByProjectName(projectName);
+        const projectId = await getDocumentIdByEmailAndProjectName(email, projectName);
         if (!projectId) {
             throw new Error('Project ID not found for the selected project');
         }
@@ -839,7 +861,7 @@ export const saveColumnChanges = async (projectName, tabName, columns, columnsTo
                     data_type: editedColumnTypes[column.id],
                     required_field: editedRequiredFields[column.id],
                     identifier_domain: editedIdentifierDomains[column.id],
-                    entry_options: editedColumnTypes[column.id] === 'multiple choice' ? 
+                    entry_options: editedColumnTypes[column.id] === 'multiple choice' ?
                         editedDropdownOptions[column.id] : []
                 });
             }

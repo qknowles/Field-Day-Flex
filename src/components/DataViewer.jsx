@@ -243,7 +243,7 @@ const DataViewer = () => {
 
     const handleEdit = async (entryId) => {
         try {
-            const entryDetails = await getEntryDetails(SelectedProject, SelectedTab, entryId);
+            const entryDetails = await getEntryDetails(Email, SelectedProject, SelectedTab, entryId);
             const editWindow = (
                 <NewEntry
                     CloseNewEntry={() => setEditWindow(null)}
@@ -268,7 +268,7 @@ const DataViewer = () => {
         if (!confirmed) return;
 
         try {
-            await deleteEntry(SelectedProject, SelectedTab, entryId);
+            await deleteEntry(Email, SelectedProject, SelectedTab, entryId);
             await fetchEntries(); // Refresh entries
             notify(Type.success, 'Entry deleted successfully');
         } catch (error) {

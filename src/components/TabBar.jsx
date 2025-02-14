@@ -54,7 +54,7 @@ export default function TabBar() {
         };
 
         fetchTabNames();
-    }, [selectedProject]);
+    }, [projects, selectedProject]);
 
     useEffect(() => {
         const activeStatusMap = tabNames.reduce((map, tab) => {
