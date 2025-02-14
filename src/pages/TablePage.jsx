@@ -55,11 +55,11 @@ export default function TablePage() {
         const getFirstProject = async () => {
             try {
                 const allProjectNames = await getProjectNames(email);
-                if (allProjectNames) {
+                if (allProjectNames[0]) {
                     setProjectNames(allProjectNames);
                     setSelectedProject(allProjectNames[0]);
                     const allTabNames = await getTabNames(email, allProjectNames[0]);
-                    if (allTabNames) {
+                    if (allTabNames[0]) {
                         setTabNames(allTabNames);
                         setSelectedTab(allTabNames[0]);
                     }
