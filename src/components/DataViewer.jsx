@@ -296,6 +296,44 @@ const DataViewer = () => {
         return sortedEntries.slice(startIndex, startIndex + batchSize);
     }, [sortedEntries, currentPage, batchSize]);
 
+    const DataViewer = ({ columnOrder }) => {
+
+        const [columns, setColumns] = useState([]);
+    
+        useEffect(() => {
+            if (columnOrder.length > 0) {
+                setColumns(columnOrder.sort((a, b) => a.order - b.order));
+            }
+        }, [columnOrder]);
+        
+    
+        return (
+            <table>
+                <thead>
+                    <tr>
+                        <th>Actions</th>
+                        <th>Date & Time</th>
+                        {columns.map((column) => (
+                            <th key={column.id}>{column.name}</th>
+                        ))}
+                    </tr>
+                </thead>
+                <tbody>
+                    {entries.map((entry) => (
+                        <tr key={entry.id}>
+                            <td>...</td>
+                            <td>{entry.entry_data?.['Date & Time'] || 'N/A'}</td>
+                            {columns.map((column) => (
+                                <td key={column.id}>{entry.entry_data?.[column.name] || 'N/A'}</td>
+                            ))}
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        );
+    };
+    
+
     const ManageColumnsModal = () => (
         <WindowWrapper
             header="Manage Columns"

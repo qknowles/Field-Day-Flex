@@ -8,6 +8,8 @@ import { collection, doc, getDocs, writeBatch } from 'firebase/firestore';
 import { db } from '../utils/firebase';
 import { useAtomValue } from 'jotai';
 import { currentUserEmail, currentProjectName, currentTableName } from '../utils/jotai.js';
+import { getDoc } from 'firebase/firestore';
+
 
 export default function ManageColumns({ CloseManageColumns }) {
 
@@ -39,39 +41,28 @@ export default function ManageColumns({ CloseManageColumns }) {
     const loadColumns = async () => {
         try {
             setLoading(true);
-            console.log('Loading columns for:', SelectedProject, TabName, Email);
             const columnsData = await getColumnsCollection(SelectedProject, TabName, Email);
-            console.log('Loaded columns:', columnsData);
-
+    
             if (!columnsData || columnsData.length === 0) {
                 notify(Type.error, 'No columns found');
                 return;
             }
-
+    
+            // Sort columns based on stored order
+            columnsData.sort((a, b) => (a.order || 0) - (b.order || 0));
+    
             setColumns(columnsData);
-
+    
             const orderObj = {};
             const namesObj = {};
-            const typesObj = {};
-            const requiredObj = {};
-            const identifierObj = {};
-            const optionsObj = {};
-
+            
             columnsData.forEach((col, index) => {
-                orderObj[col.id] = index + 1;
-                namesObj[col.id] = col.name;
-                typesObj[col.id] = col.data_type || 'text';
-                requiredObj[col.id] = col.required_field || false;
-                identifierObj[col.id] = col.identifier_domain || false;
-                optionsObj[col.id] = col.entry_options || [];
+                orderObj[col.id] = col.order || index + 1;
+                namesObj[col.id] = col.name || ""; // Ensure name is not undefined
             });
-
+    
             setColumnOrder(orderObj);
             setEditedColumnNames(namesObj);
-            setEditedColumnTypes(typesObj);
-            setEditedRequiredFields(requiredObj);
-            setEditedIdentifierDomains(identifierObj);
-            setEditedDropdownOptions(optionsObj);
         } catch (error) {
             console.error('Error loading columns:', error);
             notify(Type.error, 'Failed to load columns');
@@ -79,6 +70,7 @@ export default function ManageColumns({ CloseManageColumns }) {
             setLoading(false);
         }
     };
+    
 
     const handleColumnOrderChange = (columnId, newValue) => {
         if (newValue === 'DELETE') {
@@ -86,11 +78,13 @@ export default function ManageColumns({ CloseManageColumns }) {
         } else {
             setColumnOrder((prev) => ({
                 ...prev,
-                [columnId]: parseInt(newValue),
+                [columnId]: parseInt(newValue) || 1, // Ensure default value
             }));
             setColumnsToDelete((prev) => prev.filter((id) => id !== columnId));
         }
     };
+    
+    
 
     const handleColumnNameChange = (columnId, newName) => {
         setEditedColumnNames((prev) => ({
@@ -135,83 +129,50 @@ export default function ManageColumns({ CloseManageColumns }) {
     };
 
     const handleSaveChanges = async () => {
-        if (columnsToDelete.length > 0) {
-            const confirmed = window.confirm(
-                'Warning: Deleting columns will permanently remove all data contained in those columns. Continue?',
-            );
-            if (!confirmed) return;
-        }
-
         try {
+            console.log("Saving column order:", columnOrder);
+            console.log("Checking columns:", columns);
+    
             const batch = writeBatch(db);
-
-            // Handle updates and deletions
+    
             for (const column of columns) {
                 if (columnsToDelete.includes(column.id)) {
-                    // Delete column
-                    const columnRef = doc(
-                        db,
-                        'Projects',
-                        SelectedProject,
-                        'Tabs',
-                        TabName,
-                        'Columns',
-                        column.id,
-                    );
+                    console.log(`Deleting column: ${column.id}`);
+                    const columnRef = doc(db, 'Projects', SelectedProject, 'Tabs', TabName, 'Columns', column.id);
                     batch.delete(columnRef);
-
-                    // Remove column data from entries
-                    const entriesSnapshot = await getDocs(
-                        collection(db, 'Projects', SelectedProject, 'Tabs', TabName, 'Entries'),
-                    );
-                    entriesSnapshot.docs.forEach((entryDoc) => {
-                        const entryRef = doc(
-                            db,
-                            'Projects',
-                            SelectedProject,
-                            'Tabs',
-                            TabName,
-                            'Entries',
-                            entryDoc.id,
-                        );
-                        const entryData = entryDoc.data();
-                        delete entryData[column.name];
-                        batch.update(entryRef, entryData);
-                    });
-                } else if (!['actions', 'datetime', 'identifier'].includes(column.id)) {
-                    // Update column
-                    const columnRef = doc(
-                        db,
-                        'Projects',
-                        SelectedProject,
-                        'Tabs',
-                        TabName,
-                        'Columns',
-                        column.id,
-                    );
-                    batch.update(columnRef, {
-                        name: editedColumnNames[column.id],
-                        order: columnOrder[column.id],
-                        data_type: editedColumnTypes[column.id],
-                        required_field: editedRequiredFields[column.id],
-                        identifier_domain: editedIdentifierDomains[column.id],
-                        entry_options:
-                            editedColumnTypes[column.id] === 'multiple choice'
-                                ? editedDropdownOptions[column.id]
-                                : [],
-                    });
+                } else {
+                    console.log(`Checking column existence: ${column.id}`);
+                    const columnRef = doc(db, 'Projects', SelectedProject, 'Tabs', TabName, 'Columns', column.id);
+                    const docSnap = await getDoc(columnRef);
+    
+                    if (docSnap.exists()) {
+                        console.log(`Updating column: ${column.id}`);
+                        batch.update(columnRef, {
+                            order: columnOrder[column.id],
+                            name: editedColumnNames[column.id],
+                            data_type: editedColumnTypes[column.id],
+                            required_field: editedRequiredFields[column.id],
+                            identifier_domain: editedIdentifierDomains[column.id],
+                            entry_options: editedColumnTypes[column.id] === 'multiple choice' ? editedDropdownOptions[column.id] : [],
+                        });
+                    } else {
+                        console.error(`Skipping update: Column ${column.id} does not exist`);
+                    }
                 }
             }
-
+    
             await batch.commit();
-            await loadColumns();
-            notify(Type.success, 'Column changes saved successfully');
+            notify(Type.success, 'Column order updated successfully');
             CloseManageColumns();
         } catch (error) {
-            console.error('Error saving column changes:', error);
-            notify(Type.error, 'Failed to save column changes');
+            console.error('Error updating column order:', error);
+            notify(Type.error, 'Failed to update column order');
         }
     };
+    
+    
+    
+    
 
     // Column editing modal reusing ColumnOptions functionality
     const ColumnEditModal = ({ column }) => (
@@ -287,13 +248,12 @@ export default function ManageColumns({ CloseManageColumns }) {
                                 className="flex items-center space-x-4 p-2 bg-neutral-100 dark:bg-neutral-800 rounded"
                             >
                                 <input
-                                    type="text"
-                                    value={editedColumnNames[column.id]}
-                                    onChange={(e) =>
-                                        handleColumnNameChange(column.id, e.target.value)
-                                    }
-                                    className="flex-grow border rounded px-2 py-1"
-                                />
+    type="text"
+    value={editedColumnNames[column.id] || ''} // Ensure empty string instead of undefined
+    onChange={(e) => handleColumnNameChange(column.id, e.target.value)}
+    className="flex-grow border rounded px-2 py-1 text-white"
+/>
+
                                 <select
                                     value={
                                         columnsToDelete.includes(column.id)
