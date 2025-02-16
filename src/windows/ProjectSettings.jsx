@@ -1,176 +1,93 @@
 import React, { useEffect, useState } from 'react';
+import { useAtom, useAtomValue } from 'jotai';
+import { currentProjectName, currentUserEmail } from '../utils/jotai.js';
 import WindowWrapper from '../wrappers/WindowWrapper.jsx';
 import InputLabel from '../components/InputLabel.jsx';
-import { DropdownSelector } from '../components/FormFields.jsx';
 import { AiFillDelete } from 'react-icons/ai';
-import {
-    getProjectFields,
-    updateDocInCollection,
-    addMemberToProject,
-    getDocumentIdByEmailAndProjectName,
-    deleteProjectWithDocId,
-} from '../utils/firestore.js';
+import { getProjectFields, updateDocInCollection, addMemberToProject, getDocumentIdByEmailAndProjectName } from '../utils/firestore.js';
 import Button from '../components/Button.jsx';
 import { notify, Type } from '../components/Notifier.jsx';
-import { useAtomValue, useAtom } from 'jotai';
-import { currentUserEmail, currentProjectName, allProjectNames } from '../utils/jotai.js';
+import { updateProjectName } from '../components/TabBar.jsx';
 
 export default function ProjectSettings({ CloseProjectSettings }) {
-    // State definitions
-    const [loading, setLoading] = useState(true);
-    const [isAuthorized, setIsAuthorized] = useState(false);
-    const [isOwner, setIsOwner] = useState(false);
-    const [canEdit, setCanEdit] = useState(false);
-    const [documentId, setDocumentId] = useState(null);
-    const [newMemberSelectedRole, setNewMemberSelectedRole] = useState('Select Role');
-    const [newMemberEmail, setNewMemberEmail] = useState('');
-    const [members, setMembers] = useState([]);
-    const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+    // Jotai State
     const [projectName, setProjectName] = useAtom(currentProjectName);
-    const [isInitialLoad, setIsInitialLoad] = useState(true);
-    const [projectNames, setProjectNames] = useAtom(allProjectNames);
     const userEmail = useAtomValue(currentUserEmail);
 
-    // Fetch document ID when project name is available
-    useEffect(() => {
-        let isMounted = true;
-        console.log('fetching doc ID for project:', projectName);
+    // Local State
+    const [documentId, setDocumentId] = useState(null);
+    const [isAuthorized, setIsAuthorized] = useState(false);
+    const [members, setMembers] = useState([]);
+    const [newMemberEmail, setNewMemberEmail] = useState('');
+    const [newMemberSelectedRole, setNewMemberSelectedRole] = useState('Select Role');
+    const [loading, setLoading] = useState(true);
 
-        const fetchDocId = async () => {
+    // Fetch Project Data on Mount
+    useEffect(() => {
+        const fetchProjectData = async () => {
             try {
+                setLoading(true);
+
+                // Fetch Document ID
                 const docId = await getDocumentIdByEmailAndProjectName(userEmail, projectName);
-                console.log('got doc ID:', docId);
-                if (docId && isMounted) {
-                    setDocumentId(docId);
-                } else if (isMounted) {
-                    console.error('No document ID found for project:', projectName);
+                if (!docId) {
                     notify(Type.error, 'Project not found');
+                    setLoading(false);
+                    return;
                 }
-            } catch (err) {
-                if (isMounted) {
-                    console.error('Error fetching doc ID:', err);
-                    notify(Type.error, 'Error loading project');
+                setDocumentId(docId);
+
+                // Fetch Project Members
+                const membersData = await getProjectFields(projectName, ['contributors', 'admins', 'owners']);
+                console.log('Members:', membersData);
+                if (!membersData) {
+                    notify(Type.error, 'Failed to load project data');
+                    setLoading(false);
+                    return;
                 }
+
+                const formattedMembers = formatMembers(membersData);
+                setMembers(formattedMembers);
+
+                // Determine User Authorization
+                const userRole = getUserRole(membersData, userEmail);
+                setIsAuthorized(userRole === 'Owner' || userRole === 'Admin');
+
+            } catch (error) {
+                console.error('Error loading project:', error);
+                notify(Type.error, 'Error loading project');
+            } finally {
+                setLoading(false);
             }
         };
 
-        if (projectName) {
-            fetchDocId();
-        }
+        fetchProjectData();
+    }, [projectName, userEmail]);
 
-        return () => { isMounted = false; };
-    }, [projectName]);
-
-    // Fetch project data when document ID is available
-    useEffect(() => {
-        if (documentId) {
-            console.log('documentId changed:', documentId);
-            fetchProjectData();
-        }
-    }, [documentId]);
-
-    const fetchProjectData = async () => {
-        try {
-            setLoading(true);
-            console.log('Fetching project data for:', projectName);
-
-            const membersData = await getProjectFields(projectName, [
-                'contributors',
-                'admins',
-                'owners',
-            ]);
-
-            if (membersData) {
-                console.log('In if(membersData');
-                const { contributors = [], admins = [], owners = [] } = membersData;
-                const updatedMembers = [
-                    ...contributors.map((email) => ({ email, role: 'Contributor' })),
-                    ...admins.map((email) => ({ email, role: 'Admin' })),
-                    ...owners.map((email) => ({ email, role: 'Owner' })),
-                ];
-
-                updatedMembers.sort((a, b) => {
-                    const rolePriority = { Owner: 1, Admin: 2, Contributor: 3 };
-                    if (rolePriority[a.role] !== rolePriority[b.role]) {
-                        return rolePriority[a.role] - rolePriority[b.role];
-                    }
-                    return a.email.localeCompare(b.email);
-                });
-
-                console.log('Setting members:', updatedMembers);
-                setMembers(updatedMembers);
-
-                const currUser = updatedMembers.find((member) => member.email === userEmail);
-                const isUserOwner = owners.includes(userEmail);
-                const isUserAdmin = admins.includes(userEmail);
-                setIsOwner(isUserOwner);
-                setCanEdit(isUserOwner || isUserAdmin);
-                setIsAuthorized(!!currUser);
-            }
-        } catch (err) {
-            console.error('Error fetching project data:', err);
-            notify(Type.error, 'Failed to fetch project data');
-        } finally {
-            setLoading(false);
-            setIsInitialLoad(false);
-        }
+    // Helper Functions
+    const formatMembers = (membersData) => {
+        const { contributors = [], admins = [], owners = [] } = membersData;
+        return [
+            ...contributors.map((email) => ({ email, role: 'Contributor' })),
+            ...admins.map((email) => ({ email, role: 'Admin' })),
+            ...owners.map((email) => ({ email, role: 'Owner' })),
+        ].sort((a, b) => {
+            const rolePriority = { Owner: 1, Admin: 2, Contributor: 3 };
+            return rolePriority[a.role] - rolePriority[b.role] || a.email.localeCompare(b.email);
+        });
     };
 
-    // Update member roles only when not initial load
-    useEffect(() => {
-        if (!isInitialLoad && members.length > 0) {
-            updateMemberRole();
-        }
-    }, [members, isInitialLoad, documentId]);
+    const getUserRole = (membersData, userEmail) => {
+        if (!userEmail) return 'None';
+        if (membersData.owners?.includes(userEmail)) return 'Owner';
+        if (membersData.admins?.includes(userEmail)) return 'Admin';
+        return 'None';
+    };
 
-    async function updateMemberRole() {
-        try {
-            if (!documentId) {
-                console.error('No document ID available');
-                return;
-            }
-
-            // Create arrays for each role, allowing users to have multiple roles
-            const contributors = members
-                .filter((member) => member.role === 'Contributor')
-                .map((member) => member.email);
-            const admins = members
-                .filter((member) => member.role === 'Admin')
-                .map((member) => member.email);
-            const owners = members
-                .filter((member) => member.role === 'Owner')
-                .map((member) => member.email);
-
-            // Ensure at least one owner
-            if (owners.length === 0) {
-                notify(Type.error, 'Project must have at least one owner');
-                await fetchProjectData();
-                return;
-            }
-
-            const updatedData = { contributors, admins, owners };
-            const success = await updateDocInCollection('Projects', documentId, updatedData);
-
-            if (!success) {
-                console.error('updateDocInCollection returned false');
-                notify(Type.error, 'Failed to update member roles');
-                await fetchProjectData();
-            }
-        } catch (error) {
-            console.error('Error updating roles:', error);
-            notify(Type.error, 'Failed to update member roles');
-            await fetchProjectData();
-        }
-    }
-
-    async function addMember() {
+    const handleAddMember = async () => {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!newMemberEmail || newMemberEmail.length === 0) {
-            notify(Type.error, 'Please enter member email.');
-            return;
-        }
-        if (!emailRegex.test(newMemberEmail)) {
-            notify(Type.error, 'Please enter a valid email address.');
+        if (!newMemberEmail || !emailRegex.test(newMemberEmail)) {
+            notify(Type.error, 'Please enter a valid member email.');
             return;
         }
         if (newMemberSelectedRole === 'Select Role') {
@@ -178,159 +95,70 @@ export default function ProjectSettings({ CloseProjectSettings }) {
             return;
         }
 
-        // Check permissions for role assignment
-        if (newMemberSelectedRole === 'Owner' && !isOwner) {
-            notify(Type.error, 'Only owners can add new owners');
-            return;
-        }
-
-        if (newMemberSelectedRole === 'Admin' && !isOwner) {
-            notify(Type.error, 'Only owners can add new admins');
-            return;
-        }
-
-        // Check if member already exists in any role
-        const existingMember = members.find(member => member.email === newMemberEmail);
-        if (existingMember) {
-            notify(Type.error, `Member ${newMemberEmail} already exists with role ${existingMember.role}`);
-            return;
-        }
-
         try {
-            await addMemberToProject(
-                documentId,
-                newMemberSelectedRole.toLowerCase() + 's',
-                newMemberEmail,
-            );
-            await fetchProjectData();
-
-            // Reset fields only on success
+            await addMemberToProject(documentId, newMemberSelectedRole.toLowerCase() + 's', newMemberEmail);
             setNewMemberEmail('');
             setNewMemberSelectedRole('Select Role');
             notify(Type.success, `Added ${newMemberEmail} as ${newMemberSelectedRole}`);
+            setMembers(await getProjectFields(projectName, ['contributors', 'admins', 'owners'])); // Refresh members
         } catch (error) {
             notify(Type.error, 'Failed to add member');
+            console.log("ERROR", error);
         }
-    }
+    };
 
-    async function saveChanges() {
+    const handleSaveChanges = async () => {
         try {
             await updateDocInCollection('Projects', documentId, { project_name: projectName });
-            setProjectName(projectName);
+            updateProjectName(projectName);
             notify(Type.success, 'Project updated successfully');
-            CloseProjectSettings();
         } catch (error) {
             notify(Type.error, 'Failed to update project');
         }
-    }
+    };
 
-
-    async function deleteProject() {
-        if (!isOwner) {
-            notify(Type.error, 'Only project owners can delete the project');
-            return;
-        }
-
-        if (!documentId) {
-            notify(Type.error, 'Project not found');
+    const handleRemoveMember = async (email, role) => {
+        if (role === 'Owner') {
+            notify(Type.error, 'Cannot remove an owner from the project.');
             return;
         }
 
         try {
-            setLoading(true);
+            const field = role.toLowerCase() + 's';
+            const updatedMembers = members
+                .filter((member) => member.email !== email || member.role !== role)
+                .filter((member) => member.role.toLowerCase() + 's' === field)
+                .map((member) => member.email);
 
-            const deleted = await deleteProjectWithDocId(documentId);
+            await updateDocInCollection('Projects', documentId, { [field]: updatedMembers });
 
-            if (deleted) {
-                notify(Type.success, 'Project deleted successfully');
-                const tempProjectNames = (projectNames.filter((name) => name !== projectName));
-                setProjectNames(tempProjectNames);
-                setProjectName(tempProjectNames[0] || '');
-                CloseProjectSettings();
-            }
-
+            setMembers((prev) => prev.filter((member) => member.email !== email || member.role !== role));
+            notify(Type.success, `${email} has been removed as a ${role}.`);
         } catch (error) {
-            console.error('Error deleting project:', error);
-            notify(Type.error, 'Failed to delete project: ' + error.message);
-        } finally {
-            setLoading(false);
+            notify(Type.error, `Failed to remove ${email}.`);
         }
-    }
+    };
 
-    // Confirmation dialog for project deletion
-    if (showDeleteConfirm) {
+    if (loading) return <div>Loading project settings...</div>;
+
+    if (!isAuthorized) {
         return (
-            <WindowWrapper
-                header="Confirm Delete Project"
-                onLeftButton={() => setShowDeleteConfirm(false)}
-                onRightButton={deleteProject}
-                leftButtonText="Cancel"
-                rightButtonText="Delete Project"
-            >
-                <div className="p-5 space-y-4">
-                    <p className="text-red-500 font-bold">Are you sure you want to delete this project?</p>
-                    <p>This will permanently delete:</p>
-                    <ul className="list-disc pl-5 space-y-2">
-                        <li>All project data</li>
-                        <li>All tabs and their contents</li>
-                        <li>All member associations</li>
-                    </ul>
-                    <p className="font-bold">This action cannot be undone.</p>
-                    {loading && <p className="text-yellow-500">Deleting project... Please wait...</p>}
+            <WindowWrapper header={`Manage ${projectName} Project`} onLeftButton={CloseProjectSettings} leftButtonText="Close">
+                <div className="p-5">
+                    <p>You do not have permission to view this page.</p>
+                    <p>You must be the project owner or an administrator.</p>
                 </div>
             </WindowWrapper>
         );
     }
 
-    const renderMembersList = () => {
-        console.log('Rendering members list with:', members);
-        if (!members || members.length === 0) {
-            return <div>No members found</div>;
-        }
-
-        return members.map((member, index) => (
-            <div key={index} className="flex items-center space-x-4 p-2">
-                {canEdit && (
-                    <button
-                        className="text-red-500 font-bold"
-                        onClick={() => removeMember(member.email, member.role)}
-                    >
-                        <AiFillDelete />
-                    </button>
-                )}
-                <span className="flex-grow">{member.email}</span>
-                {canEdit ? (
-                    <DropdownSelector
-                        options={['Owner', 'Admin', 'Contributor']}
-                        selection={member.role}
-                        setSelection={(newRole) => {
-                            if (member.role === 'Owner' && !isOwner) {
-                                notify(Type.error, 'Only project owners can modify owner roles');
-                                return;
-                            }
-                            const updatedMembers = members.map((m) => {
-                                if (m.email === member.email) {
-                                    return { ...m, role: newRole };
-                                }
-                                return m;
-                            });
-                            setMembers(updatedMembers);
-                        }}
-                    />
-                ) : (
-                    <span className="px-3 py-1 bg-neutral-200 dark:bg-neutral-700 rounded">{member.role}</span>
-                )}
-            </div>
-        ));
-    };
-
     return (
         <WindowWrapper
             header={`Manage ${projectName} Project`}
             onLeftButton={CloseProjectSettings}
-            onRightButton={canEdit ? saveChanges : undefined}
+            onRightButton={handleSaveChanges()}
             leftButtonText="Close"
-            rightButtonText={canEdit ? "Save Project" : undefined}
+            rightButtonText="Save Project"
         >
             <div className="flex flex-col space-y-4 p-5 text-neutral-900 dark:text-white">
                 {/* Project Name Input */}
@@ -343,7 +171,6 @@ export default function ProjectSettings({ CloseProjectSettings }) {
                             className="border rounded px-2 py-1 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
                             value={projectName}
                             onChange={(e) => setProjectName(e.target.value)}
-                            disabled={!canEdit}
                         />
                     }
                 />
@@ -351,61 +178,82 @@ export default function ProjectSettings({ CloseProjectSettings }) {
                 {/* Members List */}
                 <div>
                     <h3 className="font-semibold">Members</h3>
-                    <div className="space-y-2">
-                        {renderMembersList()}
+                    <div className="space-y-4">
+                        {members && Object.keys(members).length > 0 ? (
+                            Object.keys(members).map((role) => (
+                                <div key={role}>
+                                    <h4 className="font-semibold">{role.charAt(0).toUpperCase() + role.slice(1)}</h4>
+                                    <div className="space-y-2">
+                                        {Array.isArray(members[role]) && members[role].map((email) => (
+                                            <div key={email} className="flex items-center space-x-4 p-2">
+                                                <button className="text-red-500 font-bold" onClick={() => handleRemoveMember(email, role)}>
+                                                    <AiFillDelete />
+                                                </button>
+                                                <span className="flex-grow">{email}</span>
+                                                <span className="px-3 py-1 bg-neutral-200 dark:bg-neutral-700 rounded">
+                                    {role.charAt(0).toUpperCase() + role.slice(1, -1)}
+                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div>No members found</div>
+                        )}
                     </div>
                 </div>
 
+
                 {/* Add new member section - only visible to admins/owners */}
-                {canEdit && (
-                    <div>
-                        <h3 className="font-semibold">Add a new Member:</h3>
-                        <InputLabel
-                            label="Member Email"
-                            layout="horizontal-single"
-                            input={
-                                <input
-                                    type="text"
-                                    className="border rounded px-2 py-1 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
-                                    value={newMemberEmail}
-                                    onChange={(e) => setNewMemberEmail(e.target.value)}
-                                />
-                            }
-                        />
-                        <br />
-                        <InputLabel
-                            label="Member Role"
-                            layout="horizontal-single"
-                            input={
-                                <select
-                                    className="border rounded px-2 py-1 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
-                                    value={newMemberSelectedRole}
-                                    onChange={(e) => setNewMemberSelectedRole(e.target.value)}
-                                >
-                                    <option value="Select Role">Select Role</option>
-                                    <option value="Contributor">Contributor</option>
-                                    <option value="Admin">Admin</option>
-                                    <option value="Owner">Owner</option>
-                                </select>
-                            }
-                        />
-                        <br />
-                        <div className="flex justify-end mt-4">
-                            <Button text="Add member" onClick={addMember} />
-                        </div>
+                {<div>
+                    <h3 className="font-semibold">Add a new Member:</h3>
+                    <InputLabel
+                        label="Member Email"
+                        layout="horizontal-single"
+                        input={
+                            <input
+                                type="text"
+                                className="border rounded px-2 py-1 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
+                                value={newMemberEmail}
+                                onChange={(e) => setNewMemberEmail(e.target.value)}
+                            />
+                        }
+                    />
+                    <br />
+                    <InputLabel
+                        label="Member Role"
+                        layout="horizontal-single"
+                        input={
+                            <select
+                                className="border rounded px-2 py-1 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
+                                value={newMemberSelectedRole}
+                                onChange={(e) => setNewMemberSelectedRole(e.target.value)}
+                            >
+                                <option value="Select Role">Select Role</option>
+                                <option value="Contributor">Contributor</option>
+                                <option value="Admin">Admin</option>
+                                <option value="Owner">Owner</option>
+                            </select>
+                        }
+                    />
+                    <br />
+                    <div className="flex justify-end mt-4">
+                        <Button text="Add member" onClick={handleAddMember()} />
                     </div>
-                )}
+                </div>
+                }
 
                 {/* Delete Project Button (Only shown to owners) */}
-                {isOwner && (
-                    <div className="flex justify-end mt-4">
-                        <Button
-                            text="Delete Project"
-                            onClick={() => setShowDeleteConfirm(true)}
-                            className="bg-red-600 hover:bg-red-700"
-                        />
-                    </div>
-                )}
+
+                <div className="flex justify-end mt-4">
+                    <Button
+                        text="Delete Project"
+                        onClick={() => setShowDeleteConfirm(true)}
+                        className="bg-red-600 hover:bg-red-700"
+                    />
+                </div>
+
             </div>
         </WindowWrapper>
     );
