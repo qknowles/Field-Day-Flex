@@ -76,4 +76,12 @@
         transition: background-color 0.3s ease-in-out;
         background-color: white;
     }
+
+    .column-border {
+        border-right: 1px solid #ccc; /* Add a light gray border */
+    }
+    
+    .column-border:last-child {
+        border-right: none; /* Remove the border from the last column */
+    }
 }
