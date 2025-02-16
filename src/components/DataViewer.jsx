@@ -278,6 +278,16 @@ const DataViewer = () => {
         }
     };
 
+    const onDragEnd = (result) => {
+        if (!result.destination) return;
+    
+        const reorderedColumns = Array.from(columns);
+        const [removed] = reorderedColumns.splice(result.source.index, 1);
+        reorderedColumns.splice(result.destination.index, 0, removed);
+    
+        setColumns(reorderedColumns);
+    };
+    
     const sortedEntries = React.useMemo(() => {
         if (!sortConfig.key) return entries;
 
@@ -367,76 +377,93 @@ const DataViewer = () => {
         <div className="flex-grow bg-white dark:bg-neutral-950">
             <div className="flex flex-col">
                 <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
-                        <thead>
-                            <tr className="bg-neutral-100 dark:bg-neutral-800">
-                                <th className="p-2 text-left border-b font-semibold w-32">
-                                    Actions
-                                </th>
-                                <th className="dateTimeColumn p-2 text-left border-b font-semibold">
-                                    Date & Time
-                                </th>
-                                {columns
-                                    .filter((col) => !['actions', 'datetime'].includes(col.id))
-                                    .map((column) => (
-                                        <th
-                                            key={column.id}
-                                            className={`p-2 text-left border-b font-semibold cursor-pointer ${column.type === 'identifier' ? 'min-w-[150px]' : ''
-                                                } ${getColumnClass(column.name)}`}
-                                            onClick={() => handleSort(column.name)}
-                                        >
-                                            {column.name}
-                                            {sortConfig.key === column.name && (
-                                                <span className="ml-1">
-                                                    {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                                                </span>
-                                            )}
-                                        </th>
-                                    ))}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {paginatedEntries.map((entry) => (
-                                <tr
-                                    key={entry.id}
-                                    className="hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                    <DragDropContext onDragEnd={onDragEnd}>
+                        <Droppable droppableId="columns" direction="horizontal">
+                            {(provided) => (
+                                <table
+                                    className="w-full border-collapse"
+                                    {...provided.droppableProps}
+                                    ref={provided.innerRef}
                                 >
-                                    <td className="p-2 border-b w-32">
-                                        <div className="flex space-x-2">
-                                            <Button
-                                                onClick={() => handleEdit(entry.id)}
-                                                icon={AiFillEdit}
-                                                flexible={true}
-                                                className={'flex items-center justify-center'}
-                                            />
-                                            <Button
-                                                onClick={() => handleDelete(entry.id)}
-                                                icon={AiFillDelete}
-                                                flexible={true}
-                                                className={'flex items-center justify-center'}
-                                            />
-                                        </div>
-                                    </td>
-                                    <td className="dateTimeColumn text-left p-2 border-b">
-                                        {entry.entry_data?.['Date & Time'] || 'N/A'}
-                                    </td>
-                                    {columns
-                                        .filter((col) => !['actions', 'datetime'].includes(col.id))
-                                        .map((column) => (
-                                            <td
-                                                key={`${entry.id}-${column.id}`}
-                                                className={`p-2 border-b text-left ${column.type === 'identifier'
-                                                        ? 'min-w-[150px]'
-                                                        : ''
-                                                    } ${getColumnClass(column.name)}`}
+                                    <thead>
+                                        <tr className="bg-neutral-100 dark:bg-neutral-800">
+                                            <th className="p-2 text-left border-b font-semibold w-32 column-border">
+                                                Actions
+                                            </th>
+                                            <th className="dateTimeColumn p-2 text-left border-b font-semibold column-border">
+                                                Date & Time
+                                            </th>
+                                            {columns
+                                                .filter((col) => !['actions', 'datetime'].includes(col.id))
+                                                .map((column, index) => (
+                                                    <Draggable key={column.id} draggableId={column.id} index={index}>
+                                                        {(provided) => (
+                                                            <th
+                                                                className={`p-2 text-left border-b font-semibold cursor-pointer column-border ${column.type === 'identifier' ? 'min-w-[150px]' : ''
+                                                                    } ${getColumnClass(column.name)}`}
+                                                                onClick={() => handleSort(column.name)}
+                                                                ref={provided.innerRef}
+                                                                {...provided.draggableProps}
+                                                                {...provided.dragHandleProps}
+                                                            >
+                                                                {column.name}
+                                                                {sortConfig.key === column.name && (
+                                                                    <span className="ml-1">
+                                                                        {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                                                                    </span>
+                                                                )}
+                                                            </th>
+                                                        )}
+                                                    </Draggable>
+                                                ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {paginatedEntries.map((entry) => (
+                                            <tr
+                                                key={entry.id}
+                                                className="hover:bg-neutral-100 dark:hover:bg-neutral-800"
                                             >
-                                                {entry.entry_data?.[column.name] || 'N/A'}
-                                            </td>
+                                                <td className="p-2 border-b w-32 column-border">
+                                                    <div className="flex space-x-2">
+                                                        <Button
+                                                            onClick={() => handleEdit(entry.id)}
+                                                            icon={AiFillEdit}
+                                                            flexible={true}
+                                                            className={'flex items-center justify-center'}
+                                                        />
+                                                        <Button
+                                                            onClick={() => handleDelete(entry.id)}
+                                                            icon={AiFillDelete}
+                                                            flexible={true}
+                                                            className={'flex items-center justify-center'}
+                                                        />
+                                                    </div>
+                                                </td>
+                                                <td className="dateTimeColumn text-left p-2 border-b column-border">
+                                                    {entry.entry_data?.['Date & Time'] || 'N/A'}
+                                                </td>
+                                                {columns
+                                                    .filter((col) => !['actions', 'datetime'].includes(col.id))
+                                                    .map((column) => (
+                                                        <td
+                                                            key={`${entry.id}-${column.id}`}
+                                                            className={`p-2 border-b text-left column-border ${column.type === 'identifier'
+                                                                ? 'min-w-[150px]'
+                                                                : ''
+                                                                } ${getColumnClass(column.name)}`}
+                                                        >
+                                                            {entry.entry_data?.[column.name] || 'N/A'}
+                                                        </td>
+                                                    ))}
+                                            </tr>
                                         ))}
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                                    </tbody>
+                                    {provided.placeholder}
+                                </table>
+                            )}
+                        </Droppable>
+                    </DragDropContext>
                 </div>
                 {showEditWindow && (
                     <WindowWrapper
