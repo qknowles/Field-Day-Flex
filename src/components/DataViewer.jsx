@@ -301,10 +301,11 @@ const DataViewer = () => {
         const [columns, setColumns] = useState([]);
     
         useEffect(() => {
-            if (columnOrder.length > 0) {
-                setColumns(columnOrder.sort((a, b) => a.order - b.order));
+            if (columns.length > 0) {
+                setColumns([...columns].sort((a, b) => a.order - b.order));
             }
-        }, [columnOrder]);
+        }, [columns]);
+        
         
     
         return (
@@ -372,6 +373,19 @@ const DataViewer = () => {
             </div>
         </WindowWrapper>
     );
+    useEffect(() => {
+        const refreshColumnsListener = () => {
+            console.log("Refreshing columns after update...");
+            fetchColumns();
+        };
+    
+        window.addEventListener("refreshColumns", refreshColumnsListener);
+    
+        return () => {
+            window.removeEventListener("refreshColumns", refreshColumnsListener);
+        };
+    }, []);
+    
     useEffect(() => {
         const checkPermissions = async () => {
             if (!SelectedProject || !Email) {

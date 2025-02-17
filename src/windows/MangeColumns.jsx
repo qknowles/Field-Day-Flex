@@ -9,6 +9,11 @@ import { db } from '../utils/firebase';
 import { useAtomValue } from 'jotai';
 import { currentUserEmail, currentProjectName, currentTableName } from '../utils/jotai.js';
 import { getDoc } from 'firebase/firestore';
+import { getProjectNames } from '../utils/firestore';
+import { getTabNames } from '../utils/firestore';
+import { getDocumentIdByEmailAndProjectName } from '../utils/firestore';
+
+
 
 
 export default function ManageColumns({ CloseManageColumns }) {
@@ -32,6 +37,8 @@ export default function ManageColumns({ CloseManageColumns }) {
     const [tempEntryOptions, setTempEntryOptions] = useState([]);
     const [loading, setLoading] = useState(true);
     const entryTypeOptions = ['number', 'text', 'date', 'multiple choice'];
+    const tabRef = collection(db, 'Projects', SelectedProject, 'Tabs', TabName, 'Columns');
+    const columnsRef = collection(db, 'Projects', SelectedProject, 'Tabs', TabName, 'Columns');
 
     useEffect(() => {
         console.log('ManageColumns mounted with props:', { SelectedProject, TabName, Email });
@@ -127,49 +134,55 @@ export default function ManageColumns({ CloseManageColumns }) {
             [columnId]: filteredOptions,
         }));
     };
-
     const handleSaveChanges = async () => {
         try {
-            console.log("Saving column order:", columnOrder);
-            console.log("Checking columns:", columns);
+            console.log("🔥 Saving column order:", columnOrder);
+    
+            const projectId = await getDocumentIdByEmailAndProjectName(Email, SelectedProject);
+            if (!projectId) {
+                console.error(` No project found with name: ${SelectedProject}`);
+                return;
+            }
+    
+            console.log(` Using Project ID: ${projectId}`);
     
             const batch = writeBatch(db);
+            const columnsData = await getColumnsCollection(SelectedProject, TabName, Email);
     
-            for (const column of columns) {
-                if (columnsToDelete.includes(column.id)) {
-                    console.log(`Deleting column: ${column.id}`);
-                    const columnRef = doc(db, 'Projects', SelectedProject, 'Tabs', TabName, 'Columns', column.id);
-                    batch.delete(columnRef);
+            // Map Firestore column IDs
+            const columnIdMap = columnsData.reduce((map, col) => {
+                map[col.id] = col; 
+                return map;
+            }, {});
+    
+            console.log("🗺️ Firestore Column ID Map:", columnIdMap);
+    
+            let updatesMade = false;
+            for (const columnId in columnOrder) {
+                if (columnIdMap[columnId]) {
+                    const columnRef = doc(db, 'Projects', projectId, 'Tabs', TabName, 'Columns', columnId);
+                    batch.update(columnRef, {
+                        order: columnOrder[columnId] // Updating the order field
+                    });
+                    updatesMade = true;
                 } else {
-                    console.log(`Checking column existence: ${column.id}`);
-                    const columnRef = doc(db, 'Projects', SelectedProject, 'Tabs', TabName, 'Columns', column.id);
-                    const docSnap = await getDoc(columnRef);
-    
-                    if (docSnap.exists()) {
-                        console.log(`Updating column: ${column.id}`);
-                        batch.update(columnRef, {
-                            order: columnOrder[column.id],
-                            name: editedColumnNames[column.id],
-                            data_type: editedColumnTypes[column.id],
-                            required_field: editedRequiredFields[column.id],
-                            identifier_domain: editedIdentifierDomains[column.id],
-                            entry_options: editedColumnTypes[column.id] === 'multiple choice' ? editedDropdownOptions[column.id] : [],
-                        });
-                    } else {
-                        console.error(`Skipping update: Column ${column.id} does not exist`);
-                    }
+                    console.error(`Firestore document with ID "${columnId}" does not exist`);
                 }
             }
     
-            await batch.commit();
-            notify(Type.success, 'Column order updated successfully');
-            CloseManageColumns();
+            if (updatesMade) {
+                await batch.commit();
+                console.log(" Firestore batch update committed successfully.");
+                notify(Type.success, 'Column order updated successfully');
+                window.dispatchEvent(new Event("refreshColumns")); // Refresh UI
+            } else {
+                console.warn(" No changes detected. Skipping Firestore update.");
+            }
         } catch (error) {
-            console.error('Error updating column order:', error);
+            console.error(" Error updating column order:", error);
             notify(Type.error, 'Failed to update column order');
         }
     };
-    
     
     
     
