@@ -8,9 +8,6 @@ import { collection, doc, getDocs, writeBatch } from 'firebase/firestore';
 import { db } from '../utils/firebase';
 import { useAtomValue } from 'jotai';
 import { currentUserEmail, currentProjectName, currentTableName } from '../utils/jotai.js';
-import { getDoc } from 'firebase/firestore';
-import { getProjectNames } from '../utils/firestore';
-import { getTabNames } from '../utils/firestore';
 import { getDocumentIdByEmailAndProjectName } from '../utils/firestore';
 
 
@@ -39,6 +36,7 @@ export default function ManageColumns({ CloseManageColumns }) {
     const entryTypeOptions = ['number', 'text', 'date', 'multiple choice'];
     const tabRef = collection(db, 'Projects', SelectedProject, 'Tabs', TabName, 'Columns');
     const columnsRef = collection(db, 'Projects', SelectedProject, 'Tabs', TabName, 'Columns');
+   
 
     useEffect(() => {
         console.log('ManageColumns mounted with props:', { SelectedProject, TabName, Email });
@@ -55,21 +53,33 @@ export default function ManageColumns({ CloseManageColumns }) {
                 return;
             }
     
-            // Sort columns based on stored order
+            // 🔹 Ensure all order values are unique and start from 1
+            const existingOrders = new Set();
+            columnsData.forEach((col, index) => {
+                if (col.order === undefined || col.order < 1 || existingOrders.has(col.order)) {
+                    col.order = index + 1; // Assign unique sequential order
+                }
+                existingOrders.add(col.order);
+            });
+    
+            // 🔹 Sort columns based on stored order
             columnsData.sort((a, b) => (a.order || 0) - (b.order || 0));
     
             setColumns(columnsData);
     
+            // 🔹 Initialize column order correctly
             const orderObj = {};
             const namesObj = {};
-            
-            columnsData.forEach((col, index) => {
-                orderObj[col.id] = col.order || index + 1;
+    
+            columnsData.forEach((col) => {
+                orderObj[col.id] = col.order; // Keep Firestore order
                 namesObj[col.id] = col.name || ""; // Ensure name is not undefined
             });
     
             setColumnOrder(orderObj);
             setEditedColumnNames(namesObj);
+    
+            console.log(" Fixed Column Order State:", orderObj);
         } catch (error) {
             console.error('Error loading columns:', error);
             notify(Type.error, 'Failed to load columns');
@@ -77,6 +87,8 @@ export default function ManageColumns({ CloseManageColumns }) {
             setLoading(false);
         }
     };
+    
+    
     
 
     const handleColumnOrderChange = (columnId, newValue) => {
@@ -135,8 +147,17 @@ export default function ManageColumns({ CloseManageColumns }) {
         }));
     };
     const handleSaveChanges = async () => {
+        // Check for duplicate order numbers
+        const orderValues = Object.values(columnOrder);
+        const uniqueValues = new Set(orderValues);
+    
+        if (orderValues.length !== uniqueValues.size) {
+            notify(Type.error, 'Select unique order indentifiers for each column.');
+            return; // Stop execution and prevent saving
+        }
+    
         try {
-            console.log("🔥 Saving column order:", columnOrder);
+            console.log(" Saving column order:", columnOrder);
     
             const projectId = await getDocumentIdByEmailAndProjectName(Email, SelectedProject);
             if (!projectId) {
@@ -151,11 +172,11 @@ export default function ManageColumns({ CloseManageColumns }) {
     
             // Map Firestore column IDs
             const columnIdMap = columnsData.reduce((map, col) => {
-                map[col.id] = col; 
+                map[col.id] = col;
                 return map;
             }, {});
     
-            console.log("🗺️ Firestore Column ID Map:", columnIdMap);
+            console.log("Firestore Column ID Map:", columnIdMap);
     
             let updatesMade = false;
             for (const columnId in columnOrder) {
@@ -175,6 +196,9 @@ export default function ManageColumns({ CloseManageColumns }) {
                 console.log(" Firestore batch update committed successfully.");
                 notify(Type.success, 'Column order updated successfully');
                 window.dispatchEvent(new Event("refreshColumns")); // Refresh UI
+    
+                // Close the Manage Columns window after successful save
+                CloseManageColumns();
             } else {
                 console.warn(" No changes detected. Skipping Firestore update.");
             }
@@ -184,9 +208,6 @@ export default function ManageColumns({ CloseManageColumns }) {
         }
     };
     
-    
-    
-
     // Column editing modal reusing ColumnOptions functionality
     const ColumnEditModal = ({ column }) => (
         <WindowWrapper
@@ -266,27 +287,26 @@ export default function ManageColumns({ CloseManageColumns }) {
     onChange={(e) => handleColumnNameChange(column.id, e.target.value)}
     className="flex-grow border rounded px-2 py-1 text-white"
 />
+<select
+    value={columnOrder[column.id] ?? column.order} // Use Firestore order if available
+    onChange={(e) => handleColumnOrderChange(column.id, e.target.value)}
+    className="border rounded px-2 py-1"
+>
+    {Array.from({ length: columns.length }, (_, i) => i + 1).map((num) => (
+        <option key={num} value={num}>
+            {num}
+        </option>
+    ))}
+    <option value="DELETE">DELETE</option>
+</select>
 
-                                <select
-                                    value={
-                                        columnsToDelete.includes(column.id)
-                                            ? 'DELETE'
-                                            : columnOrder[column.id]
-                                    }
-                                    onChange={(e) =>
-                                        handleColumnOrderChange(column.id, e.target.value)
-                                    }
-                                    className="border rounded px-2 py-1"
-                                >
-                                    {Array.from({ length: columns.length }, (_, i) => i + 1).map(
-                                        (num) => (
-                                            <option key={num} value={num}>
-                                                {num}
-                                            </option>
-                                        ),
-                                    )}
-                                    <option value="DELETE">DELETE</option>
-                                </select>
+
+
+
+
+
+
+
                                 <Button
                                     text="Edit"
                                     onClick={() => {
