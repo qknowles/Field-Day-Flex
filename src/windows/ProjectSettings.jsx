@@ -39,7 +39,7 @@ export default function ProjectSettings({ CloseProjectSettings }) {
 
                 // Fetch Project Members
                 const membersData = await getProjectFields(projectName, ['contributors', 'admins', 'owners']);
-                console.log('Members:', membersData);
+                //console.log('Members:', membersData);
                 if (!membersData) {
                     notify(Type.error, 'Failed to load project data');
                     setLoading(false);
@@ -53,7 +53,7 @@ export default function ProjectSettings({ CloseProjectSettings }) {
                 setIsAuthorized(userRole === 'Owner' || userRole === 'Admin');
 
             } catch (error) {
-                console.error('Error loading project:', error);
+                console.log(error);
                 notify(Type.error, 'Error loading project');
             } finally {
                 setLoading(false);
@@ -113,18 +113,26 @@ export default function ProjectSettings({ CloseProjectSettings }) {
         }
 
         try {
-            const field = role.toLowerCase() + 's';
-            const updatedMembers = members
-                .filter((member) => member.email !== email || member.role !== role)
-                .filter((member) => member.role.toLowerCase() + 's' === field)
-                .map((member) => member.email);
+            let newMembers = { ...members }; // we have to do this
+            const index = newMembers[role].indexOf(email);
+            if(index > -1) {
+                newMembers[role].splice(index, 1);
+                console.log("newMembers after splice", newMembers);
+            } else {
+                notify(Type.error, 'Member could not be found in list.');
+                return;
+            }
 
-            await updateDocInCollection('Projects', documentId, { [field]: updatedMembers });
-
-            setMembers((prev) => prev.filter((member) => member.email !== email || member.role !== role));
-            notify(Type.success, `${email} has been removed as a ${role}.`);
+            if(await updateDocInCollection('Projects', documentId, newMembers)) {
+                setMembers(newMembers); // the UI doesn't update here!!
+                console.log("members after setting members to newMembers", members);
+                notify(Type.success, `${email} has been removed as a ${role}.`);
+            } else {
+                notify(Type.error, 'Failed to update project');
+            }
         } catch (error) {
             notify(Type.error, `Failed to remove ${email}.`);
+            console.log("ERROR", error);
         }
     };
 
@@ -178,7 +186,7 @@ export default function ProjectSettings({ CloseProjectSettings }) {
                                                 <button className="text-red-500 font-bold" onClick={() => handleRemoveMember(email, role)}>
                                                     <AiFillDelete />
                                                 </button>
-                                                <span className="flex-grow">{email}test</span>
+                                                <span className="flex-grow">{email}</span>
                                                 <span className="px-3 py-1 bg-neutral-200 dark:bg-neutral-700 rounded">
                                     {role.charAt(0).toUpperCase() + role.slice(1, -1)}
                                 </span>
