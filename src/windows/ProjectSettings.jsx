@@ -4,11 +4,10 @@ import { currentProjectName, currentUserEmail } from '../utils/jotai.js';
 import WindowWrapper from '../wrappers/WindowWrapper.jsx';
 import InputLabel from '../components/InputLabel.jsx';
 import { AiFillDelete } from 'react-icons/ai';
-import { getProjectFields, updateDocInCollection, addMemberToProject, getDocumentIdByProjectName } from '../utils/firestore.js';
+import { getProjectFields, updateDocInCollection, addMemberToProject, getDocumentIdByEmailAndProjectName } from '../utils/firestore.js';
 import Button from '../components/Button.jsx';
 import { notify, Type } from '../components/Notifier.jsx';
 import { updateProjectName } from '../components/TabBar.jsx';
-import { entries } from 'lodash';
 
 export default function ProjectSettings({ CloseProjectSettings }) {
     // Jotai State
@@ -30,7 +29,7 @@ export default function ProjectSettings({ CloseProjectSettings }) {
                 setLoading(true);
 
                 // Fetch Document ID
-                const docId = await getDocumentIdByProjectName(projectName);
+                const docId = await getDocumentIdByEmailAndProjectName(userEmail, projectName);
                 if (!docId) {
                     notify(Type.error, 'Project not found');
                     setLoading(false);
@@ -240,7 +239,7 @@ export default function ProjectSettings({ CloseProjectSettings }) {
                         />
                         <br />
                         <div className="flex justify-end mt-4">
-                            <Button text="Add member" onClick={handleAddMember()} />
+                            <Button text="Add member" onClick={handleAddMember} />
                         </div>
                     </div>
                 }
