@@ -1,84 +1,75 @@
 import Tab from './Tab';
 import React, { useEffect, useState } from 'react';
-import { getTabNames, getProjectNames } from '../utils/firestore';
+import { getTabNames } from '../utils/firestore';
 import Button from './Button';
 import { DropdownSelector } from './FormFields';
 import { Type, notify } from '../components/Notifier';
 import NewProject from '../windows/NewProject';
 import NewTab from '../windows/NewTab';
-import { useAtom } from 'jotai';
-import { currentUserEmail, currentProjectName } from '../utils/jotai.js';
+import { useAtom, useAtomValue } from 'jotai';
+import { currentUserEmail, allProjectNames, currentProjectName, allTableNames, currentTableName } from '../utils/jotai.js';
 
 export let updateProjectName = null;
 
-export default function TabBar({
-    SelectedTab,
-    SetSelectedTab,
-    SelectedProject,
-    SetSelectedProject,
-}) {
-    const [Email, setEmail] = useAtom(currentUserEmail);
-    const [ProjectName, setProjectName] = useAtom(currentProjectName);
+export default function TabBar() {
+    const email = useAtomValue(currentUserEmail);
+    const [selectedProject, setSelectedProject] = useAtom(currentProjectName);
+    const [projects, setProjects] = useAtom(allProjectNames);
+    const [selectedTab, setSelectedTab] = useAtom(currentTableName);
+    const [tabNames, setTabNames] = useAtom(allTableNames);
+
     const [showNewTab, setShowNewTab] = useState(false);
     const [showNewProject, setShowNewProject] = useState(false);
-
-    const [projectNames, setProjectNames] = useState([]);
-    const [tabNames, setTabNames] = useState([]);
     const [activeTabs, setActiveTabs] = useState({});
 
+
     const closeNewProject = () => setShowNewProject(false);
+
     const openNewProject = (projectName) => {
         setShowNewProject(false);
-        setProjectNames((prevProjectNames) => [...prevProjectNames, projectName]);
-        SetSelectedProject(projectName);
+        setProjects((prevProjectNames) => [...prevProjectNames, projectName]);
+        setSelectedProject(projectName);
     };
 
     const closeNewTab = () => setShowNewTab(false);
+
     const openNewTab = (tabName) => {
         setShowNewTab(false);
         setTabNames((prevTabNames) => [...prevTabNames, tabName]);
-        SetSelectedTab(tabName);
-    };
-
-    const initializeTabs = async () => {
-        const projects = await getProjectNames(Email);
-        setProjectNames(projects);
-
-        if (projects.length > 0) {
-            const defaultProject = SelectedProject || projects[0];
-            SetSelectedProject(defaultProject);
-            setProjectName(defaultProject); // set jotai state too
-
-            const tabs = await getTabNames(Email, defaultProject);
-            setTabNames(tabs);
-
-            if (tabs.length > 0) {
-                const defaultTab = tabs[0];
-                SetSelectedTab(defaultTab);
-            }
-        }
-    };
-
-    // when we update project name in ProjectSettings.jsx we need to propagate that change here too
-    updateProjectName = (newProjectName) => {
-        SetSelectedProject(newProjectName);
-        setProjectName(newProjectName);
-        if (!projectNames.includes(newProjectName)) {
-            setProjectNames((prevProjectNames) => [...prevProjectNames, newProjectName]);
-        }
+        setSelectedTab(tabName);
     };
 
     useEffect(() => {
-        initializeTabs();
-    }, [Email, SelectedProject]);
+        const fetchTabNames = async () => {
+            if (selectedProject) {
+                try {
+                    const tabs = await getTabNames(email, selectedProject);
+                    if (tabs[0]) {
+                        setTabNames(tabs);
+                        setSelectedTab(tabs[0]);
+                    } else {
+                        setTabNames([]);
+                        setSelectedTab('');
+                    }
+                    
+                } catch (error) {
+                    console.error('Failed to fetch tab names.');
+                }
+            } else {
+                setTabNames([]);
+            }
+        };
+
+        fetchTabNames();
+    }, [selectedProject]);
 
     useEffect(() => {
         const activeStatusMap = tabNames.reduce((map, tab) => {
-            map[tab] = tab === SelectedTab;
+            map[tab] = tab === selectedTab;
             return map;
         }, {});
         setActiveTabs(activeStatusMap);
-    }, [SelectedTab]);
+    }, [selectedTab, tabNames]);
 
     return (
         <>
@@ -89,7 +80,7 @@ export default function TabBar({
                             key={tabName}
                             text={tabName}
                             active={activeTabs[tabName] || false}
-                            onClick={() => SetSelectedTab(tabName)}
+                            onClick={() => setSelectedTab(tabName)}
                         />
                     ))}
                     <Tab
@@ -97,7 +88,7 @@ export default function TabBar({
                         text="+"
                         active={false}
                         onClick={() => {
-                            if (projectNames.length > 0) {
+                            if (projects.length > 0) {
                                 setShowNewTab(true);
                             } else {
                                 notify(Type.error, 'Must create a project first.');
@@ -109,9 +100,9 @@ export default function TabBar({
                     <Button text="New Project" onClick={() => setShowNewProject(true)} />
                     <DropdownSelector
                         label="Project"
-                        options={projectNames}
-                        selection={SelectedProject}
-                        setSelection={SetSelectedProject}
+                        options={projects}
+                        selection={selectedProject}
+                        setSelection={setSelectedProject}
                         layout={'horizontal'}
                     />
                 </div>
@@ -121,15 +112,15 @@ export default function TabBar({
                     <NewTab
                         CancelTab={closeNewTab}
                         OpenNewTab={openNewTab}
-                        Email={Email}
-                        SelectedProject={SelectedProject}
+                        Email={email}
+                        SelectedProject={selectedProject}
                     />
                 )}
                 {showNewProject && (
                     <NewProject
                         CancelProject={closeNewProject}
                         OpenNewProject={openNewProject}
-                        Email={Email}
+                        Email={email}
                     />
                 )}
             </div>
