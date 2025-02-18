@@ -30,12 +30,8 @@ export default function ColumnOptions({
     const [columnIndex, setColumnIndex] = useState(0);
     const [tempEntryOptions, setTempEntryOptions] = useState([]);
     const [dataType, setDataType] = useState(new Array(ColumnNames.length).fill(''));
-    const [entryOptions, setEntryOptions] = useState(() =>
-        Array.from({ length: ColumnNames.length }, () => []),
-    );
-    const [identifierDomain, setIdentifierDomain] = useState(
-        new Array(ColumnNames.length).fill(false),
-    );
+    const [entryOptions, setEntryOptions] = useState(Array.from({ length: ColumnNames.length }, () => []));
+    const [identifierDomain, setIdentifierDomain] = useState(new Array(ColumnNames.length).fill(false));
     const [requiredField, setRequiredField] = useState(new Array(ColumnNames.length).fill(false));
     const [order, setOrder] = useState(Array.from({ length: ColumnNames.length }, (_, i) => i));
 
@@ -60,14 +56,25 @@ export default function ColumnOptions({
         return true;
     }, [columnIndex, dataType, entryOptions, entryTypeOptions]);
 
+    const storeEntryOptions = useCallback(() => {
+        setEntryOptions((prevOptions) =>
+            prevOptions.map((option, i) =>
+                i === columnIndex ? [...tempEntryOptions] : option
+            )
+        );
+    }, [tempEntryOptions, columnIndex]);
+    
     const goBackward = useCallback(() => {
-        setColumnIndex((prevIndex) => prevIndex - 1);
-    }, []);
+        if (validInputs()) {
+            storeEntryOptions();
+            setColumnIndex((prevIndex) => prevIndex - 1);
+        }
+    }, [validInputs]);
 
     const goForward = useCallback(() => {
         if (validInputs()) {
+            storeEntryOptions();
             setColumnIndex((prevIndex) => prevIndex + 1);
-            setTempEntryOptions([]);
         }
     }, [validInputs]);
 
@@ -155,6 +162,7 @@ export default function ColumnOptions({
     };
 
     useEffect(() => {
+        setTempEntryOptions(entryOptions[columnIndex]);
         setRightButtonText(columnIndex === ColumnNames.length - 1 ? 'Finish' : 'Next Column');
     }, [columnIndex, ColumnNames.length]);
 
@@ -192,7 +200,7 @@ export default function ColumnOptions({
                 />
                 {dataType[columnIndex] === entryTypeOptions[3] && (
                     <DropdownFlex
-                        options={entryOptions[columnIndex]}
+                        options={tempEntryOptions}
                         setOptions={setTempEntryOptions}
                         label="Entry Choices"
                     />
