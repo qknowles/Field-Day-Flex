@@ -12,6 +12,8 @@ import { visibleColumnsAtom } from '../utils/jotai';
 import { searchQueryAtom, filteredEntriesAtom } from './SearchBar';
 import { filterEntriesBySearch, highlightSearchTerms } from '../utils/searchUtils';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import { ResizableBox } from 'react-resizable';
+import 'react-resizable/css/styles.css'; // Import the default styles for react-resizable
 
 
 
@@ -425,25 +427,25 @@ const DataViewer = forwardRef((props, ref) => {
                                             {columns
                                                 .filter((col) => !['actions', 'datetime'].includes(col.id))
                                                 .map((column, index) => (
-                                                    <Draggable key={column.id} draggableId={column.id} index={index}>
-                                                        {(provided) => (
-                                                            <th
-                                                                className={`p-2 text-left border-b font-semibold cursor-pointer column-border ${column.type === 'identifier' ? 'min-w-[150px]' : ''
-                                                                    } ${getColumnClass(column.name)}`}
-                                                                onClick={() => handleSort(column.name)}
-                                                                ref={provided.innerRef}
-                                                                {...provided.draggableProps}
-                                                                {...provided.dragHandleProps}
-                                                            >
-                                                                {column.name}
-                                                                {sortConfig.key === column.name && (
-                                                                    <span className="ml-1">
-                                                                        {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                                                                    </span>
-                                                                )}
-                                                            </th>
-                                                        )}
-                                                    </Draggable>
+                                                    <th key={column.id} className="p-2 text-left border-b font-semibold cursor-pointer column-border">
+                                                    <ResizableBox
+                                                        width={100}
+                                                        height={30}
+                                                        axis="x"
+                                                        minConstraints={[50, 30]}
+                                                        maxConstraints={[300, 30]}
+                                                        className="resizable-box"
+                                                    >
+                                                        <div className={`flex items-center ${column.type === 'identifier' ? 'min-w-[150px]' : ''} ${getColumnClass(column.name)}`}>
+                                                            {column.name}
+                                                            {sortConfig.key === column.name && (
+                                                                <span className="ml-1">
+                                                                    {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </ResizableBox>
+                                                </th>
                                                 ))}
                                         </tr>
                                     </thead>
