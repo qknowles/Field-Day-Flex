@@ -53,27 +53,35 @@ export default function ManageColumns({ CloseManageColumns }) {
                 return;
             }
     
-            // 🔹 Ensure all order values are unique and start from 1
-            const existingOrders = new Set();
-            columnsData.forEach((col, index) => {
-                if (col.order === undefined || col.order < 1 || existingOrders.has(col.order)) {
-                    col.order = index + 1; // Assign unique sequential order
+            // 🔹 Ensure all order values are unique and sequential
+            const orderCounts = new Map(); // Tracks how many times an order is used
+            const assignedOrders = new Set(); // Prevent duplicate orders
+    
+            columnsData.forEach((col) => {
+                let order = col.order;
+    
+                // If order is missing, zero, or duplicated, assign a new one
+                if (!order || order < 1 || orderCounts.get(order) > 0) {
+                    order = assignedOrders.size + 1;
                 }
-                existingOrders.add(col.order);
+    
+                assignedOrders.add(order);
+                orderCounts.set(order, (orderCounts.get(order) || 0) + 1);
+                col.order = order; // Update column order
             });
     
-            // 🔹 Sort columns based on stored order
-            columnsData.sort((a, b) => (a.order || 0) - (b.order || 0));
+            // 🔹 Sort columns based on order
+            columnsData.sort((a, b) => a.order - b.order);
     
             setColumns(columnsData);
     
-            // 🔹 Initialize column order correctly
+            // 🔹 Initialize column order state
             const orderObj = {};
             const namesObj = {};
     
             columnsData.forEach((col) => {
-                orderObj[col.id] = col.order; // Keep Firestore order
-                namesObj[col.id] = col.name || ""; // Ensure name is not undefined
+                orderObj[col.id] = col.order;
+                namesObj[col.id] = col.name || ""; 
             });
     
             setColumnOrder(orderObj);
@@ -87,6 +95,7 @@ export default function ManageColumns({ CloseManageColumns }) {
             setLoading(false);
         }
     };
+    
     
     
     
@@ -152,12 +161,12 @@ export default function ManageColumns({ CloseManageColumns }) {
         const uniqueValues = new Set(orderValues);
     
         if (orderValues.length !== uniqueValues.size) {
-            notify(Type.error, 'Select unique order indentifiers for each column.');
+            notify(Type.error, 'Select unique order identifiers for each column.');
             return; // Stop execution and prevent saving
         }
     
         try {
-            console.log(" Saving column order:", columnOrder);
+            console.log(" Saving column changes:", columnOrder, editedColumnNames);
     
             const projectId = await getDocumentIdByEmailAndProjectName(Email, SelectedProject);
             if (!projectId) {
@@ -179,34 +188,121 @@ export default function ManageColumns({ CloseManageColumns }) {
             console.log("Firestore Column ID Map:", columnIdMap);
     
             let updatesMade = false;
+            let nameChanges = {}; // Track column name changes
+    
             for (const columnId in columnOrder) {
                 if (columnIdMap[columnId]) {
+                    const oldName = columnIdMap[columnId].name;
+                    const newName = editedColumnNames[columnId] || oldName;
+    
+                    if (oldName !== newName) {
+                        nameChanges[oldName] = newName; // Store for entry updates
+                    }
+    
                     const columnRef = doc(db, 'Projects', projectId, 'Tabs', TabName, 'Columns', columnId);
                     batch.update(columnRef, {
-                        order: columnOrder[columnId] // Updating the order field
+                        order: columnOrder[columnId], // Update order
+                        name: newName, // Update name
                     });
+    
                     updatesMade = true;
                 } else {
-                    console.error(`Firestore document with ID "${columnId}" does not exist`);
+                    console.error(` Firestore document with ID "${columnId}" does not exist`);
                 }
             }
     
             if (updatesMade) {
                 await batch.commit();
                 console.log(" Firestore batch update committed successfully.");
-                notify(Type.success, 'Column order updated successfully');
-                window.dispatchEvent(new Event("refreshColumns")); // Refresh UI
-    
-                // Close the Manage Columns window after successful save
+                notify(Type.success, 'Column order and names updated successfully');
+
+                // Update Entries Collection for Renamed Columns
+                if (Object.keys(nameChanges).length > 0) {
+                    console.log("🔄 Updating Entry Data for Column Renames:", nameChanges);
+            
+                    const entriesRef = collection(db, 'Projects', projectId, 'Tabs', TabName, 'Entries');
+                    const entriesSnapshot = await getDocs(entriesRef);
+            
+                    const entriesBatch = writeBatch(db);
+                    entriesSnapshot.forEach((entryDoc) => {
+                        const entryRef = doc(db, 'Projects', projectId, 'Tabs', TabName, 'Entries', entryDoc.id);
+                        const entryData = entryDoc.data().entry_data;
+            
+                        let updatedEntryData = { ...entryData };
+                        let entryUpdated = false;
+            
+                        for (const oldName in nameChanges) {
+                            if (oldName in updatedEntryData) {
+                                const newName = nameChanges[oldName];
+                                updatedEntryData[newName] = updatedEntryData[oldName]; // Move value
+                                delete updatedEntryData[oldName]; // Remove old key
+                                entryUpdated = true;
+                            }
+                        }
+            
+                        if (entryUpdated) {
+                            entriesBatch.update(entryRef, { entry_data: updatedEntryData });
+                        }
+                    });
+            
+                    await entriesBatch.commit();
+                    console.log("Entries updated successfully.");
+                    notify(Type.success, "Entries updated with new column names.");
+                }
+            
                 CloseManageColumns();
-            } else {
-                console.warn(" No changes detected. Skipping Firestore update.");
             }
+          
+            
         } catch (error) {
-            console.error(" Error updating column order:", error);
-            notify(Type.error, 'Failed to update column order');
+            console.error(" Error updating columns:", error);
+            notify(Type.error, 'Failed to update column order or names');
         }
     };
+
+    useEffect(() => {
+        const fetchColumns = async () => {
+            try {
+                const columnsData = await getColumnsCollection(SelectedProject, TabName, Email);
+                setColumns(columnsData);
+            } catch (error) {
+                console.error("Error fetching columns:", error);
+            }
+        };
+    
+        fetchColumns();
+    
+        const handleRefresh = () => fetchColumns();
+        window.addEventListener("refreshColumns", handleRefresh);
+    
+        return () => window.removeEventListener("refreshColumns", handleRefresh);
+    }, [SelectedProject, TabName, Email]);
+    
+    useEffect(() => {
+        const fetchEntries = async () => {
+            try {
+                const entriesRef = collection(db, 'Projects', SelectedProject, 'Tabs', TabName, 'Entries');
+                const entriesSnapshot = await getDocs(entriesRef);
+    
+                const entriesList = entriesSnapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+    
+                setEntries(entriesList);
+            } catch (error) {
+                console.error("Error fetching entries:", error);
+            }
+        };
+    
+        fetchEntries();
+    
+        const handleRefresh = () => fetchEntries();
+        window.addEventListener("refreshEntries", handleRefresh);
+    
+        return () => window.removeEventListener("refreshEntries", handleRefresh);
+    }, [SelectedProject, TabName]);
+    
     
     // Column editing modal reusing ColumnOptions functionality
     const ColumnEditModal = ({ column }) => (
@@ -282,31 +378,23 @@ export default function ManageColumns({ CloseManageColumns }) {
                                 className="flex items-center space-x-4 p-2 bg-neutral-100 dark:bg-neutral-800 rounded"
                             >
                                 <input
-    type="text"
-    value={editedColumnNames[column.id] || ''} // Ensure empty string instead of undefined
-    onChange={(e) => handleColumnNameChange(column.id, e.target.value)}
-    className="flex-grow border rounded px-2 py-1 text-white"
-/>
-<select
-    value={columnOrder[column.id] ?? column.order} // Use Firestore order if available
-    onChange={(e) => handleColumnOrderChange(column.id, e.target.value)}
-    className="border rounded px-2 py-1"
->
-    {Array.from({ length: columns.length }, (_, i) => i + 1).map((num) => (
-        <option key={num} value={num}>
-            {num}
-        </option>
-    ))}
-    <option value="DELETE">DELETE</option>
-</select>
-
-
-
-
-
-
-
-
+                                 type="text"
+                                 value={editedColumnNames[column.id] || ''} // Ensure empty string instead of undefined
+                                 onChange={(e) => handleColumnNameChange(column.id, e.target.value)}
+                                 className="flex-grow border rounded px-2 py-1 text-white"
+                                />
+                            <select
+                                 value={columnOrder[column.id] ?? column.order} // Use Firestore order if available
+                                 onChange={(e) => handleColumnOrderChange(column.id, e.target.value)}
+                                 className="border rounded px-2 py-1"
+                                >
+                            {Array.from({ length: columns.length }, (_, i) => i + 1).map((num) => (
+                            <option key={num} value={num}>
+                              {num}
+                            </option>
+                       ))}
+                   <option value="DELETE">DELETE</option>
+                           </select>
                                 <Button
                                     text="Edit"
                                     onClick={() => {
