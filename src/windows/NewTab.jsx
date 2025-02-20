@@ -140,23 +140,20 @@ export default function NewTab({ CancelTab, OpenNewTab }) {
         setPossibleIdentifiers(finalPossibleIdentifiers);
         setUnwantedCodes(unwantedCodesWithoutDuplicates);
 
-        if (filteredColumnNames.length > 0) {
-            setShowColumnOptions(true);
-        } else {
-            const tabAlreadyExists = await tabExists(Email, SelectedProject, tabName);
+        const tabAlreadyExists = await tabExists(Email, SelectedProject, tabName);
             if (!tabAlreadyExists) {
-                let columnName = [];
-                let columnDataType = [];
-                let entryOption = [];
-                let columnIdentifierDomain = [];
-                let columnRequiredField = [];
-                let columnOrder = [];
+                let columnName = '';
+                let columnDataType = '';
+                let entryOptions = [];
+                let columnIdentifierDomain = '';
+                let columnRequiredField = '';
+                let columnOrder = '';
                 if (generateIdentifiers) {
-                    columnName = ['Entry ID'];
-                    columnDataType = ['auto_id'];
-                    columnIdentifierDomain = [true];
-                    columnRequiredField = [true];
-                    columnOrder = [0];
+                    columnName = 'Entry ID';
+                    columnDataType = 'auto_id';
+                    columnIdentifierDomain = true;
+                    columnRequiredField = true;
+                    columnOrder = 0;
                 }
                 const tabCreated = await createTab(
                     Email,
@@ -169,22 +166,26 @@ export default function NewTab({ CancelTab, OpenNewTab }) {
                     utilizeUnwantedCodes,
                     columnName,
                     columnDataType,
-                    entryOption,
+                    entryOptions,
                     columnIdentifierDomain,
                     columnRequiredField,
                     columnOrder,
                 );
                 if (tabCreated) {
                     notify(Type.success, `Tab created.`);
-                    OpenNewTab(tabName);
-                    return;
                 } else {
                     notify(Type.error, 'Error creating new tab.');
-                    return;
                 }
             } else {
                 notify(Type.error, 'Tab already exists.');
+                return;
             }
+
+        if (filteredColumnNames.length > 0) {
+            setShowColumnOptions(true);
+        } else {
+            OpenNewTab(tabName);
+            return;
         }
     };
 

@@ -275,12 +275,12 @@ export const createTab = async (
     identifierDimension,
     unwantedCodes,
     utilizeUnwantedCodes,
-    columnNames = [],
-    columnDataTypes = [],
-    columnEntryOptions = [],
-    columnIdentifierDomains = [],
-    columnRequiredFields = [],
-    columnOrder = [],
+    columnName,
+    columnDataType,
+    columnEntryOptions,
+    columnIdentifierDomain,
+    columnRequiredField,
+    columnOrder,
 ) => {
     try {
         const projectRef = collection(db, 'Projects');
@@ -326,14 +326,14 @@ export const createTab = async (
         });
 
         const columnsRef = collection(tabRef, 'Columns');
-        for (let i = 0; i < columnNames.length; i++) {
+        if (columnName) {
             await addDoc(columnsRef, {
-                ...(columnNames.length > 0 && { name: columnNames[i] }),
-                ...(columnDataTypes.length > 0 && { data_type: columnDataTypes[i] }),
+                name: columnName,
+                data_type: columnDataType,
                 ...(columnEntryOptions.length > 0 && { entry_options: columnEntryOptions[i] }),
-                ...(columnIdentifierDomains.length > 0 && { identifier_domain: columnIdentifierDomains[i] }),
-                ...(columnRequiredFields.length > 0 && { required_field: columnRequiredFields[i] }),
-                ...(columnOrder.length > 0 && { order: columnOrder[i] }),
+                identifier_domain: columnIdentifierDomain,
+                required_field: columnRequiredField,
+                order: columnOrder,
             });
         }
 
@@ -351,7 +351,7 @@ export const addColumn = async (
     columnName,
     columnDataType,
     columnEntryOptions = [],
-    columnIdentifierDomain = null,
+    columnIdentifierDomain = false,
     columnRequiredField = false,
 ) => {
     try {
@@ -387,7 +387,7 @@ export const addColumn = async (
         await addDoc(columnsRef, {
             name: columnName,
             data_type: columnDataType,
-            entry_options: columnEntryOptions[0],
+            ...(columnEntryOptions.length > 0 && { entry_options: columnEntryOptions }),
             identifier_domain: columnIdentifierDomain,
             required_field: columnRequiredField,
             order: columnOrder,
