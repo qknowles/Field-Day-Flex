@@ -261,6 +261,7 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
                     });
             
                     await entriesBatch.commit();
+                    
                     console.log("Entries updated successfully.");
                     notify(Type.success, "Entries updated with new column names.");
                 }
@@ -271,16 +272,9 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
                     notify(Type.success, "Selected columns deleted successfully.");
                 }
               
-                if (triggerRefresh) {
-                    setTimeout(() => {
-                        triggerRefresh(Math.random()); // Ensures a real state change
-                        console.log(" TablePage refresh triggered with random value");
-                    }, 100);
-                }
-                
     
                 CloseManageColumns();
-                
+                window.location.reload();
             }
            
     
