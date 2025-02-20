@@ -44,25 +44,43 @@ export default function NewTab({ CancelTab, OpenNewTab }) {
         }
     }, [firstIdentifierDimension, secondIdentifierDimension]);
 
-    const returnPossibleIdentifiers = (highestLetter, highestNumber, unwanted) => {
+    const returnPossibleIdentifiers = (highestLetter, highestNumber, unwanted = []) => {
         const identifiers = [];
+        const startingCharCode = 'A'.charCodeAt(0);
+        const endingCharCode = highestLetter.charCodeAt(0);
 
-        for (
-            let charCode = 'A'.charCodeAt(0);
-            charCode <= highestLetter.charCodeAt(0);
-            charCode++
-        ) {
+        for (let charCode = startingCharCode; charCode <= endingCharCode; charCode++) {
             const letter = String.fromCharCode(charCode);
-
             for (let num = 1; num <= highestNumber; num++) {
                 const identifier = `${letter}${num}`;
-
-                if (!unwanted.includes(identifier)) {
-                    identifiers.push(identifier);
-                }
+                identifiers.push(identifier);
             }
         }
-        return identifiers;
+
+        const recursiveGeneration = (pBaseIdentifiers, pAppendedIdentifiers) => {
+            const appendedIdentifiers = pAppendedIdentifiers.slice(highestNumber);
+            const newBaseIdentifiers = [];
+            if (appendedIdentifiers.length === 0) {
+                return newBaseIdentifiers;
+            }
+            for (let i = 0; i < pBaseIdentifiers.length; i++) {
+                for (let j = 0; j < appendedIdentifiers.length; j++) {
+                    const alreadyInString = appendedIdentifiers.slice(0, i).some(item => pBaseIdentifiers[i].includes(item.charAt(0)));                
+                    if (!alreadyInString) {
+                        newBaseIdentifiers.push(`${pBaseIdentifiers[i]}${appendedIdentifiers[j]}`);
+                    }
+                }
+            }
+            newBaseIdentifiers.push(...recursiveGeneration(newBaseIdentifiers, appendedIdentifiers));
+
+            return newBaseIdentifiers;
+        }
+
+        identifiers.push(...recursiveGeneration(identifiers, identifiers));
+
+        const filteredIdentifiers = identifiers.filter(identifier => !unwanted.some(item => identifier.includes(item)));
+
+        return filteredIdentifiers;
     };
 
     const continueTab = async () => {
