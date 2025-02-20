@@ -10,25 +10,25 @@ import { notify, Type } from '../components/Notifier.jsx';
 import { updateProjectName } from '../components/TabBar.jsx';
 
 export default function ProjectSettings({ CloseProjectSettings }) {
-    // Jotai State
+    // Jotai state: Stores project name and user email
     const [projectName, setProjectName] = useAtom(currentProjectName);
     const userEmail = useAtomValue(currentUserEmail);
 
-    // Local State
-    const [documentId, setDocumentId] = useState(null);
-    const [isAuthorized, setIsAuthorized] = useState(false);
-    const [members, setMembers] = useState([]);
-    const [newMemberEmail, setNewMemberEmail] = useState('');
-    const [newMemberSelectedRole, setNewMemberSelectedRole] = useState('Select Role');
-    const [loading, setLoading] = useState(true);
+    // Local state variables
+    const [documentId, setDocumentId] = useState(null); // Stores Firestore document ID for the project
+    const [isAuthorized, setIsAuthorized] = useState(false); // Determines if the user has admin/owner privileges
+    const [members, setMembers] = useState([]); // Stores the list of project members
+    const [newMemberEmail, setNewMemberEmail] = useState(''); // Stores input for adding a new member
+    const [newMemberSelectedRole, setNewMemberSelectedRole] = useState('Select Role'); // Stores the role selected for the new member
+    const [loading, setLoading] = useState(true); // Indicates if project data is being fetched
 
-    // Fetch Project Data on Mount
+    // Fetch project data when the component mounts or projectName/userEmail changes
     useEffect(() => {
         const fetchProjectData = async () => {
             try {
                 setLoading(true);
 
-                // Fetch Document ID
+                // Fetch the document ID based on project name and user email
                 const docId = await getDocumentIdByEmailAndProjectName(userEmail, projectName);
                 if (!docId) {
                     notify(Type.error, 'Project not found');
@@ -37,9 +37,8 @@ export default function ProjectSettings({ CloseProjectSettings }) {
                 }
                 setDocumentId(docId);
 
-                // Fetch Project Members
+                // Fetch project members (contributors, admins, owners)
                 const membersData = await getProjectFields(projectName, ['contributors', 'admins', 'owners']);
-                //console.log('Members:', membersData);
                 if (!membersData) {
                     notify(Type.error, 'Failed to load project data');
                     setLoading(false);
@@ -48,7 +47,7 @@ export default function ProjectSettings({ CloseProjectSettings }) {
 
                 setMembers(membersData);
 
-                // Determine User Authorization
+                // Determine if the current user has admin/owner privileges
                 const userRole = getUserRole(membersData, userEmail);
                 setIsAuthorized(userRole === 'Owner' || userRole === 'Admin');
 
@@ -63,6 +62,12 @@ export default function ProjectSettings({ CloseProjectSettings }) {
         fetchProjectData();
     }, [projectName, userEmail]);
 
+    /**
+     * Determines the user's role in the project.
+     * @param {Object} membersData - Object containing lists of project members categorized by role.
+     * @param {string} userEmail - Email of the current user.
+     * @returns {string} - The user's role ('Owner', 'Admin', or 'None').
+     */
     const getUserRole = (membersData, userEmail) => {
         if (!userEmail) return 'None';
         if (membersData.owners?.includes(userEmail)) return 'Owner';
@@ -70,6 +75,10 @@ export default function ProjectSettings({ CloseProjectSettings }) {
         return 'None';
     };
 
+    /**
+     * Adds a new member to the project.
+     * Validates email and role selection before adding.
+     */
     const handleAddMember = async () => {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!newMemberEmail || !emailRegex.test(newMemberEmail)) {
@@ -86,15 +95,21 @@ export default function ProjectSettings({ CloseProjectSettings }) {
             setNewMemberEmail('');
             setNewMemberSelectedRole('Select Role');
             notify(Type.success, `Added ${newMemberEmail} as ${newMemberSelectedRole}`);
-            let newMembers = await getProjectFields(projectName, ['contributors', 'admins', 'owners'])
-            console.log(newMembers)
-            setMembers(newMembers); // Refresh members
+
+            // Refresh the members list after adding a new member
+            let newMembers = await getProjectFields(projectName, ['contributors', 'admins', 'owners']);
+            console.log(newMembers);
+            setMembers(newMembers);
         } catch (error) {
             notify(Type.error, 'Failed to add member');
             console.log("ERROR", error);
         }
     };
 
+    /**
+     * Saves changes made to the project, such as renaming it.
+     * Updates Firestore with the new project name.
+     */
     const handleSaveChanges = async () => {
         try {
             await updateDocInCollection('Projects', documentId, { project_name: projectName });
@@ -106,6 +121,12 @@ export default function ProjectSettings({ CloseProjectSettings }) {
         }
     };
 
+    /**
+     * Removes a member from the project.
+     * Prevents removing owners and ensures updates persist in Firestore.
+     * @param {string} email - The email of the member to remove.
+     * @param {string} role - The role of the member.
+     */
     const handleRemoveMember = async (email, role) => {
         if (role === 'Owner') {
             notify(Type.error, 'Cannot remove an owner from the project.');
@@ -113,9 +134,9 @@ export default function ProjectSettings({ CloseProjectSettings }) {
         }
 
         try {
-            let newMembers = { ...members }; // we have to do this
+            let newMembers = { ...members };
             const index = newMembers[role].indexOf(email);
-            if(index > -1) {
+            if (index > -1) {
                 newMembers[role].splice(index, 1);
                 console.log("newMembers after splice", newMembers);
             } else {
@@ -123,8 +144,8 @@ export default function ProjectSettings({ CloseProjectSettings }) {
                 return;
             }
 
-            if(await updateDocInCollection('Projects', documentId, newMembers)) {
-                setMembers(newMembers); // the UI doesn't update here!!
+            if (await updateDocInCollection('Projects', documentId, newMembers)) {
+                setMembers(newMembers);
                 console.log("members after setting members to newMembers", members);
                 notify(Type.success, `${email} has been removed as a ${role}.`);
             } else {
@@ -136,8 +157,10 @@ export default function ProjectSettings({ CloseProjectSettings }) {
         }
     };
 
+    // Show loading message while fetching data
     if (loading) return <div>Loading project settings...</div>;
 
+    // Display a message if the user does not have permission
     if (!isAuthorized) {
         return (
             <WindowWrapper header={`Manage ${projectName} Project`} onLeftButton={CloseProjectSettings} leftButtonText="Close">
@@ -183,13 +206,10 @@ export default function ProjectSettings({ CloseProjectSettings }) {
                                     <div className="space-y-2">
                                         {Array.isArray(members[role]) && members[role].map((email) => (
                                             <div key={email} className="flex items-center space-x-4 p-2">
-                                                <button className="text-red-500 font-bold" onClick={() => handleRemoveMember(email, role)}>
+                                                <Button className="text-red-500 font-bold" onClick={() => handleRemoveMember(email, role)}>
                                                     <AiFillDelete />
-                                                </button>
+                                                </Button>
                                                 <span className="flex-grow">{email}</span>
-                                                <span className="px-3 py-1 bg-neutral-200 dark:bg-neutral-700 rounded">
-                                    {role.charAt(0).toUpperCase() + role.slice(1, -1)}
-                                </span>
                                             </div>
                                         ))}
                                     </div>
@@ -200,57 +220,6 @@ export default function ProjectSettings({ CloseProjectSettings }) {
                         )}
                     </div>
                 </div>
-
-
-                {/* Add new member section - only visible to admins/owners */}
-                {<div>
-                    <h3 className="font-semibold">Add a new Member:</h3>
-                    <InputLabel
-                        label="Member Email"
-                        layout="horizontal-single"
-                        input={
-                            <input
-                                type="text"
-                                className="border rounded px-2 py-1 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
-                                value={newMemberEmail}
-                                onChange={(e) => setNewMemberEmail(e.target.value)}
-                            />
-                        }
-                    />
-                    <br />
-                    <InputLabel
-                        label="Member Role"
-                        layout="horizontal-single"
-                        input={
-                            <select
-                                className="border rounded px-2 py-1 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
-                                value={newMemberSelectedRole}
-                                onChange={(e) => setNewMemberSelectedRole(e.target.value)}
-                            >
-                                <option value="Select Role">Select Role</option>
-                                <option value="Contributor">Contributor</option>
-                                <option value="Admin">Admin</option>
-                                <option value="Owner">Owner</option>
-                            </select>
-                        }
-                    />
-                    <br />
-                    <div className="flex justify-end mt-4">
-                        <Button text="Add member" onClick={handleAddMember} />
-                    </div>
-                </div>
-                }
-
-                {/* Delete Project Button (Only shown to owners) */}
-
-                <div className="flex justify-end mt-4">
-                    <Button
-                        text="Delete Project"
-                        onClick={() => setShowDeleteConfirm(true)}
-                        className="bg-red-600 hover:bg-red-700"
-                    />
-                </div>
-
             </div>
         </WindowWrapper>
     );
