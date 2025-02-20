@@ -9,11 +9,12 @@ import { db } from '../utils/firebase';
 import { useAtomValue } from 'jotai';
 import { currentUserEmail, currentProjectName, currentTableName } from '../utils/jotai.js';
 import { getDocumentIdByEmailAndProjectName } from '../utils/firestore';
+import { useSetAtom } from 'jotai';
+import { refreshColumnsAtom } from '../utils/jotai.js';
+import { useAtom } from 'jotai'; 
 
 
-
-
-export default function ManageColumns({ CloseManageColumns }) {
+export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
 
     const SelectedProject = useAtomValue(currentProjectName);
     const TabName = useAtomValue(currentTableName);
@@ -36,12 +37,14 @@ export default function ManageColumns({ CloseManageColumns }) {
     const entryTypeOptions = ['number', 'text', 'date', 'multiple choice'];
     const tabRef = collection(db, 'Projects', SelectedProject, 'Tabs', TabName, 'Columns');
     const columnsRef = collection(db, 'Projects', SelectedProject, 'Tabs', TabName, 'Columns');
-   
+    const setRefreshColumns = useSetAtom(refreshColumnsAtom);
+    const [refreshTrigger, setRefreshTrigger] = useAtom(refreshColumnsAtom);
 
     useEffect(() => {
         console.log('ManageColumns mounted with props:', { SelectedProject, TabName, Email });
+        console.log("🔄 useEffect triggered by refreshTrigger:", refreshTrigger);
         loadColumns();
-    }, [SelectedProject, TabName, Email]);
+    }, [SelectedProject, TabName, Email, refreshTrigger]);
 
     const loadColumns = async () => {
         try {
@@ -96,22 +99,21 @@ export default function ManageColumns({ CloseManageColumns }) {
         }
     };
     
-    
-    
-    
-
     const handleColumnOrderChange = (columnId, newValue) => {
         if (newValue === 'DELETE') {
-            setColumnsToDelete((prev) => [...prev, columnId]);
+            setColumnsToDelete((prev) => [...prev, columnId]); // Mark column for deletion
+            setColumnOrder((prev) => ({
+                ...prev,
+                [columnId]: 'DELETE' // Ensure "DELETE" is stored correctly
+            }));
         } else {
             setColumnOrder((prev) => ({
                 ...prev,
-                [columnId]: parseInt(newValue) || 1, // Ensure default value
+                [columnId]: parseInt(newValue, 10) || 1, // Ensure numeric value
             }));
-            setColumnsToDelete((prev) => prev.filter((id) => id !== columnId));
+            setColumnsToDelete((prev) => prev.filter((id) => id !== columnId)); // Remove from delete list if changed
         }
     };
-    
     
 
     const handleColumnNameChange = (columnId, newName) => {
@@ -134,6 +136,7 @@ export default function ManageColumns({ CloseManageColumns }) {
         }
     };
 
+    
     const handleRequiredFieldChange = (columnId, isRequired) => {
         setEditedRequiredFields((prev) => ({
             ...prev,
@@ -155,6 +158,7 @@ export default function ManageColumns({ CloseManageColumns }) {
             [columnId]: filteredOptions,
         }));
     };
+    
     const handleSaveChanges = async () => {
         // Check for duplicate order numbers
         const orderValues = Object.values(columnOrder);
@@ -166,6 +170,7 @@ export default function ManageColumns({ CloseManageColumns }) {
         }
     
         try {
+            console.log("handlesavechanges triggererd");
             console.log(" Saving column changes:", columnOrder, editedColumnNames);
     
             const projectId = await getDocumentIdByEmailAndProjectName(Email, SelectedProject);
@@ -189,36 +194,46 @@ export default function ManageColumns({ CloseManageColumns }) {
     
             let updatesMade = false;
             let nameChanges = {}; // Track column name changes
+            let deletionsMade = false; // Track column deletions
     
             for (const columnId in columnOrder) {
                 if (columnIdMap[columnId]) {
-                    const oldName = columnIdMap[columnId].name;
-                    const newName = editedColumnNames[columnId] || oldName;
+                    if (columnOrder[columnId] === 'DELETE') {
+                        // 🔹 Mark column for deletion
+                        const columnRef = doc(db, 'Projects', projectId, 'Tabs', TabName, 'Columns', columnId);
+                        batch.delete(columnRef);
+                        deletionsMade = true;
+                        console.log(`Marked column ${columnId} for deletion`);
+                    } else {
+                        // 🔹 Handle column updates (order & name changes)
+                        const oldName = columnIdMap[columnId].name;
+                        const newName = editedColumnNames[columnId] || oldName;
     
-                    if (oldName !== newName) {
-                        nameChanges[oldName] = newName; // Store for entry updates
+                        if (oldName !== newName) {
+                            nameChanges[oldName] = newName; // Store for entry updates
+                        }
+    
+                        const columnRef = doc(db, 'Projects', projectId, 'Tabs', TabName, 'Columns', columnId);
+                        batch.update(columnRef, {
+                            order: columnOrder[columnId], // Update order
+                            name: newName, // Update name
+                        });
+    
+                        updatesMade = true;
                     }
-    
-                    const columnRef = doc(db, 'Projects', projectId, 'Tabs', TabName, 'Columns', columnId);
-                    batch.update(columnRef, {
-                        order: columnOrder[columnId], // Update order
-                        name: newName, // Update name
-                    });
-    
-                    updatesMade = true;
                 } else {
                     console.error(` Firestore document with ID "${columnId}" does not exist`);
                 }
             }
     
-            if (updatesMade) {
+            if (updatesMade || deletionsMade) {
                 await batch.commit();
                 console.log(" Firestore batch update committed successfully.");
-                notify(Type.success, 'Column order and names updated successfully');
-
-                // Update Entries Collection for Renamed Columns
+                notify(Type.success, 'Column updates saved successfully.');
+    
+                // 🔹 Update Entries Collection for Renamed Columns
                 if (Object.keys(nameChanges).length > 0) {
-                    console.log("🔄 Updating Entry Data for Column Renames:", nameChanges);
+                    console.log(" Updating Entry Data for Column Renames:", nameChanges);
             
                     const entriesRef = collection(db, 'Projects', projectId, 'Tabs', TabName, 'Entries');
                     const entriesSnapshot = await getDocs(entriesRef);
@@ -249,17 +264,33 @@ export default function ManageColumns({ CloseManageColumns }) {
                     console.log("Entries updated successfully.");
                     notify(Type.success, "Entries updated with new column names.");
                 }
-            
+    
+                // 🔹 Remove deleted columns from UI
+                if (deletionsMade) {
+                    setColumns((prev) => prev.filter((col) => columnOrder[col.id] !== 'DELETE'));
+                    notify(Type.success, "Selected columns deleted successfully.");
+                }
+              
+                if (triggerRefresh) {
+                    setTimeout(() => {
+                        triggerRefresh(Math.random()); // Ensures a real state change
+                        console.log(" TablePage refresh triggered with random value");
+                    }, 100);
+                }
+                
+    
                 CloseManageColumns();
+                
             }
-          
-            
+           
+    
+    
         } catch (error) {
             console.error(" Error updating columns:", error);
             notify(Type.error, 'Failed to update column order or names');
         }
     };
-
+    
     useEffect(() => {
         const fetchColumns = async () => {
             try {
@@ -383,18 +414,19 @@ export default function ManageColumns({ CloseManageColumns }) {
                                  onChange={(e) => handleColumnNameChange(column.id, e.target.value)}
                                  className="flex-grow border rounded px-2 py-1 text-white"
                                 />
-                            <select
-                                 value={columnOrder[column.id] ?? column.order} // Use Firestore order if available
-                                 onChange={(e) => handleColumnOrderChange(column.id, e.target.value)}
-                                 className="border rounded px-2 py-1"
-                                >
-                            {Array.from({ length: columns.length }, (_, i) => i + 1).map((num) => (
-                            <option key={num} value={num}>
-                              {num}
-                            </option>
-                       ))}
-                   <option value="DELETE">DELETE</option>
-                           </select>
+                             <select
+                                value={columnOrder[column.id] ?? column.order} // Allow string "DELETE" value
+                                onChange={(e) => handleColumnOrderChange(column.id, e.target.value)}
+                                className="border rounded px-2 py-1"
+                             >
+                        {Array.from({ length: columns.length }, (_, i) => i + 1).map((num) => (
+                          <option key={num} value={num}>
+                        {num}
+                          </option>
+                        ))}
+                       <option key="delete" value="DELETE">DELETE</option>
+                             </select>
+
                                 <Button
                                     text="Edit"
                                     onClick={() => {
