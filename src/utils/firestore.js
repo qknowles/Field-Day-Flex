@@ -328,12 +328,12 @@ export const createTab = async (
         const columnsRef = collection(tabRef, 'Columns');
         for (let i = 0; i < columnNames.length; i++) {
             await addDoc(columnsRef, {
-                name: columnNames[i],
-                data_type: columnDataTypes[i],
-                entry_options: columnEntryOptions[i],
-                identifier_domain: columnIdentifierDomains[i],
-                required_field: columnRequiredFields[i],
-                order: columnOrder[i],
+                ...(columnNames.length > 0 && { name: columnNames[i] }),
+                ...(columnDataTypes.length > 0 && { data_type: columnDataTypes[i] }),
+                ...(columnEntryOptions.length > 0 && { entry_options: columnEntryOptions[i] }),
+                ...(columnIdentifierDomains.length > 0 && { identifier_domain: columnIdentifierDomains[i] }),
+                ...(columnRequiredFields.length > 0 && { required_field: columnRequiredFields[i] }),
+                ...(columnOrder.length > 0 && { order: columnOrder[i] }),
             });
         }
 
