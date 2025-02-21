@@ -74,7 +74,6 @@ export default function NewTab({ CancelTab, OpenNewTab }) {
                         const alreadyInString = appendedIdentifiers.slice(0, i).some(item => pBaseIdentifiers[i].includes(item.charAt(0)));
                         if (!alreadyInString) {
                             newBaseIdentifiers.push(`${pBaseIdentifiers[i]}${appendedIdentifiers[j]}`);
-                            console.log(`${pBaseIdentifiers[i]}${appendedIdentifiers[j]}`);
                         }
                     }
                 }
@@ -122,6 +121,10 @@ export default function NewTab({ CancelTab, OpenNewTab }) {
         }
 
         const cleanedTabName = tabName.trim();
+        if (!tabName) {
+            notify(Type.error, 'Tab name cannot be empty.');
+            return;
+        }
 
         let finalPossibleIdentifiers = [];
         if (generateIdentifiers) {

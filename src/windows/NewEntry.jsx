@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DropdownSelector } from '../components/FormFields';
+import { DropdownSelector, IdentificationGenerator_UI } from '../components/FormFields';
 import WindowWrapper from '../wrappers/WindowWrapper';
 import InputLabel from '../components/InputLabel';
 import { getColumnsCollection, addEntry, updateEntry } from '../utils/firestore';
@@ -141,12 +141,24 @@ export default function NewEntry({ CloseNewEntry, existingEntry, onEntryUpdated 
                 );
             }
 
+            if (data_type === 'auto_id') {
+                return (
+                    <IdentificationGenerator_UI
+                        key={index}
+                        label={tabName}
+                        handleInputChange={handleInputChange}
+                        userEntry={userEntries || {}}
+                    />
+
+                );
+            }
+
             const inputType =
                 data_type === 'number'
                     ? 'number'
                     : data_type === 'date'
-                      ? 'datetime-local'
-                      : 'text';
+                        ? 'datetime-local'
+                        : 'text';
 
             return (
                 <InputLabel

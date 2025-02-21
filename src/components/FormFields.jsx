@@ -1,9 +1,9 @@
-import { useEffect } from 'react';
-import { useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import classNames from 'classnames';
-import { SearchIcon } from '../assets/icons';
 import InputLabel from './InputLabel';
+import Button from './Button';
 import React from 'react';
+import IdentificationGenerator from '../utils/IdentificationGenerator'
 
 export const DropdownFlex = ({ options, setOptions, label }) => {
     const [editingIndex, setEditingIndex] = useState(null);
@@ -165,3 +165,41 @@ export const RadioButtons = ({ layout, label, options, selectedOption, setSelect
         />
     );
 };
+
+export const IdentificationGenerator_UI = ({ label, handleInputChange }) => {
+    const [id, setId] = useState('');
+
+    const generateId = useCallback((value) => IdentificationGenerator(value), []);
+
+    return (
+        <div className="flex flex-col space-y-2">
+            <InputLabel
+                label={label}
+                layout={'horizontal-single'}
+                input={
+                    <input
+                        type="text"
+                        value={id}
+                        onChange={(e) => {
+                            const value = e.target.value;
+                            setId(value);
+                            handleInputChange('Entry ID', value);
+                        }}
+                    />
+                }
+            />
+            <Button
+                className="items-center justify-center"
+                flexible={false}
+                text="Generate Id"
+                onClick={() => {
+                    const GenId = generateId(id);
+                    setId(GenId);
+                    handleInputChange('Entry ID', GenId);
+                }}
+            />
+        </div>
+    );
+};
+
+
