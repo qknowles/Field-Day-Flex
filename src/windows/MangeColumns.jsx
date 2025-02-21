@@ -42,7 +42,6 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
 
     useEffect(() => {
         console.log('ManageColumns mounted with props:', { SelectedProject, TabName, Email });
-        console.log("🔄 useEffect triggered by refreshTrigger:", refreshTrigger);
         loadColumns();
     }, [SelectedProject, TabName, Email, refreshTrigger]);
 
@@ -56,7 +55,7 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
                 return;
             }
     
-            // 🔹 Ensure all order values are unique and sequential
+           
             const orderCounts = new Map(); // Tracks how many times an order is used
             const assignedOrders = new Set(); // Prevent duplicate orders
     
@@ -73,12 +72,12 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
                 col.order = order; // Update column order
             });
     
-            // 🔹 Sort columns based on order
+            
             columnsData.sort((a, b) => a.order - b.order);
     
             setColumns(columnsData);
     
-            // 🔹 Initialize column order state
+           
             const orderObj = {};
             const namesObj = {};
     
@@ -90,7 +89,7 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
             setColumnOrder(orderObj);
             setEditedColumnNames(namesObj);
     
-            console.log(" Fixed Column Order State:", orderObj);
+            
         } catch (error) {
             console.error('Error loading columns:', error);
             notify(Type.error, 'Failed to load columns');
@@ -128,10 +127,10 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
             const updatedColumns = {};
     
             columnsSnapshot.forEach(doc => {
-                updatedColumns[doc.id] = doc.data().data_type; // 🔹 Fetch latest column types
+                updatedColumns[doc.id] = doc.data().data_type;
             });
     
-            // 🔹 Format new entry data based on updated column type
+            
             const formattedEntry = {};
             Object.keys(entryData).forEach(columnId => {
                 const columnType = updatedColumns[columnId];
@@ -150,7 +149,7 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
     
             notify(Type.success, "New entry added successfully!");
         } catch (error) {
-            console.error("Error adding new entry:", error);
+            
             notify(Type.error, "Failed to add entry");
         }
     };
@@ -210,7 +209,7 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
         }
     
         try {
-            console.log("handlesavechanges triggererd");
+            
             console.log(" Saving column changes:", columnOrder, editedColumnNames);
     
             const projectId = await getDocumentIdByEmailAndProjectName(Email, SelectedProject);
@@ -230,7 +229,7 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
                 return map;
             }, {});
     
-            console.log("Firestore Column ID Map:", columnIdMap);
+            
     
             let updatesMade = false;
             let nameChanges = {}; // Track column name changes
@@ -239,13 +238,13 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
             for (const columnId in columnOrder) {
                 if (columnIdMap[columnId]) {
                     if (columnOrder[columnId] === 'DELETE') {
-                        // 🔹 Mark column for deletion
+                     
                         const columnRef = doc(db, 'Projects', projectId, 'Tabs', TabName, 'Columns', columnId);
                         batch.delete(columnRef);
                         deletionsMade = true;
                         console.log(`Marked column ${columnId} for deletion`);
                     } else {
-                        // 🔹 Handle column updates (order & name changes)
+                        
                         const oldName = columnIdMap[columnId].name;
                         const newName = editedColumnNames[columnId] || oldName;
                         const newType = editedColumnTypes[columnId] || columnIdMap[columnId].data_type;
@@ -270,12 +269,12 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
     
             if (updatesMade || deletionsMade) {
                 await batch.commit();
-                console.log(" Firestore batch update committed successfully.");
+                
                 notify(Type.success, 'Column updates saved successfully.');
     
-                // 🔹 Update Entries Collection for Renamed Columns
+                
                 if (Object.keys(nameChanges).length > 0) {
-                    console.log(" Updating Entry Data for Column Renames:", nameChanges);
+                    
             
                     const entriesRef = collection(db, 'Projects', projectId, 'Tabs', TabName, 'Entries');
                     const entriesSnapshot = await getDocs(entriesRef);
@@ -304,11 +303,11 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
             
                     await entriesBatch.commit();
                     
-                    console.log("Entries updated successfully.");
+                    
                     notify(Type.success, "Entries updated with new column names.");
                 }
     
-                // 🔹 Remove deleted columns from UI
+               
                 if (deletionsMade) {
                     setColumns((prev) => prev.filter((col) => columnOrder[col.id] !== 'DELETE'));
                     notify(Type.success, "Selected columns deleted successfully.");

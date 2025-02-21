@@ -141,10 +141,11 @@ const DataViewer = () => {
     };
     const fetchEntries = useCallback(async () => {
         if (!SelectedProject || !SelectedTab) return;
-
+    
         try {
             const entriesData = await getEntriesForTab(SelectedProject, SelectedTab, Email);
             const filteredEntries = entriesData.filter(entry => !entry.deleted); // Filter out deleted entries
+    
             const formattedEntries = filteredEntries.map((entry) => {
                 const formattedData = { ...entry.entry_data };
     
@@ -158,14 +159,26 @@ const DataViewer = () => {
                     }
                 });
     
-                return { ...entry, entry_data: formattedData };
+                return { 
+                    ...entry, 
+                    entry_data: formattedData, 
+                    entry_date: entry.entry_date ? new Date(entry.entry_date) : null
+                };
             });
+    
+            formattedEntries.sort((a, b) => {
+                if (!a.entry_date) return 1;
+                if (!b.entry_date) return -1;
+                return a.entry_date - b.entry_date;
+            });
+    
             setEntries(formattedEntries);
         } catch (err) {
             console.error('Error fetching entries:', err);
             setError('Failed to load entries');
         }
     }, [SelectedProject, SelectedTab, Email]);
+    
 
     useEffect(() => {
         let mounted = true;
@@ -198,6 +211,27 @@ const DataViewer = () => {
             mounted = false;
         };
     }, [SelectedProject, SelectedTab, fetchColumns, fetchEntries]);
+
+    const sortedEntries = React.useMemo(() => {
+        if (!sortConfig.key) return entries;
+    
+        return [...entries].sort((a, b) => {
+            const aValue = a.entry_data[sortConfig.key] || '';
+            const bValue = b.entry_data[sortConfig.key] || '';
+    
+            if (sortConfig.key === 'entry_date') {
+                return sortConfig.direction === 'asc' 
+                    ? new Date(aValue) - new Date(bValue) 
+                    : new Date(bValue) - new Date(aValue);
+            }
+    
+            if (sortConfig.direction === 'asc') {
+                return aValue.toString().localeCompare(bValue.toString());
+            }
+            return bValue.toString().localeCompare(aValue.toString());
+        });
+    }, [entries, sortConfig]);
+    
 
     // Existing sorting logic
     const handleSort = (columnName) => {
@@ -294,21 +328,7 @@ const DataViewer = () => {
             notify(Type.error, 'Failed to delete entry');
         }
     };
-
-    const sortedEntries = React.useMemo(() => {
-        if (!sortConfig.key) return entries;
-
-        return [...entries].sort((a, b) => {
-            const aValue = a[sortConfig.key] || '';
-            const bValue = b[sortConfig.key] || '';
-
-            if (sortConfig.direction === 'asc') {
-                return aValue.toString().localeCompare(bValue.toString());
-            }
-            return bValue.toString().localeCompare(aValue.toString());
-        });
-    }, [entries, sortConfig]);
-
+    
     const paginatedEntries = React.useMemo(() => {
         const startIndex = (currentPage - 1) * batchSize;
         return sortedEntries.slice(startIndex, startIndex + batchSize);

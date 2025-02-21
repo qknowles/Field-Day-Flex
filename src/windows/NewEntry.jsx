@@ -115,7 +115,7 @@ export default function NewEntry({ CloseNewEntry, existingEntry, onEntryUpdated 
     
         const formattedEntries = { ...userEntries };
     
-        // 🔹 Convert values to match the latest column data_type
+        
         columnsCollection.forEach((column) => {
             const { name, data_type } = column;
     
