@@ -400,16 +400,16 @@ const DataViewer = () => {
                                                 .map((column, index) => (
                                                     <th key={column.id} className="p-2 text-left border-b font-semibold cursor-pointer column-border">
                                                     <ResizableBox
-                                                        width={100}
+                                                        width={250}
                                                         height={30}
                                                         axis="x"
-                                                        minConstraints={[50, 30]}
+                                                        minConstraints={[Math.max(50, column.name[0].length * 10), 30]} // Adjust minConstraints based on content length
                                                         maxConstraints={[300, 30]}
                                                         className="resizable-box"
                                                     >
-                                                        <div className={`flex items-center ${column.type === 'identifier' ? 'min-w-[150px]' : ''} ${getColumnClass(column.name)}`}>
-                                                            {column.name}
-                                                            {sortConfig.key === column.name && (
+                                                        <div className={`flex items-center ${column.type === 'identifier' ? 'min-w-[150px]' : ''} ${getColumnClass(column.name[0])}`}>
+                                                            {column.name[0]}
+                                                            {sortConfig.key === column.name[0] && (
                                                                 <span className="ml-1">
                                                                     {sortConfig.direction === 'asc' ? '↑' : '↓'}
                                                                 </span>
