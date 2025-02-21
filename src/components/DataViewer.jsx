@@ -398,6 +398,9 @@ const DataViewer = forwardRef((props, ref) => {
     if (loading) return <div className="p-4 text-center">Loading...</div>;
     if (error) return <div className="p-4 text-center text-red-600">{error}</div>;
 
+    const filteredColumns = columns.filter((col) => !['actions', 'datetime'].includes(col.id));
+    const lastColumnIndex = filteredColumns.length - 1;
+
     return (
         <div className="flex-grow bg-white dark:bg-neutral-950">
             <div className="flex flex-col">
@@ -413,27 +416,30 @@ const DataViewer = forwardRef((props, ref) => {
                                 </th>
                                 {columns
                                     .filter((col) => !['actions', 'datetime'].includes(col.id))
-                                    .map((column, index) => (
-                                        <th key={column.id} className="p-2 text-left border-b font-semibold cursor-pointer column-border" onClick={() => handleSort(column.name[0])}>
-                                            <ResizableBox
-                                                width={Math.max(50, column.name[0].length * 10)}
-                                                height={30}
-                                                axis="x"
-                                                minConstraints={[Math.max(50, column.name[0].length * 10), 30]} // Adjust minConstraints based on content length
-                                                maxConstraints={[Math.max(300, column.name[0].length * 10), 30]}
-                                                className="resizable-box"
-                                            >
-                                                <div className={`flex items-center ${column.type === 'identifier' ? 'min-w-[150px]' : ''} ${getColumnClass(column.name[0])}`}>
-                                                    {column.name[0]}
-                                                    {sortConfig.key === column.name[0] && (
-                                                        <span className="ml-1">
-                                                            {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </ResizableBox>
-                                        </th>
-                                    ))}
+                                    .map((column, index) => {
+                                        const isLastColumn = index === lastColumnIndex;
+                                        return (
+                                            <th key={column.id} className="p-2 text-left border-b font-semibold cursor-pointer column-border" onClick={() => handleSort(column.name[0])}>
+                                                <ResizableBox
+                                                    width={isLastColumn ? 300 : Math.max(50, column.name[0].length * 10)}
+                                                    height={30}
+                                                    axis="x"
+                                                    minConstraints={[isLastColumn ? 300 : Math.max(50, column.name[0].length * 10), 30]} // Adjust minConstraints based on content length
+                                                    maxConstraints={[isLastColumn ? 300 : Math.max(300, column.name[0].length * 30), 30]}
+                                                    className={`resizable-box ${isLastColumn ? 'no-grabber' : ''}`} // Add custom class for last column
+                                                    >
+                                                    <div className={`flex items-center ${column.type === 'identifier' ? 'min-w-[150px]' : ''} ${getColumnClass(column.name[0])}`}>
+                                                        {column.name[0]}
+                                                        {sortConfig.key === column.name[0] && (
+                                                            <span className="ml-1">
+                                                                {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </ResizableBox>
+                                            </th>
+                                        );
+                                    })}
                             </tr>
                         </thead>
                         <tbody>
@@ -463,7 +469,7 @@ const DataViewer = forwardRef((props, ref) => {
                                     </td>
                                     {columns
                                         .filter((col) => !['actions', 'datetime'].includes(col.id))
-                                        .map((column) => (
+                                        .map((column, index) => (
                                             <td
                                                 key={`${entry.id}-${column.id}`}
                                                 className={`p-2 border-b text-left column-border ${column.type === 'identifier'
