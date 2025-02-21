@@ -873,3 +873,25 @@ export const saveColumnChanges = async (projectName, tabName, columns, columnsTo
         throw error;
     }
 };
+
+export const getIdDimension = async (email, projectName, tabName) => {
+    try {
+        const project = await getDocumentIdByEmailAndProjectName(email, projectName);
+        if (!project) {
+            throw new Error('Project ID not found for the selected project');
+        }
+
+        const docRef = doc(db, 'Projects', project, 'Tabs', tabName);
+        const docSnap = await getDoc(docRef);
+
+        if (!docSnap.exists()) {
+            throw new Error('Tab document not found');
+        }
+
+        return docSnap.data().identifier_dimension;
+        
+    } catch (error) {
+        console.error('Error retrieving id dimension:', error);
+        return [];
+    }
+};
