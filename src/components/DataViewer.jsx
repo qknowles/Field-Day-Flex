@@ -74,6 +74,9 @@ const DataViewer = () => {
             const orderObj = {};
             const namesObj = {};
             const typesObj = {};
+            sortedColumns.forEach((col) => {
+                typesObj[col.id] = col.data_type || 'text'; // Store latest column type
+            });
             const requiredObj = {};
             const identifierObj = {};
             const optionsObj = {};
@@ -142,7 +145,22 @@ const DataViewer = () => {
         try {
             const entriesData = await getEntriesForTab(SelectedProject, SelectedTab, Email);
             const filteredEntries = entriesData.filter(entry => !entry.deleted); // Filter out deleted entries
-            setEntries(filteredEntries);
+            const formattedEntries = filteredEntries.map((entry) => {
+                const formattedData = { ...entry.entry_data };
+    
+                Object.keys(formattedData).forEach(columnId => {
+                    const columnType = editedColumnTypes[columnId];
+    
+                    if (columnType === 'number') {
+                        formattedData[columnId] = Number(formattedData[columnId]) || 0;
+                    } else if (columnType === 'date') {
+                        formattedData[columnId] = new Date(formattedData[columnId]).toISOString();
+                    }
+                });
+    
+                return { ...entry, entry_data: formattedData };
+            });
+            setEntries(formattedEntries);
         } catch (err) {
             console.error('Error fetching entries:', err);
             setError('Failed to load entries');

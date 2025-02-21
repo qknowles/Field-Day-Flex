@@ -115,6 +115,46 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
         }
     };
     
+    const handleNewEntry = async (entryData) => {
+        try {
+            const projectId = await getDocumentIdByEmailAndProjectName(Email, SelectedProject);
+            if (!projectId) {
+                console.error(`No project found with name: ${SelectedProject}`);
+                return;
+            }
+    
+            const columnsRef = collection(db, 'Projects', projectId, 'Tabs', TabName, 'Columns');
+            const columnsSnapshot = await getDocs(columnsRef);
+            const updatedColumns = {};
+    
+            columnsSnapshot.forEach(doc => {
+                updatedColumns[doc.id] = doc.data().data_type; // 🔹 Fetch latest column types
+            });
+    
+            // 🔹 Format new entry data based on updated column type
+            const formattedEntry = {};
+            Object.keys(entryData).forEach(columnId => {
+                const columnType = updatedColumns[columnId];
+    
+                if (columnType === 'number') {
+                    formattedEntry[columnId] = Number(entryData[columnId]) || 0;
+                } else if (columnType === 'date') {
+                    formattedEntry[columnId] = new Date(entryData[columnId]).toISOString();
+                } else {
+                    formattedEntry[columnId] = entryData[columnId]; // Default to text
+                }
+            });
+    
+            const entryRef = collection(db, 'Projects', projectId, 'Tabs', TabName, 'Entries');
+            await addDoc(entryRef, { entry_data: formattedEntry });
+    
+            notify(Type.success, "New entry added successfully!");
+        } catch (error) {
+            console.error("Error adding new entry:", error);
+            notify(Type.error, "Failed to add entry");
+        }
+    };
+    
 
     const handleColumnNameChange = (columnId, newName) => {
         setEditedColumnNames((prev) => ({
@@ -208,6 +248,7 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
                         // 🔹 Handle column updates (order & name changes)
                         const oldName = columnIdMap[columnId].name;
                         const newName = editedColumnNames[columnId] || oldName;
+                        const newType = editedColumnTypes[columnId] || columnIdMap[columnId].data_type;
     
                         if (oldName !== newName) {
                             nameChanges[oldName] = newName; // Store for entry updates
@@ -217,6 +258,7 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
                         batch.update(columnRef, {
                             order: columnOrder[columnId], // Update order
                             name: newName, // Update name
+                            data_type: newType, //update type
                         });
     
                         updatesMade = true;

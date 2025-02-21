@@ -48,22 +48,27 @@ export default function NewEntry({ CloseNewEntry, existingEntry, onEntryUpdated 
     const loadCollection = async () => {
         const columns = await getColumnsCollection(projectName, tabName, email);
         setColumnsCollection(columns);
-
+    
         if (!existingEntry) {
             const defaultEntries = {};
             columns.forEach((column) => {
                 const { name, data_type } = column;
-                if (data_type === 'date') {
-                    defaultEntries[name] = formatDateTime(new Date());
+    
+                if (data_type === 'number') {
+                    defaultEntries[name] = 0; // Default number type
+                } else if (data_type === 'date') {
+                    defaultEntries[name] = formatDateTime(new Date()); // Default date
                 } else if (data_type === 'multiple choice') {
-                    defaultEntries[name] = 'Select';
+                    defaultEntries[name] = 'Select'; // Default dropdown
                 } else {
-                    defaultEntries[name] = '';
+                    defaultEntries[name] = ''; // Default text
                 }
             });
+    
             setUserEntries(defaultEntries);
         }
     };
+    
 
     const handleInputChange = (name, value) => {
         setUserEntries((prev) => ({
@@ -106,28 +111,47 @@ export default function NewEntry({ CloseNewEntry, existingEntry, onEntryUpdated 
     };
 
     const submitEntry = async () => {
-        if (validEntries()) {
+        if (!validEntries()) return;
+    
+        const formattedEntries = { ...userEntries };
+    
+        // 🔹 Convert values to match the latest column data_type
+        columnsCollection.forEach((column) => {
+            const { name, data_type } = column;
+    
+            if (data_type === 'number') {
+                formattedEntries[name] = Number(formattedEntries[name]) || 0; // Ensure number
+            } else if (data_type === 'date') {
+                formattedEntries[name] = new Date(formattedEntries[name]).toISOString(); // Ensure date format
+            }
+        });
+    
+        try {
             if (existingEntry) {
-                await updateEntry(projectName, tabName, email, existingEntry.id, userEntries);
+                await updateEntry(projectName, tabName, email, existingEntry.id, formattedEntries);
                 notify(Type.success, `Entry updated.`);
             } else {
-                await addEntry(projectName, tabName, email, userEntries);
+                await addEntry(projectName, tabName, email, formattedEntries);
                 notify(Type.success, `Entry submitted.`);
             }
+    
             CloseNewEntry();
             if (onEntryUpdated) {
                 onEntryUpdated();
             }
+        } catch (error) {
+            console.error("Error saving entry:", error);
+            notify(Type.error, "Failed to save entry.");
         }
     };
+    
 
     const renderDynamicInputs = () => {
-        // Ensure columns are sorted using the same `order` field as the table
         const sortedColumns = [...columnsCollection].sort((a, b) => a.order - b.order);
-
+    
         return sortedColumns.map((column, index) => {
             const { name, data_type, entry_options, required_field } = column;
-
+    
             if (data_type === 'multiple choice') {
                 return (
                     <DropdownSelector
@@ -140,14 +164,10 @@ export default function NewEntry({ CloseNewEntry, existingEntry, onEntryUpdated 
                     />
                 );
             }
-
-            const inputType =
-                data_type === 'number'
-                    ? 'number'
-                    : data_type === 'date'
-                      ? 'datetime-local'
-                      : 'text';
-
+    
+            const inputType = data_type === 'number' ? 'number' :
+                              data_type === 'date' ? 'datetime-local' : 'text';
+    
             return (
                 <InputLabel
                     key={index}
@@ -165,10 +185,7 @@ export default function NewEntry({ CloseNewEntry, existingEntry, onEntryUpdated 
                             }
                             onChange={(e) => {
                                 const value = e.target.value;
-                                handleInputChange(
-                                    name,
-                                    data_type === 'date' ? formatDateTime(value) : value,
-                                );
+                                handleInputChange(name, data_type === 'date' ? formatDateTime(value) : value);
                             }}
                         />
                     }
@@ -176,6 +193,7 @@ export default function NewEntry({ CloseNewEntry, existingEntry, onEntryUpdated 
             );
         });
     };
+    
 
     return (
         <WindowWrapper
