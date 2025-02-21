@@ -275,12 +275,12 @@ export const createTab = async (
     identifierDimension,
     unwantedCodes,
     utilizeUnwantedCodes,
-    columnNames = [],
-    columnDataTypes = [],
-    columnEntryOptions = [],
-    columnIdentifierDomains = [],
-    columnRequiredFields = [],
-    columnOrder = [],
+    columnName,
+    columnDataType,
+    columnEntryOptions,
+    columnIdentifierDomain,
+    columnRequiredField,
+    columnOrder,
 ) => {
     try {
         const projectRef = collection(db, 'Projects');
@@ -326,14 +326,14 @@ export const createTab = async (
         });
 
         const columnsRef = collection(tabRef, 'Columns');
-        for (let i = 0; i < columnNames.length; i++) {
+        if (columnName) {
             await addDoc(columnsRef, {
-                name: columnNames[i],
-                data_type: columnDataTypes[i],
-                entry_options: columnEntryOptions[i],
-                identifier_domain: columnIdentifierDomains[i],
-                required_field: columnRequiredFields[i],
-                order: columnOrder[i],
+                name: columnName,
+                data_type: columnDataType,
+                ...(columnEntryOptions.length > 0 && { entry_options: columnEntryOptions[i] }),
+                identifier_domain: columnIdentifierDomain,
+                required_field: columnRequiredField,
+                order: columnOrder,
             });
         }
 
@@ -351,7 +351,7 @@ export const addColumn = async (
     columnName,
     columnDataType,
     columnEntryOptions = [],
-    columnIdentifierDomain = null,
+    columnIdentifierDomain = false,
     columnRequiredField = false,
 ) => {
     try {
@@ -387,7 +387,7 @@ export const addColumn = async (
         await addDoc(columnsRef, {
             name: columnName,
             data_type: columnDataType,
-            entry_options: columnEntryOptions[0],
+            ...(columnEntryOptions.length > 0 && { entry_options: columnEntryOptions }),
             identifier_domain: columnIdentifierDomain,
             required_field: columnRequiredField,
             order: columnOrder,
@@ -871,5 +871,27 @@ export const saveColumnChanges = async (projectName, tabName, columns, columnsTo
     } catch (error) {
         console.error('Error saving column changes:', error);
         throw error;
+    }
+};
+
+export const getIdDimension = async (email, projectName, tabName) => {
+    try {
+        const project = await getDocumentIdByEmailAndProjectName(email, projectName);
+        if (!project) {
+            throw new Error('Project ID not found for the selected project');
+        }
+
+        const docRef = doc(db, 'Projects', project, 'Tabs', tabName);
+        const docSnap = await getDoc(docRef);
+
+        if (!docSnap.exists()) {
+            throw new Error('Tab document not found');
+        }
+
+        return docSnap.data().identifier_dimension;
+        
+    } catch (error) {
+        console.error('Error retrieving id dimension:', error);
+        return [];
     }
 };

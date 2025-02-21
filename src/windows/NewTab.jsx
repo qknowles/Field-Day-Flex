@@ -45,42 +45,54 @@ export default function NewTab({ CancelTab, OpenNewTab }) {
     }, [firstIdentifierDimension, secondIdentifierDimension]);
 
     const returnPossibleIdentifiers = (highestLetter, highestNumber, unwanted = []) => {
-        const identifiers = [];
-        const startingCharCode = 'A'.charCodeAt(0);
-        const endingCharCode = highestLetter.charCodeAt(0);
+        try {
+            const identifiers = [];
+            const startingCharCode = 'A'.charCodeAt(0);
+            const endingCharCode = highestLetter.charCodeAt(0);
 
-        for (let charCode = startingCharCode; charCode <= endingCharCode; charCode++) {
-            const letter = String.fromCharCode(charCode);
-            for (let num = 1; num <= highestNumber; num++) {
-                const identifier = `${letter}${num}`;
-                identifiers.push(identifier);
-            }
-        }
-
-        const recursiveGeneration = (pBaseIdentifiers, pAppendedIdentifiers) => {
-            const appendedIdentifiers = pAppendedIdentifiers.slice(highestNumber);
-            const newBaseIdentifiers = [];
-            if (appendedIdentifiers.length === 0) {
-                return newBaseIdentifiers;
-            }
-            for (let i = 0; i < pBaseIdentifiers.length; i++) {
-                for (let j = 0; j < appendedIdentifiers.length; j++) {
-                    const alreadyInString = appendedIdentifiers.slice(0, i).some(item => pBaseIdentifiers[i].includes(item.charAt(0)));                
-                    if (!alreadyInString) {
-                        newBaseIdentifiers.push(`${pBaseIdentifiers[i]}${appendedIdentifiers[j]}`);
-                    }
+            for (let charCode = startingCharCode; charCode <= endingCharCode; charCode++) {
+                const letter = String.fromCharCode(charCode);
+                for (let num = 1; num <= highestNumber; num++) {
+                    const identifier = `${letter}${num}`;
+                    identifiers.push(identifier);
                 }
             }
-            newBaseIdentifiers.push(...recursiveGeneration(newBaseIdentifiers, appendedIdentifiers));
 
-            return newBaseIdentifiers;
+            const recursiveGeneration = (pBaseIdentifiers, pAppendedIdentifiers, numEntries) => {
+                if (numEntries > 22000) {
+                    throw new Error('Max entries reached.');
+                }
+
+                const appendedIdentifiers = pAppendedIdentifiers.slice(highestNumber);
+                const newBaseIdentifiers = [];
+                if (appendedIdentifiers.length === 0) {
+                    return newBaseIdentifiers;
+                }
+
+                for (let i = 0; i < pBaseIdentifiers.length; i++) {
+                    for (let j = 0; j < appendedIdentifiers.length; j++) {
+                        const alreadyInString = appendedIdentifiers.slice(0, i).some(item => pBaseIdentifiers[i].includes(item.charAt(0)));
+                        if (!alreadyInString) {
+                            newBaseIdentifiers.push(`${pBaseIdentifiers[i]}${appendedIdentifiers[j]}`);
+                        }
+                    }
+                }
+
+                newBaseIdentifiers.push(...recursiveGeneration(newBaseIdentifiers, appendedIdentifiers, newBaseIdentifiers.length + numEntries));
+
+                return newBaseIdentifiers;
+            }
+
+            identifiers.push(...recursiveGeneration(identifiers, identifiers, identifiers.length));
+
+            const filteredIdentifiers = identifiers.filter(identifier => !unwanted.some(item => identifier.includes(item)));
+
+            return filteredIdentifiers;
+
+        } catch (error) {
+            notify(Type.error, 'Too many possible identifiers. Try a different Letter/Number combination.');
+            return [];
         }
-
-        identifiers.push(...recursiveGeneration(identifiers, identifiers));
-
-        const filteredIdentifiers = identifiers.filter(identifier => !unwanted.some(item => identifier.includes(item)));
-
-        return filteredIdentifiers;
     };
 
     const continueTab = async () => {
@@ -109,6 +121,10 @@ export default function NewTab({ CancelTab, OpenNewTab }) {
         }
 
         const cleanedTabName = tabName.trim();
+        if (!tabName) {
+            notify(Type.error, 'Tab name cannot be empty.');
+            return;
+        }
 
         let finalPossibleIdentifiers = [];
         if (generateIdentifiers) {
@@ -117,6 +133,9 @@ export default function NewTab({ CancelTab, OpenNewTab }) {
                 secondIdentifierDimension,
                 unwantedCodesWithoutDuplicates,
             );
+            if (finalPossibleIdentifiers.length === 0) {
+                return;
+            }
         }
 
         setColumnNames(filteredColumnNames);
@@ -124,11 +143,21 @@ export default function NewTab({ CancelTab, OpenNewTab }) {
         setPossibleIdentifiers(finalPossibleIdentifiers);
         setUnwantedCodes(unwantedCodesWithoutDuplicates);
 
-        if (filteredColumnNames.length > 0) {
-            setShowColumnOptions(true);
-        } else {
-            const tabAlreadyExists = await tabExists(Email, SelectedProject, tabName);
+        const tabAlreadyExists = await tabExists(Email, SelectedProject, tabName);
             if (!tabAlreadyExists) {
+                let columnName = '';
+                let columnDataType = '';
+                let entryOptions = [];
+                let columnIdentifierDomain = '';
+                let columnRequiredField = '';
+                let columnOrder = '';
+                if (generateIdentifiers) {
+                    columnName = 'Entry ID';
+                    columnDataType = 'auto_id';
+                    columnIdentifierDomain = true;
+                    columnRequiredField = true;
+                    columnOrder = 0;
+                }
                 const tabCreated = await createTab(
                     Email,
                     SelectedProject,
@@ -138,18 +167,28 @@ export default function NewTab({ CancelTab, OpenNewTab }) {
                     identifierDimension,
                     unwantedCodesWithoutDuplicates,
                     utilizeUnwantedCodes,
+                    columnName,
+                    columnDataType,
+                    entryOptions,
+                    columnIdentifierDomain,
+                    columnRequiredField,
+                    columnOrder,
                 );
                 if (tabCreated) {
                     notify(Type.success, `Tab created.`);
-                    OpenNewTab(tabName);
-                    return;
                 } else {
                     notify(Type.error, 'Error creating new tab.');
-                    return;
                 }
             } else {
                 notify(Type.error, 'Tab already exists.');
+                return;
             }
+
+        if (filteredColumnNames.length > 0) {
+            setShowColumnOptions(true);
+        } else {
+            OpenNewTab(tabName);
+            return;
         }
     };
 
