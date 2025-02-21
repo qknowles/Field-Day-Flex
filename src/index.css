@@ -91,6 +91,10 @@
     }
     */
 
+    .no-grabber .react-resizable-handle {
+        display: none;
+    }
+    
     .resizable-box .react-resizable-handle::before {
         content: '';
         display: block;
