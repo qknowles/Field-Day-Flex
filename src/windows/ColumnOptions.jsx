@@ -63,7 +63,7 @@ export default function ColumnOptions({
             )
         );
     }, [tempEntryOptions, columnIndex]);
-    
+
     const goBackward = useCallback(() => {
         if (validInputs()) {
             storeEntryOptions();
@@ -85,48 +85,25 @@ export default function ColumnOptions({
             );
 
             const tabAlreadyExists = await tabExists(Email, SelectedProject, TabName);
-            if (!tabAlreadyExists) {
-                const tabCreated = await createTab(
-                    Email,
-                    SelectedProject,
-                    TabName,
-                    GenerateIdentifiers,
-                    PossibleIdentifiers,
-                    IdentifierDimension,
-                    UnwantedCodes,
-                    UtilizeUnwantedCodes,
-                    ColumnNames,
-                    dataType,
-                    finalEntryOptions,
-                    identifierDomain,
-                    requiredField,
-                    order,
-                );
-                if (tabCreated) {
-                    notify(Type.success, 'Tab created.');
-                    OpenNewTab(TabName);
-                } else {
-                    notify(Type.error, 'Error creating subject.');
-                }
-                // This just identifies if ColumnOptions is being used to create a new tab vs just adding a column. See null values in TablePage.
-            } else if (GenerateIdentifiers === null) {
-                const columnAdded = await addColumn(
-                    Email,
-                    SelectedProject,
-                    TabName,
-                    ColumnNames,
-                    dataType,
-                    finalEntryOptions,
-                    identifierDomain,
-                    requiredField,
-                );
-                if (columnAdded) {
-                    notify(Type.success, 'update tab');
-                    OpenNewTab();
-                } else {
-                    notify(Type.error, 'Error creating new column.');
+            if (tabAlreadyExists) {
+                for (let i = 0; i < ColumnNames.length; i++) {
+                    const columnAdded = await addColumn(
+                        Email,
+                        SelectedProject,
+                        TabName,
+                        ColumnNames[i],
+                        dataType[i],
+                        finalEntryOptions[i],
+                        identifierDomain[i],
+                        requiredField[i],
+                    );
+                    if (!columnAdded) {
+                        notify(Type.error, 'Error adding columns.');
+                        return;
+                    }
                 }
             }
+            OpenNewTab(TabName);
         }
     }, [
         validInputs,
