@@ -356,25 +356,19 @@ const DataViewer = forwardRef((props, ref) => {
             fetchColumns();
         };
         
-    const onDragEnd = (result) => {
-        if (!result.destination) return;
-    
-        const reorderedColumns = Array.from(columns);
-        const [removed] = reorderedColumns.splice(result.source.index, 1);
-        reorderedColumns.splice(result.destination.index, 0, removed);
-    
-        setColumns(reorderedColumns);
-    };
-    
     const sortedEntries = React.useMemo(() => {
         if (!sortConfig.key) return entries;
-
-        window.addEventListener("refreshColumns", refreshColumnsListener);
-
-        return () => {
-            window.removeEventListener("refreshColumns", refreshColumnsListener);
-        };
-    }, []);
+    
+        return [...entries].sort((a, b) => {
+            const aValue = a.entry_data?.[sortConfig.key] || '';
+            const bValue = b.entry_data?.[sortConfig.key] || '';
+    
+            if (sortConfig.direction === 'asc') {
+                return aValue.toString().localeCompare(bValue.toString());
+            }
+            return bValue.toString().localeCompare(aValue.toString());
+        });
+    }, [entries, sortConfig]);
 
     useEffect(() => {
         const checkPermissions = async () => {
@@ -408,93 +402,82 @@ const DataViewer = forwardRef((props, ref) => {
         <div className="flex-grow bg-white dark:bg-neutral-950">
             <div className="flex flex-col">
                 <div className="overflow-x-auto">
-                    <DragDropContext onDragEnd={onDragEnd}>
-                        <Droppable droppableId="columns" direction="horizontal">
-                            {(provided) => (
-                                <table
-                                    className="w-full border-collapse"
-                                    {...provided.droppableProps}
-                                    ref={provided.innerRef}
-                                >
-                                    <thead>
-                                        <tr className="bg-neutral-100 dark:bg-neutral-800">
-                                            <th className="p-2 text-left border-b font-semibold w-32 column-border">
-                                                Actions
-                                            </th>
-                                            <th className="dateTimeColumn p-2 text-left border-b font-semibold column-border">
-                                                Date & Time
-                                            </th>
-                                            {columns
-                                                .filter((col) => !['actions', 'datetime'].includes(col.id))
-                                                .map((column, index) => (
-                                                    <th key={column.id} className="p-2 text-left border-b font-semibold cursor-pointer column-border">
-                                                    <ResizableBox
-                                                        width={250}
-                                                        height={30}
-                                                        axis="x"
-                                                        minConstraints={[Math.max(50, column.name[0].length * 10), 30]} // Adjust minConstraints based on content length
-                                                        maxConstraints={[300, 30]}
-                                                        className="resizable-box"
-                                                    >
-                                                        <div className={`flex items-center ${column.type === 'identifier' ? 'min-w-[150px]' : ''} ${getColumnClass(column.name[0])}`}>
-                                                            {column.name[0]}
-                                                            {sortConfig.key === column.name[0] && (
-                                                                <span className="ml-1">
-                                                                    {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </ResizableBox>
-                                                </th>
-                                                ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {paginatedEntries.map((entry) => (
-                                            <tr
-                                                key={entry.id}
-                                                className="hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                    <table className="w-full border-collapse">
+                        <thead>
+                            <tr className="bg-neutral-100 dark:bg-neutral-800">
+                                <th className="p-2 text-left border-b font-semibold w-32 column-border">
+                                    Actions
+                                </th>
+                                <th className="dateTimeColumn p-2 text-left border-b font-semibold column-border">
+                                    Date & Time
+                                </th>
+                                {columns
+                                    .filter((col) => !['actions', 'datetime'].includes(col.id))
+                                    .map((column, index) => (
+                                        <th key={column.id} className="p-2 text-left border-b font-semibold cursor-pointer column-border" onClick={() => handleSort(column.name[0])}>
+                                            <ResizableBox
+                                                width={Math.max(50, column.name[0].length * 10)}
+                                                height={30}
+                                                axis="x"
+                                                minConstraints={[Math.max(50, column.name[0].length * 10), 30]} // Adjust minConstraints based on content length
+                                                maxConstraints={[Math.max(300, column.name[0].length * 10), 30]}
+                                                className="resizable-box"
                                             >
-                                                <td className="p-2 border-b w-32 column-border">
-                                                    <div className="flex space-x-2">
-                                                        <Button
-                                                            onClick={() => handleEdit(entry.id)}
-                                                            icon={AiFillEdit}
-                                                            flexible={true}
-                                                            className={'flex items-center justify-center'}
-                                                        />
-                                                        <Button
-                                                            onClick={() => handleDelete(entry.id)}
-                                                            icon={AiFillDelete}
-                                                            flexible={true}
-                                                            className={'flex items-center justify-center'}
-                                                        />
-                                                    </div>
-                                                </td>
-                                                <td className="dateTimeColumn text-left p-2 border-b column-border">
-                                                    {entry.entry_data?.['Date & Time'] || 'N/A'}
-                                                </td>
-                                                {columns
-                                                    .filter((col) => !['actions', 'datetime'].includes(col.id))
-                                                    .map((column) => (
-                                                        <td
-                                                            key={`${entry.id}-${column.id}`}
-                                                            className={`p-2 border-b text-left column-border ${column.type === 'identifier'
-                                                                ? 'min-w-[150px]'
-                                                                : ''
-                                                                } ${getColumnClass(column.name)}`}
-                                                        >
-                                                            {entry.entry_data?.[column.name] || 'N/A'}
-                                                        </td>
-                                                    ))}
-                                            </tr>
+                                                <div className={`flex items-center ${column.type === 'identifier' ? 'min-w-[150px]' : ''} ${getColumnClass(column.name[0])}`}>
+                                                    {column.name[0]}
+                                                    {sortConfig.key === column.name[0] && (
+                                                        <span className="ml-1">
+                                                            {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </ResizableBox>
+                                        </th>
+                                    ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {paginatedEntries.map((entry) => (
+                                <tr
+                                    key={entry.id}
+                                    className="hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                                >
+                                    <td className="p-2 border-b w-32 column-border">
+                                        <div className="flex space-x-2">
+                                            <Button
+                                                onClick={() => handleEdit(entry.id)}
+                                                icon={AiFillEdit}
+                                                flexible={true}
+                                                className={'flex items-center justify-center'}
+                                            />
+                                            <Button
+                                                onClick={() => handleDelete(entry.id)}
+                                                icon={AiFillDelete}
+                                                flexible={true}
+                                                className={'flex items-center justify-center'}
+                                            />
+                                        </div>
+                                    </td>
+                                    <td className="dateTimeColumn text-left p-2 border-b column-border">
+                                        {entry.entry_data?.['Date & Time'] || 'N/A'}
+                                    </td>
+                                    {columns
+                                        .filter((col) => !['actions', 'datetime'].includes(col.id))
+                                        .map((column) => (
+                                            <td
+                                                key={`${entry.id}-${column.id}`}
+                                                className={`p-2 border-b text-left column-border ${column.type === 'identifier'
+                                                    ? 'min-w-[150px]'
+                                                    : ''
+                                                    } ${getColumnClass(column.name)}`}
+                                            >
+                                                {entry.entry_data?.[column.name] || 'N/A'}
+                                            </td>
                                         ))}
-                                    </tbody>
-                                    {provided.placeholder}
-                                </table>
-                            )}
-                        </Droppable>
-                    </DragDropContext>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
                 {showEditWindow && (
                     <WindowWrapper
