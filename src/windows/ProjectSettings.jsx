@@ -1,3 +1,9 @@
+/*
+    TODO:
+    1. Project name is not able to be changed due to tieing to the useState in the component
+*/
+
+
 import React, { useEffect, useState } from 'react';
 import { useAtom, useAtomValue } from 'jotai';
 import { currentProjectName, currentUserEmail } from '../utils/jotai.js';
@@ -55,9 +61,7 @@ export default function ProjectSettings({ CloseProjectSettings }) {
                 setLoading(false);
                 return;
             }
-
             setMembers(membersData);
-
             // Determine if the current user has admin/owner privileges
             const userRole = getUserRole(membersData, userEmail);
             setIsAuthorized(userRole === 'Owner' || userRole === 'Admin');
@@ -168,7 +172,7 @@ export default function ProjectSettings({ CloseProjectSettings }) {
             rightButtonText="Save Project"
         >
             <div className="flex flex-col space-y-4 p-5 text-neutral-900 dark:text-white">
-                {/* Project Name */}
+                {/* Project Name Input */}
                 <InputLabel
                     label="Project Name"
                     layout="horizontal-single"
@@ -184,7 +188,6 @@ export default function ProjectSettings({ CloseProjectSettings }) {
 
                 {/* Members List */}
                 <div>
-                    <h3 className="font-semibold">Members</h3>
                     <div className="space-y-4">
                         {members && Object.keys(members).length > 0 ? (
                             Object.keys(members).map((role) => (
@@ -193,10 +196,13 @@ export default function ProjectSettings({ CloseProjectSettings }) {
                                     <div className="space-y-2">
                                         {Array.isArray(members[role]) && members[role].map((email) => (
                                             <div key={email} className="flex items-center space-x-4 p-2">
-                                                <Button className="text-red-500 font-bold" onClick={() => handleRemoveMember(email, role)}>
+                                                <button className="text-red-500 font-bold" onClick={() => handleRemoveMember(email, role)}>
                                                     <AiFillDelete />
-                                                </Button>
+                                                </button>
                                                 <span className="flex-grow">{email}</span>
+                                                <span className="px-3 py-1 bg-neutral-200 dark:bg-neutral-700 rounded">
+                                    {role.charAt(0).toUpperCase() + role.slice(1, -1)}
+                                </span>
                                             </div>
                                         ))}
                                     </div>
@@ -207,6 +213,56 @@ export default function ProjectSettings({ CloseProjectSettings }) {
                         )}
                     </div>
                 </div>
+
+                {/* Add new member section - only visible to admins/owners */}
+                {<div>
+                    <h3 className="font-semibold">Add a new Member:</h3>
+                    <InputLabel
+                        label="Member Email"
+                        layout="horizontal-single"
+                        input={
+                            <input
+                                type="text"
+                                className="border rounded px-2 py-1 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
+                                value={newMemberEmail}
+                                onChange={(e) => setNewMemberEmail(e.target.value)}
+                            />
+                        }
+                    />
+                    <br />
+                    <InputLabel
+                        label="Member Role"
+                        layout="horizontal-single"
+                        input={
+                            <select
+                                className="border rounded px-2 py-1 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
+                                value={newMemberSelectedRole}
+                                onChange={(e) => setNewMemberSelectedRole(e.target.value)}
+                            >
+                                <option value="Select Role">Select Role</option>
+                                <option value="Contributor">Contributor</option>
+                                <option value="Admin">Admin</option>
+                                <option value="Owner">Owner</option>
+                            </select>
+                        }
+                    />
+                    <br />
+                    <div className="flex justify-end mt-4">
+                        <Button text="Add member" onClick={handleAddMember} />
+                    </div>
+                </div>
+                }
+
+                {/* Delete Project Button (Only shown to owners) */}
+
+                <div className="flex justify-end mt-4">
+                    <Button
+                        text="Delete Project"
+                        onClick={() => setShowDeleteConfirm(true)}
+                        className="bg-red-600 hover:bg-red-700"
+                    />
+                </div>
+
             </div>
         </WindowWrapper>
     );
