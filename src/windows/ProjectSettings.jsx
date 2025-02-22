@@ -181,7 +181,7 @@ export default function ProjectSettings({ CloseProjectSettings }) {
             rightButtonText="Save Project"
         >
             <div className="flex flex-col space-y-4 p-5 text-neutral-900 dark:text-white">
-                {/* Project Name Input */}
+                {/* Project Name */}
                 <InputLabel
                     label="Project Name"
                     layout="horizontal-single"
