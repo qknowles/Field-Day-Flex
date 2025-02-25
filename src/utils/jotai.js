@@ -1,5 +1,6 @@
 import { atomWithStorage } from 'jotai/utils';
 import { RESET } from 'jotai/utils';
+import { atom } from 'jotai';
 
 export const currentUserEmail = atomWithStorage('currentUserEmail', false);
 
@@ -14,6 +15,8 @@ export const currentProjectName = atomWithStorage('currentProjectName', '');
 export const allProjectNames = atomWithStorage('allProjectNames', []);
 
 export const currentBatchSize = atomWithStorage('currentBatchSize', 15);
+
+export const refreshColumnsAtom = atom(0);
 
 export const clearLocalStorage = ({
     setUserEmail,

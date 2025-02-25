@@ -1,9 +1,12 @@
-import { useEffect } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import classNames from 'classnames';
-import { SearchIcon } from '../assets/icons';
 import InputLabel from './InputLabel';
+import Button from './Button';
 import React from 'react';
+import IdentificationGenerator from '../utils/IdentificationGenerator'
+import { getIdDimension } from '../utils/firestore';
+import { currentUserEmail, currentProjectName, currentTableName } from '../utils/jotai.js';
+import { useAtomValue } from 'jotai';
 
 export const DropdownFlex = ({ options, setOptions, label }) => {
     const [editingIndex, setEditingIndex] = useState(null);
@@ -163,5 +166,151 @@ export const RadioButtons = ({ layout, label, options, selectedOption, setSelect
                 </div>
             }
         />
+    );
+};
+
+export const IdentificationGenerator_UI = ({ label, handleInputChange }) => {
+    const [id, setId] = useState('');
+    const [idMaxLetter, setIdMaxLetter] = useState('');
+    const [idMaxNumber, setIdMaxNumber] = useState('');
+    const [letterArray, setLetterArray] = useState([]);
+    const [numberArray, setNumberArray] = useState([]);
+    const [buttonSwitch, setButtonSwitch] = useState(false);
+
+    const email = useAtomValue(currentUserEmail);
+    const project = useAtomValue(currentProjectName);
+    const tab = useAtomValue(currentTableName);
+
+    const generatedId = IdentificationGenerator(id);
+
+    useEffect(() => {
+        const fetchIdDimension = async () => {
+            const idDimension = await getIdDimension(email, project, tab);
+            if (idDimension && idDimension.length > 0) {
+                setIdMaxLetter(idDimension[0]);
+                setIdMaxNumber(idDimension[1]);
+            }
+        };
+
+        fetchIdDimension();
+    }, [email, project, tab]);
+
+    useEffect(() => {
+        if (idMaxLetter) {
+            setLetterArray(() => {
+                const temp = [];
+                for (let i = 'A'.charCodeAt(0); i <= idMaxLetter.charCodeAt(0); i++) {
+                    temp.push(String.fromCharCode(i));
+                }
+                return temp;
+            });
+        }
+
+        if (idMaxNumber) {
+            setNumberArray(() => {
+                const temp = [];
+                for (let i = 1; i <= idMaxNumber; i++) {
+                    temp.push(i.toString());
+                }
+                return temp;
+            });
+        }
+    }, [idMaxLetter, idMaxNumber]);
+
+    return (
+        <div className="flex flex-col space-y-2 items-center justify-center">
+            <div className="flex space-x-2 items-center justify-center">
+                {letterArray.filter((letter) => !id.includes(letter)).length > 0 ? (
+                    letterArray
+                        .filter((letter) => !id.includes(letter))
+                        .map((letter, index) => (
+                            <Button
+                                key={index}
+                                flexible={false}
+                                text={letter}
+                                onClick={() => {
+                                    setId(id + letter);
+                                    setButtonSwitch(!buttonSwitch);
+                                    handleInputChange('Entry ID', id + letter);
+                                }}
+                                disabled={buttonSwitch}
+                            />
+                        ))
+                ) : (
+                    <Button
+                        key="placeholder"
+                        flexible={false}
+                        text="-"
+                        disabled={true}
+                    />
+                )}
+            </div>
+
+
+            <div className="flex space-x-2 items-center justify-center">
+                {numberArray.map((number, index) => (
+                    <Button
+                        key={index}
+                        flexible={false}
+                        text={number}
+                        onClick={() => {
+                            setId(id + number.toString());
+                            setButtonSwitch(!buttonSwitch);
+                            handleInputChange('Entry ID', id + number.toString());
+                        }}
+                        disabled={!buttonSwitch}
+                    />
+                ))}
+            </div>
+
+            <InputLabel
+                label={label + ' entry id'}
+                layout={'horizontal-single'}
+                input={
+                    <input
+                        type="text"
+                        value={id}
+                        onChange={(e) => {
+                            let value = e.target.value;
+
+                            if (value === '' || value.length - id.length < -1 ) {
+                                setId('');
+                                setButtonSwitch(false);
+                                handleInputChange('Entry ID', '');
+                                return;
+                            }
+
+                            if (value.length - id.length < 2) {
+                                if (!buttonSwitch) {
+                                    value = value.toUpperCase();
+                                    if (letterArray.includes(value.charAt(value.length - 1))) {
+                                        if (!value.slice(0, value.length - 1).includes(value.charAt(value.length - 1))) {
+                                            setId(value);
+                                            setButtonSwitch(!buttonSwitch);
+                                            handleInputChange('Entry ID', value);
+                                        }
+                                    }
+                                } else {
+                                    if (numberArray.includes(value.charAt(value.length - 1))) {
+                                        setId(value);
+                                        setButtonSwitch(!buttonSwitch);
+                                        handleInputChange('Entry ID', value);
+                                    }
+                                }
+                            }
+                        }}
+                    />
+                }
+            />
+
+            <Button
+                flexible={false}
+                text="Generate id"
+                onClick={() => {
+                    setId(generatedId);
+                    handleInputChange('Entry ID', generatedId);
+                }}
+            />
+        </div>
     );
 };

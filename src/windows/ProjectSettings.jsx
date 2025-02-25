@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { currentProjectName } from '../utils/jotai';
 import WindowWrapper from '../wrappers/WindowWrapper.jsx';
 import InputLabel from '../components/InputLabel.jsx';
 import { DropdownSelector } from '../components/FormFields.jsx';
@@ -8,14 +7,13 @@ import {
     getProjectFields,
     updateDocInCollection,
     addMemberToProject,
-    getDocumentIdByProjectName,
+    getDocumentIdByEmailAndProjectName,
+    deleteProjectWithDocId,
 } from '../utils/firestore.js';
 import Button from '../components/Button.jsx';
 import { notify, Type } from '../components/Notifier.jsx';
-import { db } from '../utils/firebase';
-import { doc, collection, getDocs, writeBatch, deleteDoc } from 'firebase/firestore';
 import { useAtomValue, useAtom } from 'jotai';
-import { currentUserEmail } from '../utils/jotai.js';
+import { currentUserEmail, currentProjectName, allProjectNames } from '../utils/jotai.js';
 
 export default function ProjectSettings({ CloseProjectSettings }) {
     // State definitions
@@ -30,16 +28,17 @@ export default function ProjectSettings({ CloseProjectSettings }) {
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [projectName, setProjectName] = useAtom(currentProjectName);
     const [isInitialLoad, setIsInitialLoad] = useState(true);
+    const [projectNames, setProjectNames] = useAtom(allProjectNames);
     const userEmail = useAtomValue(currentUserEmail);
 
     // Fetch document ID when project name is available
     useEffect(() => {
         let isMounted = true;
         console.log('fetching doc ID for project:', projectName);
-        
+
         const fetchDocId = async () => {
             try {
-                const docId = await getDocumentIdByProjectName(projectName);
+                const docId = await getDocumentIdByEmailAndProjectName(userEmail, projectName);
                 console.log('got doc ID:', docId);
                 if (docId && isMounted) {
                     setDocumentId(docId);
@@ -74,7 +73,7 @@ export default function ProjectSettings({ CloseProjectSettings }) {
         try {
             setLoading(true);
             console.log('Fetching project data for:', projectName);
-            
+
             const membersData = await getProjectFields(projectName, [
                 'contributors',
                 'admins',
@@ -204,7 +203,7 @@ export default function ProjectSettings({ CloseProjectSettings }) {
                 newMemberEmail,
             );
             await fetchProjectData();
-            
+
             // Reset fields only on success
             setNewMemberEmail('');
             setNewMemberSelectedRole('Select Role');
@@ -225,73 +224,31 @@ export default function ProjectSettings({ CloseProjectSettings }) {
         }
     }
 
-   
+
     async function deleteProject() {
         if (!isOwner) {
             notify(Type.error, 'Only project owners can delete the project');
             return;
         }
-    
+
         if (!documentId) {
             notify(Type.error, 'Project not found');
             return;
         }
-    
+
         try {
             setLoading(true);
-            const projectRef = doc(db, 'Projects', documentId);
-            
-            // Get all tabs
-            const tabsRef = collection(projectRef, 'Tabs');
-            const tabsSnapshot = await getDocs(tabsRef);
-            
-            // Batch setup
-            let currentBatch = writeBatch(db);
-            let operationCount = 0;
-            const MAX_OPERATIONS = 400;
-    
-            const commitBatchIfNeeded = async () => {
-                if (operationCount >= MAX_OPERATIONS) {
-                    await currentBatch.commit();
-                    currentBatch = writeBatch(db);
-                    operationCount = 0;
-                }
-            };
-    
-            // Delete all tabs and their contents
-            for (const tabDoc of tabsSnapshot.docs) {
-                const columnsRef = collection(tabDoc.ref, 'Columns');
-                const columnsSnapshot = await getDocs(columnsRef);
-                for (const columnDoc of columnsSnapshot.docs) {
-                    currentBatch.delete(columnDoc.ref);
-                    operationCount++;
-                    await commitBatchIfNeeded();
-                }
-    
-                const entriesRef = collection(tabDoc.ref, 'Entries');
-                const entriesSnapshot = await getDocs(entriesRef);
-                for (const entryDoc of entriesSnapshot.docs) {
-                    currentBatch.delete(entryDoc.ref);
-                    operationCount++;
-                    await commitBatchIfNeeded();
-                }
-    
-                currentBatch.delete(tabDoc.ref);
-                operationCount++;
-                await commitBatchIfNeeded();
+
+            const deleted = await deleteProjectWithDocId(documentId);
+
+            if (deleted) {
+                notify(Type.success, 'Project deleted successfully');
+                const tempProjectNames = (projectNames.filter((name) => name !== projectName));
+                setProjectNames(tempProjectNames);
+                setProjectName(tempProjectNames[0] || '');
+                CloseProjectSettings();
             }
-    
-            // Delete the project document
-            currentBatch.delete(projectRef);
-            await currentBatch.commit(); // Commit the final batch
-    
-            notify(Type.success, 'Project deleted successfully');
-            CloseProjectSettings();
-    
-            // Update state instead of reloading
-            setProjectName(null); // Reset current project
-            // Add any additional state updates here to refresh the UI
-    
+
         } catch (error) {
             console.error('Error deleting project:', error);
             notify(Type.error, 'Failed to delete project: ' + error.message);
@@ -330,7 +287,7 @@ export default function ProjectSettings({ CloseProjectSettings }) {
         if (!members || members.length === 0) {
             return <div>No members found</div>;
         }
-        
+
         return members.map((member, index) => (
             <div key={index} className="flex items-center space-x-4 p-2">
                 {canEdit && (
@@ -442,8 +399,8 @@ export default function ProjectSettings({ CloseProjectSettings }) {
                 {/* Delete Project Button (Only shown to owners) */}
                 {isOwner && (
                     <div className="flex justify-end mt-4">
-                        <Button 
-                            text="Delete Project" 
+                        <Button
+                            text="Delete Project"
                             onClick={() => setShowDeleteConfirm(true)}
                             className="bg-red-600 hover:bg-red-700"
                         />
