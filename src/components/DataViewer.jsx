@@ -74,6 +74,9 @@ const DataViewer = () => {
             const orderObj = {};
             const namesObj = {};
             const typesObj = {};
+            sortedColumns.forEach((col) => {
+                typesObj[col.id] = col.data_type || 'text'; // Store latest column type
+            });
             const requiredObj = {};
             const identifierObj = {};
             const optionsObj = {};
@@ -138,16 +141,44 @@ const DataViewer = () => {
     };
     const fetchEntries = useCallback(async () => {
         if (!SelectedProject || !SelectedTab) return;
-
+    
         try {
             const entriesData = await getEntriesForTab(SelectedProject, SelectedTab, Email);
             const filteredEntries = entriesData.filter(entry => !entry.deleted); // Filter out deleted entries
-            setEntries(filteredEntries);
+    
+            const formattedEntries = filteredEntries.map((entry) => {
+                const formattedData = { ...entry.entry_data };
+    
+                Object.keys(formattedData).forEach(columnId => {
+                    const columnType = editedColumnTypes[columnId];
+    
+                    if (columnType === 'number') {
+                        formattedData[columnId] = Number(formattedData[columnId]) || 0;
+                    } else if (columnType === 'date') {
+                        formattedData[columnId] = new Date(formattedData[columnId]).toISOString();
+                    }
+                });
+    
+                return { 
+                    ...entry, 
+                    entry_data: formattedData, 
+                    entry_date: entry.entry_date ? new Date(entry.entry_date) : null
+                };
+            });
+    
+            formattedEntries.sort((a, b) => {
+                if (!a.entry_date) return 1;
+                if (!b.entry_date) return -1;
+                return a.entry_date - b.entry_date;
+            });
+    
+            setEntries(formattedEntries);
         } catch (err) {
             console.error('Error fetching entries:', err);
             setError('Failed to load entries');
         }
     }, [SelectedProject, SelectedTab, Email]);
+    
 
     useEffect(() => {
         let mounted = true;
@@ -180,6 +211,27 @@ const DataViewer = () => {
             mounted = false;
         };
     }, [SelectedProject, SelectedTab, fetchColumns, fetchEntries]);
+
+    const sortedEntries = React.useMemo(() => {
+        if (!sortConfig.key) return entries;
+    
+        return [...entries].sort((a, b) => {
+            const aValue = a.entry_data[sortConfig.key] || '';
+            const bValue = b.entry_data[sortConfig.key] || '';
+    
+            if (sortConfig.key === 'entry_date') {
+                return sortConfig.direction === 'asc' 
+                    ? new Date(aValue) - new Date(bValue) 
+                    : new Date(bValue) - new Date(aValue);
+            }
+    
+            if (sortConfig.direction === 'asc') {
+                return aValue.toString().localeCompare(bValue.toString());
+            }
+            return bValue.toString().localeCompare(aValue.toString());
+        });
+    }, [entries, sortConfig]);
+    
 
     // Existing sorting logic
     const handleSort = (columnName) => {
@@ -276,25 +328,50 @@ const DataViewer = () => {
             notify(Type.error, 'Failed to delete entry');
         }
     };
-
-    const sortedEntries = React.useMemo(() => {
-        if (!sortConfig.key) return entries;
-
-        return [...entries].sort((a, b) => {
-            const aValue = a[sortConfig.key] || '';
-            const bValue = b[sortConfig.key] || '';
-
-            if (sortConfig.direction === 'asc') {
-                return aValue.toString().localeCompare(bValue.toString());
-            }
-            return bValue.toString().localeCompare(aValue.toString());
-        });
-    }, [entries, sortConfig]);
-
+    
     const paginatedEntries = React.useMemo(() => {
         const startIndex = (currentPage - 1) * batchSize;
         return sortedEntries.slice(startIndex, startIndex + batchSize);
     }, [sortedEntries, currentPage, batchSize]);
+
+    const DataViewer = ({ columnOrder }) => {
+
+        const [columns, setColumns] = useState([]);
+    
+        useEffect(() => {
+            if (columns.length > 0) {
+                setColumns([...columns].sort((a, b) => a.order - b.order));
+            }
+        }, [columns]);
+        
+        
+    
+        return (
+            <table>
+                <thead>
+                    <tr>
+                        <th>Actions</th>
+                        <th>Date & Time</th>
+                        {columns.map((column) => (
+                            <th key={column.id}>{column.name}</th>
+                        ))}
+                    </tr>
+                </thead>
+                <tbody>
+                    {entries.map((entry) => (
+                        <tr key={entry.id}>
+                            <td>...</td>
+                            <td>{entry.entry_data?.['Date & Time'] || 'N/A'}</td>
+                            {columns.map((column) => (
+                                <td key={column.id}>{entry.entry_data?.[column.name] || 'N/A'}</td>
+                            ))}
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        );
+    };
+    
 
     const ManageColumnsModal = () => (
         <WindowWrapper
@@ -334,6 +411,19 @@ const DataViewer = () => {
             </div>
         </WindowWrapper>
     );
+    useEffect(() => {
+        const refreshColumnsListener = () => {
+            console.log("Refreshing columns after update...");
+            fetchColumns();
+        };
+    
+        window.addEventListener("refreshColumns", refreshColumnsListener);
+    
+        return () => {
+            window.removeEventListener("refreshColumns", refreshColumnsListener);
+        };
+    }, []);
+    
     useEffect(() => {
         const checkPermissions = async () => {
             if (!SelectedProject || !Email) {

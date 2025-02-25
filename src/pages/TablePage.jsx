@@ -31,6 +31,12 @@ export default function TablePage() {
     const [csvData, setCsvData] = useState([]);
     const [headers, setHeaders] = useState([]);
     const csvDownloadRef = useRef(null);
+    const [columnOrder, setColumnOrder] = useState([]);
+
+    <DataViewer columnOrder={columnOrder} />
+
+
+
 
     const handleExport = async () => {
         if (!selectedProject || !selectedTab) {
@@ -149,10 +155,13 @@ export default function TablePage() {
                 />
             )}
             {showManageColumns && (
-                <ManageColumns
-                    CloseManageColumns={() => setShowManageColumns(false)}
-                />
-            )}
+    <ManageColumns
+        CloseManageColumns={() => setShowManageColumns(false)}
+        onColumnOrderChange={(newOrder) => setColumnOrder(newOrder)}
+    />
+)}
+
+
         </PageWrapper>
     );
 }
