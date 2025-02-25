@@ -54,7 +54,7 @@ export default function NewEntry({ CloseNewEntry, existingEntry, onEntryUpdated 
             columns.forEach((column) => {
                 const { name, data_type } = column;
     
-                if (data_type === 'number') {
+                if (data_type === 'number' || data_type ===  "float") {
                     defaultEntries[name] = 0; // Default number type
                 } else if (data_type === 'date') {
                     defaultEntries[name] = formatDateTime(new Date()); // Default date
@@ -91,6 +91,10 @@ export default function NewEntry({ CloseNewEntry, existingEntry, onEntryUpdated 
             if (data_type === 'number' && (value === '' || isNaN(value))) {
                 notify(Type.error, `The field "${name}" must be a valid number.`);
                 return false;
+            }
+
+            if(data_type === 'float' && (value === '' || isNaN(value))) {
+                notify(Type.error, `The field "${name}" must be a valid decimal number.`);
             }
 
             if (data_type === 'date' && !/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}$/.test(value)) {
