@@ -21,7 +21,8 @@ export default function TablePage() {
     const [tabNames, setTabNames] = useAtom(allTableNames);
     const [projectNames, setProjectNames] = useAtom(allProjectNames);
     const email = useAtomValue(currentUserEmail);
-    
+    const dataViewerRef = useRef(null);
+
     const [showNewEntry, setShowNewEntry] = useState(false);
     const [showManageColumns, setShowManageColumns] = useState(false);
     const [showColumnOptions, setShowColumnOptions] = useState(false);
@@ -130,7 +131,7 @@ export default function TablePage() {
                 ) : !selectedTab ? (
                     <NoTabsDisplay />
                 ) : (
-                    <DataViewer />
+                    <DataViewer ref={dataViewerRef} />
                 )}
             </div>
 
@@ -138,8 +139,14 @@ export default function TablePage() {
             {showNewEntry && (
                 <NewEntry
                     CloseNewEntry={() => setShowNewEntry(false)}
+                    onEntryUpdated={() => {
+                        if (dataViewerRef.current && dataViewerRef.current.fetchEntries) {
+                            dataViewerRef.current.fetchEntries();
+                        }
+                    }}
                 />
             )}
+            
             {showColumnOptions && (
                 <ColumnOptions
                     ColumnNames={newColumn}

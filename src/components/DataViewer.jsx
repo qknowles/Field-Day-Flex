@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo} from 'react';
+import React, { useState, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle, useRef } from 'react';
 import { getColumnsCollection, getEntriesForTab, getProjectFields, deleteEntry, getEntryDetails } from '../utils/firestore'; // Import deleteEntry
 import TableTools from '../wrappers/TableTools';
 import { Pagination } from './Pagination';
@@ -16,7 +16,7 @@ const STATIC_COLUMNS = [
     { id: 'datetime', name: 'Date & Time', type: 'datetime', order: -2 },
 ];
 
-const DataViewer = () => {
+const DataViewer = forwardRef((props, ref) => {
 
     const SelectedProject = useAtomValue(currentProjectName);
     const SelectedTab = useAtomValue(currentTableName);
@@ -179,6 +179,9 @@ const DataViewer = () => {
         }
     }, [SelectedProject, SelectedTab, Email]);
     
+    useImperativeHandle(ref, () => ({
+        fetchEntries
+    }));
 
     useEffect(() => {
         let mounted = true;
@@ -293,6 +296,7 @@ const DataViewer = () => {
         }
     };
 
+    
     const handleEdit = async (entryId) => {
         try {
             const entryDetails = await getEntryDetails(Email, SelectedProject, SelectedTab, entryId);
@@ -333,44 +337,6 @@ const DataViewer = () => {
         const startIndex = (currentPage - 1) * batchSize;
         return sortedEntries.slice(startIndex, startIndex + batchSize);
     }, [sortedEntries, currentPage, batchSize]);
-
-    const DataViewer = ({ columnOrder }) => {
-
-        const [columns, setColumns] = useState([]);
-    
-        useEffect(() => {
-            if (columns.length > 0) {
-                setColumns([...columns].sort((a, b) => a.order - b.order));
-            }
-        }, [columns]);
-        
-        
-    
-        return (
-            <table>
-                <thead>
-                    <tr>
-                        <th>Actions</th>
-                        <th>Date & Time</th>
-                        {columns.map((column) => (
-                            <th key={column.id}>{column.name}</th>
-                        ))}
-                    </tr>
-                </thead>
-                <tbody>
-                    {entries.map((entry) => (
-                        <tr key={entry.id}>
-                            <td>...</td>
-                            <td>{entry.entry_data?.['Date & Time'] || 'N/A'}</td>
-                            {columns.map((column) => (
-                                <td key={column.id}>{entry.entry_data?.[column.name] || 'N/A'}</td>
-                            ))}
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        );
-    };
     
 
     const ManageColumnsModal = () => (
@@ -546,5 +512,5 @@ const DataViewer = () => {
             </div>
         </div>
     );
-};
+});
 export default DataViewer;
