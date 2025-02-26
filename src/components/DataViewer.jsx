@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo} from 'react';
-import { getColumnsCollection, getEntriesForTab, getProjectFields, deleteEntry, getEntryDetails } from '../utils/firestore';
+import React, { useState, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle, useRef } from 'react';
+import { getColumnsCollection, getEntriesForTab, getProjectFields, deleteEntry, getEntryDetails } from '../utils/firestore'; // Import deleteEntry
 import TableTools from '../wrappers/TableTools';
 import { Pagination } from './Pagination';
 import Button from './Button';
@@ -18,7 +18,7 @@ const STATIC_COLUMNS = [
     { id: 'datetime', name: 'Date & Time', type: 'datetime', order: -2 },
 ];
 
-const DataViewer = () => {
+const DataViewer = forwardRef((props, ref) => {
 
     const SelectedProject = useAtomValue(currentProjectName);
     const SelectedTab = useAtomValue(currentTableName);
@@ -187,6 +187,10 @@ const DataViewer = () => {
           console.log('Visible columns state:', visibleColumns[currentTab]);
         }
       }, [visibleColumns, currentTab]);
+    
+    useImperativeHandle(ref, () => ({
+        fetchEntries
+    }));
 
     useEffect(() => {
         let mounted = true;
@@ -301,6 +305,7 @@ const DataViewer = () => {
         }
     };
 
+    
     const handleEdit = async (entryId) => {
         try {
             const entryDetails = await getEntryDetails(Email, SelectedProject, SelectedTab, entryId);
@@ -342,97 +347,6 @@ const DataViewer = () => {
         return sortedEntries.slice(startIndex, startIndex + batchSize);
     }, [sortedEntries, currentPage, batchSize]);
 
-    const DataViewer = ({ columnOrder }) => {
-
-        const [columns, setColumns] = useState([]);
-    
-        useEffect(() => {
-            if (columns.length > 0) {
-                setColumns([...columns].sort((a, b) => a.order - b.order));
-            }
-        }, [columns]);
-        
-        
-    
-        return (
-            <table>
-              <thead>
-    <tr className="bg-neutral-100 dark:bg-neutral-800">
-        <th className="p-2 text-left border-b font-semibold w-32">
-            Actions
-        </th>
-        <th className="dateTimeColumn p-2 text-left border-b font-semibold">
-            Date & Time
-        </th>
-        {columns
-    .filter((col) => 
-        !['actions', 'datetime'].includes(col.id) && 
-        (visibleColumns[currentTable]?.[col.id] !== false) // Only show columns that aren't explicitly hidden
-    )
-    .map((column) => (
-                <th
-                    key={column.id}
-                    className={`p-2 text-left border-b font-semibold cursor-pointer ${
-                        column.type === 'identifier' ? 'min-w-[150px]' : ''
-                    } ${getColumnClass(column.name)}`}
-                    onClick={() => handleSort(column.name)}
-                >
-                    {column.name}
-                    {sortConfig.key === column.name && (
-                        <span className="ml-1">
-                            {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                        </span>
-                    )}
-                </th>
-            ))}
-    </tr>
-</thead>
-<tbody>
-    {paginatedEntries.map((entry) => (
-        <tr
-            key={entry.id}
-            className="hover:bg-neutral-100 dark:hover:bg-neutral-800"
-        >
-            <td className="p-2 border-b w-32">
-                <div className="flex space-x-2">
-                    <Button
-                        onClick={() => handleEdit(entry.id)}
-                        icon={AiFillEdit}
-                        flexible={true}
-                        className={'flex items-center justify-center'}
-                    />
-                    <Button
-                        onClick={() => handleDelete(entry.id)}
-                        icon={AiFillDelete}
-                        flexible={true}
-                        className={'flex items-center justify-center'}
-                    />
-                </div>
-            </td>
-            <td className="dateTimeColumn text-left p-2 border-b">
-                {entry.entry_date?.toLocaleDateString()} {entry.entry_date?.toLocaleTimeString()}
-            </td>
-            {columns
-                .filter((col) => 
-                    !['actions', 'datetime'].includes(col.id) && 
-                    (visibleColumns[currentTab]?.[col.id] !== false) // Only show columns that aren't explicitly hidden
-                )
-                .map((column) => (
-                    <td
-                        key={`${entry.id}-${column.id}`}
-                        className={`p-2 border-b text-left ${
-                            column.type === 'identifier' ? 'min-w-[150px]' : ''
-                        } ${getColumnClass(column.name)}`}
-                    >
-                        {entry.entry_data?.[column.name] || 'N/A'}
-                    </td>
-                ))}
-        </tr>
-    ))}
-</tbody>
-            </table>
-        );
-    };
     
 
     const ManageColumnsModal = () => (
@@ -616,6 +530,6 @@ const DataViewer = () => {
             </div>
         </div>
     );
-};
+});
 export default DataViewer;
 

@@ -159,9 +159,11 @@ export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntry
             }
 
             CloseNewEntry();
+
             if (onEntryUpdated) {
-                onEntryUpdated();
+                await onEntryUpdated();
             }
+
         } catch (error) {
             console.error("Error saving entry:", error);
             notify(Type.error, "Failed to save entry.");
