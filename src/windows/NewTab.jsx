@@ -20,8 +20,8 @@ export default function NewTab({ CancelTab, OpenNewTab }) {
     const [unwantedCodes, setUnwantedCodes] = useState([]);
     const [utilizeUnwantedCodes, setUtilizeUnwantedCodes] = useState(false);
 
-    const [firstIdentifierDimension, setFirstIdentifierDimension] = useState('');
-    const [secondIdentifierDimension, setSecondIdentifierDimension] = useState('');
+    const [firstIdentifierDimension, setFirstIdentifierDimension] = useState('A');
+    const [secondIdentifierDimension, setSecondIdentifierDimension] = useState(1);
     const [columnNames, setColumnNames] = useState([]);
 
     const dimensionsChar = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
@@ -49,20 +49,25 @@ export default function NewTab({ CancelTab, OpenNewTab }) {
             const identifiers = [];
             const startingCharCode = 'A'.charCodeAt(0);
             const endingCharCode = highestLetter.charCodeAt(0);
+            console.log('start', startingCharCode);
+            console.log('end', endingCharCode);
+            console.log('high', highestNumber);
 
             for (let charCode = startingCharCode; charCode <= endingCharCode; charCode++) {
+                console.log('l1');
                 const letter = String.fromCharCode(charCode);
                 for (let num = 1; num <= highestNumber; num++) {
+                    console.log('l2');
                     const identifier = `${letter}${num}`;
                     identifiers.push(identifier);
                 }
             }
+            console.log(identifiers);
 
             const recursiveGeneration = (pBaseIdentifiers, pAppendedIdentifiers, numEntries) => {
                 if (numEntries > 22000) {
                     throw new Error('Max entries reached.');
                 }
-
                 const appendedIdentifiers = pAppendedIdentifiers.slice(highestNumber);
                 const newBaseIdentifiers = [];
                 if (appendedIdentifiers.length === 0) {
@@ -84,9 +89,7 @@ export default function NewTab({ CancelTab, OpenNewTab }) {
             }
 
             identifiers.push(...recursiveGeneration(identifiers, identifiers, identifiers.length));
-
             const filteredIdentifiers = identifiers.filter(identifier => !unwanted.some(item => identifier.includes(item)));
-
             return filteredIdentifiers;
 
         } catch (error) {
@@ -134,6 +137,7 @@ export default function NewTab({ CancelTab, OpenNewTab }) {
                 unwantedCodesWithoutDuplicates,
             );
             if (finalPossibleIdentifiers.length === 0) {
+                notify(Type.error, "Couldn't generate identifiers.");
                 return;
             }
         }
