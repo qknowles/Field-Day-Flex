@@ -13,7 +13,8 @@ import { ExportIcon } from '../assets/icons';
 import { generateCSVData } from '../components/ExportService.jsx';
 import { CSVLink } from 'react-csv';
 import { getProjectNames, getTabNames } from '../utils/firestore.js'
-
+import ColumnSelectorButton from '../components/ColumnSelectorButton';
+import { visibleColumnsAtom } from '../utils/jotai.js';
 
 export default function TablePage() {
     const [selectedProject, setSelectedProject] = useAtom(currentProjectName);
@@ -32,11 +33,11 @@ export default function TablePage() {
     const [headers, setHeaders] = useState([]);
     const csvDownloadRef = useRef(null);
     const [columnOrder, setColumnOrder] = useState([]);
+    const [visibleColumns, setVisibleColumns] = useAtom(visibleColumnsAtom);
 
     <DataViewer columnOrder={columnOrder} />
 
-
-
+ 
 
     const handleExport = async () => {
         if (!selectedProject || !selectedTab) {
@@ -56,6 +57,22 @@ export default function TablePage() {
             }, 500);
         }
     };
+
+    const toggleColumn = (columnId) => {
+        setVisibleColumns(prev => {
+            const currentTabSettings = prev[selectedTab] || {};
+            return {
+                ...prev,
+                [selectedTab]: {
+                    ...currentTabSettings,
+                    [columnId]: !currentTabSettings[columnId]
+                }
+            };
+        });
+    };
+
+
+
 
     useEffect(() => {
         const getFirstProject = async () => {
@@ -89,38 +106,44 @@ export default function TablePage() {
 
             {/* Table Management Buttons */}
             {selectedTab && (
-                 <div className="flex items-center justify-between pt-3 px-5 pb-3 dark:bg-neutral-950 w-full">
-                 <div className="flex items-center">
-                     <p className="text-2xl mr-6">{selectedTab} - Entries</p>
-                     <Button text="New Entry" onClick={() => setShowNewEntry(true)} className="mr-32" />
-                     <Button text="New Column" onClick={() => setShowColumnOptions(true)} className="mr-6"/>
-                     <Button text="Manage Columns" onClick={() => setShowManageColumns(true)} />
-                 </div>
-                 
-                     {/* Export Icon */}
-                     <button
-                        onClick={handleExport}
-                        className="p-2 text-white hover:bg-neutral-700 rounded ml-auto"
-                        title="Export to CSV"
-                    >
-                        <ExportIcon className="h-6 w-6" />
-                    </button>
+    <div className="flex items-center justify-between pt-3 px-5 pb-3 dark:bg-neutral-950 w-full">
+        <div className="flex items-center">
+            <p className="text-2xl mr-6">{selectedTab} - Entries</p>
+            <Button text="New Entry" onClick={() => setShowNewEntry(true)} className="mr-6" />
+            <Button text="New Column" onClick={() => setShowColumnOptions(true)} className="mr-6"/>
+            <Button text="Manage Columns" onClick={() => setShowManageColumns(true)} />
+        </div>
+        
+        <div className="flex items-center space-x-2"> {/* Added this container */}
+            {/* Column Selector Button */}
+            <ColumnSelectorButton 
+                labels={columns.map(col => col.name)}
+                columns={columns}
+                toggleColumn={toggleColumn}
+            />
+            
+            {/* Export Icon */}
+            <button
+                onClick={handleExport}
+                className="p-2 text-white hover:bg-neutral-700 rounded"
+                title="Export to CSV"
+            >
+                <ExportIcon className="h-6 w-6" />
+            </button>
+        </div>
 
-                    {/* CSV Link Download */}
-                    {csvData.length > 0 && (
-                        <CSVLink
-                        data={csvData}
-                        headers={headers}
-                        filename={`${selectedProject ?? 'Project'}_${selectedTab ?? 'Table'}_${new Date().toISOString().split('T')[0]}.csv`}
-                        className="hidden"
-                        ref={csvDownloadRef}
-                    />
-                    
-                    )}
-             </div>
-             
-
-            )}
+        {/* CSV Link Download */}
+        {csvData.length > 0 && (
+            <CSVLink
+                data={csvData}
+                headers={headers}
+                filename={`${selectedProject ?? 'Project'}_${selectedTab ?? 'Table'}_${new Date().toISOString().split('T')[0]}.csv`}
+                className="hidden"
+                ref={csvDownloadRef}
+            />
+        )}
+    </div>
+)}
 
            
             {/* Content Area */}

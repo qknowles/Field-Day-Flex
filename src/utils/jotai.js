@@ -1,6 +1,7 @@
 import { atomWithStorage } from 'jotai/utils';
 import { RESET } from 'jotai/utils';
 import { atom } from 'jotai';
+export const visibleColumnsAtom = atomWithStorage('visibleColumns', {});
 
 export const currentUserEmail = atomWithStorage('currentUserEmail', false);
 
@@ -26,6 +27,7 @@ export const clearLocalStorage = ({
     setProjectName,
     setAllProjectNames,
     setBatchSize,
+    setVisibleColumns, 
 }) => {
     setUserEmail(RESET);
     setIsAuthenticated(RESET);
@@ -34,4 +36,5 @@ export const clearLocalStorage = ({
     setProjectName(RESET);
     setAllProjectNames(RESET);
     setBatchSize(RESET);
+    setVisibleColumns(RESET); 
 };
