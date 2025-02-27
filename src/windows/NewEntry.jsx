@@ -105,6 +105,11 @@ export default function NewEntry({ CloseNewEntry, existingEntry, onEntryUpdated 
                 notify(Type.error, `Please select a valid option for "${name}".`);
                 return false;
             }
+
+            if (data_type === 'auto_id' && !/^(?:[A-Z]+[0-9]+)(?:-[A-Z]+[0-9]+)*$/i.test(value)) {
+                notify(Type.error, `Please select a valid option for "${name}".`);
+                return false;
+            }            
         }
 
         return true;
@@ -172,9 +177,8 @@ export default function NewEntry({ CloseNewEntry, existingEntry, onEntryUpdated 
                         key={index}
                         label={tabName}
                         handleInputChange={handleInputChange}
-                        userEntry={userEntries || {}}
+                        userEntries={userEntries || {}}
                     />
-
                 );
             }
 
