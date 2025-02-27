@@ -938,7 +938,7 @@ export const getIdentifierFields = async (email, projectName, tabName) => {
 
     } catch (error) {
         console.error('Error retrieving required fields:', error);
-        return []; // Return empty array on error
+        return [];
     }
 };
 
@@ -999,8 +999,32 @@ export const getEntriesWithIdFields = async (projectName, tabName, email, identi
         return matchingIdFieldEntries;
 
     } catch (error) {
-        console.error('Error in getEntriesWithId:', error);
+        console.error('Error in getEntriesWithIdField:', error);
         return [];
     }
 };
 
+export const getUnwantedCodeInfo = async (email, projectName, tabName) => {
+    try {
+        const project = await getDocumentIdByEmailAndProjectName(email, projectName);
+        if (!project) {
+            throw new Error('Project ID not found for the selected project');
+        }
+
+        const docRef = doc(db, 'Projects', project, 'Tabs', tabName);
+        const docSnap = await getDoc(docRef);
+
+        if (!docSnap.exists()) {
+            throw new Error('Tab document not found');
+        }
+
+        const unwantedCodes = docSnap.data().unwanted_codes;
+        const utilizeUnwanted = docSnap.data().utilize_unwanted
+
+        return { unwantedCodes, utilizeUnwanted };
+        
+    } catch (error) {
+        console.error('Error retrieving unwanted codes:', error);
+        return [];
+    }
+};

@@ -107,7 +107,7 @@ export default function NewEntry({ CloseNewEntry, existingEntry, onEntryUpdated 
             }
 
             if (data_type === 'auto_id' && !/^(?:[A-Z]+[0-9]+)(?:-[A-Z]+[0-9]+)*$/i.test(value)) {
-                notify(Type.error, `Please select a valid option for "${name}".`);
+                notify(Type.error, `Please enter a valid code for "${name}".`);
                 return false;
             }            
         }
