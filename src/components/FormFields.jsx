@@ -3,10 +3,11 @@ import classNames from 'classnames';
 import InputLabel from './InputLabel';
 import Button from './Button';
 import React from 'react';
-import IdentificationGenerator from '../utils/IdentificationGenerator'
+import { generateId } from '../utils/IdentificationGenerator'
 import { getIdDimension } from '../utils/firestore';
 import { currentUserEmail, currentProjectName, currentTableName } from '../utils/jotai.js';
 import { useAtomValue } from 'jotai';
+import { Type, notify } from '../components/Notifier';
 
 export const DropdownFlex = ({ options, setOptions, label }) => {
     const [editingIndex, setEditingIndex] = useState(null);
@@ -169,7 +170,7 @@ export const RadioButtons = ({ layout, label, options, selectedOption, setSelect
     );
 };
 
-export const IdentificationGenerator_UI = ({ label, handleInputChange }) => {
+export const IdentificationGenerator_UI = ({ label, handleInputChange, userEntries }) => {
     const [id, setId] = useState('');
     const [idMaxLetter, setIdMaxLetter] = useState('');
     const [idMaxNumber, setIdMaxNumber] = useState('');
@@ -180,8 +181,6 @@ export const IdentificationGenerator_UI = ({ label, handleInputChange }) => {
     const email = useAtomValue(currentUserEmail);
     const project = useAtomValue(currentProjectName);
     const tab = useAtomValue(currentTableName);
-
-    const generatedId = IdentificationGenerator(id);
 
     useEffect(() => {
         const fetchIdDimension = async () => {
@@ -217,6 +216,15 @@ export const IdentificationGenerator_UI = ({ label, handleInputChange }) => {
         }
     }, [idMaxLetter, idMaxNumber]);
 
+    useEffect(() => {
+        if (!isNaN(id.charAt(id.length - 1))) {
+            let tempCodeArray = id.split('-');
+            tempCodeArray.sort();
+            setId(tempCodeArray.join('-'));
+            handleInputChange('Entry ID', tempCodeArray.join('-'));
+        }
+    }, [id])
+
     return (
         <div className="flex flex-col space-y-2 items-center justify-center">
             <div className="flex space-x-2 items-center justify-center">
@@ -229,9 +237,15 @@ export const IdentificationGenerator_UI = ({ label, handleInputChange }) => {
                                 flexible={false}
                                 text={letter}
                                 onClick={() => {
-                                    setId(id + letter);
-                                    setButtonSwitch(!buttonSwitch);
-                                    handleInputChange('Entry ID', id + letter);
+                                    if (id.length > 0) {
+                                        setId(id + '-' + letter);
+                                        setButtonSwitch(!buttonSwitch);
+                                        handleInputChange('Entry ID', id + '-' + letter);
+                                    } else {
+                                        setId(id + letter);
+                                        setButtonSwitch(!buttonSwitch);
+                                        handleInputChange('Entry ID', id + letter);
+                                    }
                                 }}
                                 disabled={buttonSwitch}
                             />
@@ -264,7 +278,7 @@ export const IdentificationGenerator_UI = ({ label, handleInputChange }) => {
             </div>
 
             <InputLabel
-                label={label + ' entry id'}
+                label={'Entry ID'}
                 layout={'horizontal-single'}
                 input={
                     <input
@@ -273,25 +287,45 @@ export const IdentificationGenerator_UI = ({ label, handleInputChange }) => {
                         onChange={(e) => {
                             let value = e.target.value;
 
-                            if (value === '' || value.length - id.length < -1 ) {
+                            if (value === '' || value.length - id.length < -1) {
                                 setId('');
                                 setButtonSwitch(false);
                                 handleInputChange('Entry ID', '');
                                 return;
                             }
 
-                            if (value.length - id.length < 2) {
+                            if (value.length - id.length === 1) {
                                 if (!buttonSwitch) {
                                     value = value.toUpperCase();
                                     if (letterArray.includes(value.charAt(value.length - 1))) {
                                         if (!value.slice(0, value.length - 1).includes(value.charAt(value.length - 1))) {
-                                            setId(value);
-                                            setButtonSwitch(!buttonSwitch);
-                                            handleInputChange('Entry ID', value);
+                                            if (id.length > 0) {
+                                                setId(value.slice(0, value.length - 1) + '-' + value.charAt(value.length - 1));
+                                                setButtonSwitch(!buttonSwitch);
+                                                handleInputChange(value.slice(0, value.length - 1) + '-' + value.charAt(value.length - 1));
+                                            } else {
+                                                setId(value);
+                                                setButtonSwitch(!buttonSwitch);
+                                                handleInputChange('Entry ID', value);
+                                            }
                                         }
                                     }
                                 } else {
-                                    if (numberArray.includes(value.charAt(value.length - 1))) {
+                                    if (value.charAt(value.length - 1) === '-' || numberArray.includes(value.charAt(value.length - 1))) {
+                                        setId(value);
+                                        if (value.charAt(value.length - 1) !== '-') {
+                                            setButtonSwitch(!buttonSwitch);
+                                        }
+                                        handleInputChange('Entry ID', value);
+                                    }
+                                }
+                            } else if (value.length - id.length === -1) {
+                                if (value.charAt(value.length - 1) !== id.charAt(id.length - 1)) {
+                                    if (value.charAt(value.length - 1) === '-') {
+                                        setId(value.slice(0, value.length - 1));
+                                        setButtonSwitch(!buttonSwitch);
+                                        handleInputChange('Entry ID', value.slice(0, value.length - 1));
+                                    } else {
                                         setId(value);
                                         setButtonSwitch(!buttonSwitch);
                                         handleInputChange('Entry ID', value);
@@ -306,9 +340,17 @@ export const IdentificationGenerator_UI = ({ label, handleInputChange }) => {
             <Button
                 flexible={false}
                 text="Generate id"
-                onClick={() => {
-                    setId(generatedId);
-                    handleInputChange('Entry ID', generatedId);
+                onClick={async () => {
+                    const temp = await generateId(email, project, tab, id, userEntries);
+                    if (temp) {
+                        notify(Type.success, 'Id is available.');
+                        setId(temp);
+                        await handleInputChange('Entry ID', temp);
+                    } else {
+                        notify(Type.error, 'No codes available.');
+                        setId('');
+                        await handleInputChange('Entry ID', '');
+                    }
                 }}
             />
         </div>

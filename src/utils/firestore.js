@@ -572,6 +572,7 @@ export const getEntriesForTab = async (projectName, tabName, email) => {
         console.error('Error in getEntriesForTab');
     }
 };
+
 export const updateDocInCollection = async (collectionName, docId, data) => {
     try {
         await updateDoc(doc(db, collectionName, docId), data);
@@ -895,3 +896,111 @@ export const getIdDimension = async (email, projectName, tabName) => {
         return [];
     }
 };
+
+export const getPossibleIdentifiers = async (email, projectName, tabName) => {
+    try {
+        const project = await getDocumentIdByEmailAndProjectName(email, projectName);
+        if (!project) {
+            throw new Error('Project ID not found for the selected project');
+        }
+
+        const docRef = doc(db, 'Projects', project, 'Tabs', tabName);
+        const docSnap = await getDoc(docRef);
+
+        if (!docSnap.exists()) {
+            throw new Error('Tab document not found');
+        }
+
+        return docSnap.data().possible_identifiers;
+        
+    } catch (error) {
+        console.error('Error retrieving possible identifiers:', error);
+        return [];
+    }
+};
+
+export const getIdentifierFields = async (email, projectName, tabName) => {
+    try {
+        const project = await getDocumentIdByEmailAndProjectName(email, projectName);
+        if (!project) {
+            throw new Error('Project ID not found for the selected project');
+        }
+
+        const columnsRef = collection(db, 'Projects', project, 'Tabs', tabName, 'Columns');
+
+        const q = query(columnsRef, where('identifier_domain', '==', true));
+
+        const querySnapshot = await getDocs(q);
+
+        const identifierFields = querySnapshot.docs.map(doc => doc.data().name);
+
+        return identifierFields;
+
+    } catch (error) {
+        console.error('Error retrieving required fields:', error);
+        return []; // Return empty array on error
+    }
+};
+
+export const getEntriesWithIdFields = async (projectName, tabName, email, identifierEntries) => {
+    try {
+        const projectRef = collection(db, 'Projects');
+        const projectQuery = query(
+            projectRef,
+            and(
+                where('project_name', '==', projectName),
+                or(
+                    where('contributors', 'array-contains', email),
+                    where('admins', 'array-contains', email),
+                    where('owners', 'array-contains', email)
+                )
+            )
+        );
+        const projectSnapshot = await getDocs(projectQuery);
+
+        if (projectSnapshot.empty) {
+            return [];
+        }
+
+        const projectDoc = projectSnapshot.docs[0];
+
+        const tabsRef = collection(projectDoc.ref, 'Tabs');
+        const tabQuery = query(tabsRef, where('tab_name', '==', tabName));
+        const tabSnapshot = await getDocs(tabQuery);
+
+        if (tabSnapshot.empty) {
+            return [];
+        }
+
+        const tabDoc = tabSnapshot.docs[0];
+
+        const entriesRef = collection(tabDoc.ref, 'Entries');
+        const entriesSnapshot = await getDocs(entriesRef);
+
+        const matchingIdFieldEntries = entriesSnapshot.docs
+            .filter(doc => {
+                const data = doc.data();
+                const entryData = data.entry_data || {};
+
+                if (data.deleted === true) {
+                    return false;
+                }
+
+                return Object.entries(identifierEntries).every(([key, value]) => {
+                    const entryValue = entryData[key];
+                    return entryValue !== undefined && String(entryValue) === String(value);
+                });
+            })
+            .map(doc => {
+                return doc.data().entry_data['Entry ID'];
+            })
+            .filter(Boolean);
+
+        return matchingIdFieldEntries;
+
+    } catch (error) {
+        console.error('Error in getEntriesWithId:', error);
+        return [];
+    }
+};
+
