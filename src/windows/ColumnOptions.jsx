@@ -47,6 +47,12 @@ export default function ColumnOptions({
                 return false;
             }
         }
+
+        if (ColumnNames[columnIndex] === '' || ColumnNames[columnIndex] === null || ColumnNames[columnIndex] === undefined) {
+            notify(Type.error, "Collumn name can't be empty.");
+            return false;
+        }
+
         return true;
     }, [columnIndex, dataType, entryOptions, entryTypeOptions]);
 
