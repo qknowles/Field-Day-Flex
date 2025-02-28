@@ -10,8 +10,9 @@ import NewEntry from '../windows/NewEntry';
 import { AiFillEdit, AiFillDelete } from 'react-icons/ai';
 import { useAtom, useAtomValue } from 'jotai';
 import { currentUserEmail, currentProjectName, currentTableName, currentBatchSize } from '../utils/jotai';
-import { useAtom } from 'jotai';
 import { visibleColumnsAtom } from '../utils/jotai';
+
+
 const STATIC_COLUMNS = [
     { id: 'actions', name: 'Actions', type: 'actions', order: -3 },
     { id: 'datetime', name: 'Date & Time', type: 'datetime', order: -2 },
@@ -33,7 +34,9 @@ const DataViewer = () => {
     const [currentProject, setCurrentProject] = useAtom(currentProjectName);
     const [currentTable, setCurrentTable] = useAtom(currentTableName);
     const [isAdminOrOwner, setIsAdminOrOwner] = useState(false);
+    const [currentTab] = useAtom(currentTableName);
 
+  
     const [showEditWindow, setEditWindow] = useState(null);
     const [showManageColumns, setShowManageColumns] = useState(false);
     const [columnOrder, setColumnOrder] = useState({});
@@ -179,7 +182,12 @@ const DataViewer = () => {
             setError('Failed to load entries');
         }
     }, [SelectedProject, SelectedTab, Email]);
-    
+    useEffect(() => {
+        if (visibleColumns && currentTab) {
+          console.log('Current tab:', currentTab);
+          console.log('Visible columns state:', visibleColumns[currentTab]);
+        }
+      }, [visibleColumns, currentTab]);
 
     useEffect(() => {
         let mounted = true;
@@ -358,11 +366,11 @@ const DataViewer = () => {
             Date & Time
         </th>
         {columns
-            .filter((col) => 
-                !['actions', 'datetime'].includes(col.id) && 
-                (visibleColumns[currentTab]?.[col.id] !== false) // Only show columns that aren't explicitly hidden
-            )
-            .map((column) => (
+    .filter((col) => 
+        !['actions', 'datetime'].includes(col.id) && 
+        (visibleColumns[currentTable]?.[col.id] !== false) // Only show columns that aren't explicitly hidden
+    )
+    .map((column) => (
                 <th
                     key={column.id}
                     className={`p-2 text-left border-b font-semibold cursor-pointer ${
@@ -521,12 +529,16 @@ const DataViewer = () => {
                                     Date & Time
                                 </th>
                                 {columns
-                                    .filter((col) => !['actions', 'datetime'].includes(col.id))
+                                    .filter((col) => 
+                                        !['actions', 'datetime'].includes(col.id) && 
+                                        (visibleColumns[currentTab]?.[col.id] !== false) // Added visibility filter
+                                    )
                                     .map((column) => (
                                         <th
                                             key={column.id}
-                                            className={`p-2 text-left border-b font-semibold cursor-pointer ${column.type === 'identifier' ? 'min-w-[150px]' : ''
-                                                } ${getColumnClass(column.name)}`}
+                                            className={`p-2 text-left border-b font-semibold cursor-pointer ${
+                                                column.type === 'identifier' ? 'min-w-[150px]' : ''
+                                            } ${getColumnClass(column.name)}`}
                                             onClick={() => handleSort(column.name)}
                                         >
                                             {column.name}
@@ -565,11 +577,15 @@ const DataViewer = () => {
                                         {entry.entry_data?.['Date & Time'] || 'N/A'}
                                     </td>
                                     {columns
-                                        .filter((col) => !['actions', 'datetime'].includes(col.id))
+                                        .filter((col) => 
+                                            !['actions', 'datetime'].includes(col.id) && 
+                                            (visibleColumns[currentTab]?.[col.id] !== false) // Added visibility filter
+                                        )
                                         .map((column) => (
                                             <td
                                                 key={`${entry.id}-${column.id}`}
-                                                className={`p-2 border-b text-left ${column.type === 'identifier'
+                                                className={`p-2 border-b text-left ${
+                                                    column.type === 'identifier'
                                                         ? 'min-w-[150px]'
                                                         : ''
                                                     } ${getColumnClass(column.name)}`}
@@ -603,3 +619,4 @@ const DataViewer = () => {
     );
 };
 export default DataViewer;
+
