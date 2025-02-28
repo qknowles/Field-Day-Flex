@@ -937,7 +937,7 @@ export const getIdentifierFields = async (email, projectName, tabName) => {
         return identifierFields;
 
     } catch (error) {
-        console.error('Error retrieving required fields:', error);
+        console.error('Error retrieving identifier fields:', error);
         return [];
     }
 };
@@ -1025,6 +1025,29 @@ export const getUnwantedCodeInfo = async (email, projectName, tabName) => {
         
     } catch (error) {
         console.error('Error retrieving unwanted codes:', error);
+        return [];
+    }
+};
+
+export const getRequiredFields = async (email, projectName, tabName) => {
+    try {
+        const project = await getDocumentIdByEmailAndProjectName(email, projectName);
+        if (!project) {
+            throw new Error('Project ID not found for the selected project');
+        }
+
+        const columnsRef = collection(db, 'Projects', project, 'Tabs', tabName, 'Columns');
+
+        const q = query(columnsRef, where('required_field', '==', true));
+
+        const querySnapshot = await getDocs(q);
+
+        const identifierFields = querySnapshot.docs.map(doc => doc.data().name);
+
+        return identifierFields;
+
+    } catch (error) {
+        console.error('Error retrieving required fields:', error);
         return [];
     }
 };

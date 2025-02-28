@@ -49,20 +49,14 @@ export default function NewTab({ CancelTab, OpenNewTab }) {
             const identifiers = [];
             const startingCharCode = 'A'.charCodeAt(0);
             const endingCharCode = highestLetter.charCodeAt(0);
-            console.log('start', startingCharCode);
-            console.log('end', endingCharCode);
-            console.log('high', highestNumber);
 
             for (let charCode = startingCharCode; charCode <= endingCharCode; charCode++) {
-                console.log('l1');
                 const letter = String.fromCharCode(charCode);
                 for (let num = 1; num <= highestNumber; num++) {
-                    console.log('l2');
                     const identifier = `${letter}${num}`;
                     identifiers.push(identifier);
                 }
             }
-            console.log(identifiers);
 
             const recursiveGeneration = (pBaseIdentifiers, pAppendedIdentifiers, numEntries) => {
                 if (numEntries > 22000) {
@@ -209,11 +203,6 @@ export default function NewTab({ CancelTab, OpenNewTab }) {
                     CancelColumnOptions={closeColumnOptions}
                     OpenNewTab={OpenNewTab}
                     tabName={tabName}
-                    GenerateIdentifiers={generateIdentifiers}
-                    PossibleIdentifiers={possibleIdentifiers}
-                    IdentifierDimension={identifierDimension}
-                    UnwantedCodes={unwantedCodes}
-                    UtilizeUnwantedCodes={utilizeUnwantedCodes}
                 />
             ) : (
                 <WindowWrapper

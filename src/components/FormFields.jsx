@@ -4,7 +4,7 @@ import InputLabel from './InputLabel';
 import Button from './Button';
 import React from 'react';
 import { generateId } from '../utils/IdentificationGenerator'
-import { getIdDimension, getUnwantedCodeInfo } from '../utils/firestore';
+import { getIdDimension, getUnwantedCodeInfo, getRequiredFields } from '../utils/firestore';
 import { currentUserEmail, currentProjectName, currentTableName } from '../utils/jotai.js';
 import { useAtomValue } from 'jotai';
 import { Type, notify } from '../components/Notifier';
@@ -170,7 +170,7 @@ export const RadioButtons = ({ layout, label, options, selectedOption, setSelect
     );
 };
 
-export const IdentificationGenerator_UI = ({ handleInputChange, userEntries }) => {
+export const IdentificationGenerator_UI = ({ handleInputChange, userEntries, reset }) => {
     const [id, setId] = useState('');
     const [idMaxLetter, setIdMaxLetter] = useState('');
     const [idMaxNumber, setIdMaxNumber] = useState('');
@@ -179,7 +179,6 @@ export const IdentificationGenerator_UI = ({ handleInputChange, userEntries }) =
     const [buttonSwitch, setButtonSwitch] = useState(false);
     const [unwantedCodes, setUnwantedCodes] = useState([]);
     const [utilizeUnwanted, setUtilizeUnwanted] = useState([]);
-    const [allowGenerate, setAllowGenerate] = useState(true);
 
     const email = useAtomValue(currentUserEmail);
     const project = useAtomValue(currentProjectName);
@@ -202,10 +201,16 @@ export const IdentificationGenerator_UI = ({ handleInputChange, userEntries }) =
                 })
                 .catch(error => console.error('Error fetching unwanted codes:', error));
         }
-
+        
         fetchIdDimension();
         fetchUnwantedCodesInfo();
-    }, [email, project, tab]);
+    }, [email, project, tab, userEntries]);
+
+    useEffect(() => {
+            setId('');
+            handleInputChange('Entry ID', '');
+    }, [reset]);
+    
 
     useEffect(() => {
         if (idMaxLetter) {
@@ -231,10 +236,6 @@ export const IdentificationGenerator_UI = ({ handleInputChange, userEntries }) =
 
     useEffect(() => {
         if (!isNaN(id.charAt(id.length - 1))) {
-            console.log('id', id);
-            console.log('utilize', utilizeUnwanted);
-            console.log('unwanted', unwantedCodes);
-            console.log('match', unwantedCodes.filter((code) => id.includes(code)).length > 0);
             if (unwantedCodes.filter((code) => id.includes(code)).length > 0) {
                 if (utilizeUnwanted) {
                     notify(Type.error, `WARNING: This ID contains an unwanted code (${unwantedCodes.join(', ')}).`);
@@ -246,7 +247,6 @@ export const IdentificationGenerator_UI = ({ handleInputChange, userEntries }) =
                 }
             }
 
-            setAllowGenerate(true);
             let tempCodeArray = id.split('-');
             tempCodeArray.sort();
             setId(tempCodeArray.join('-'));
@@ -370,7 +370,6 @@ export const IdentificationGenerator_UI = ({ handleInputChange, userEntries }) =
                 flexible={false}
                 text="Generate id"
                 onClick={async () => {
-                    if (allowGenerate) {
                         const temp = await generateId(email, project, tab, id, userEntries);
                         if (temp === `No codes available.`) {
                             notify(Type.error, temp);
@@ -380,12 +379,15 @@ export const IdentificationGenerator_UI = ({ handleInputChange, userEntries }) =
                             notify(Type.error, temp);
                             setId('');
                             handleInputChange('Entry ID', '');
+                        } else if (temp.includes('before generating code')) {
+                            notify(Type.error, temp);
+                            setId('');
+                            handleInputChange('Entry ID', '');
                         } else if (temp) {
                             notify(Type.success, 'Id is available.');
                             setId(temp);
                             handleInputChange('Entry ID', temp);
                         }
-                    }
                 }}
             />
         </div>

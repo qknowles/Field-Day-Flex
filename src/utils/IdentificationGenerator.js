@@ -4,6 +4,8 @@ export const generateId = async (email, project, tab, pWantedId, pUserEntries) =
     let generatedId = '';
     let appendingOptions = [];
     let alreadyUsedCodes = [];
+    let hasEmptyIdentifierValue = false;
+    let identifierFields = '';
 
     const setAppendingOptions = async () => {
         let possibleIdentifiers = await getPossibleIdentifiers(email, project, tab);
@@ -13,13 +15,12 @@ export const generateId = async (email, project, tab, pWantedId, pUserEntries) =
                 possibleIdentifiers = possibleIdentifiers.filter((id) => !id.includes(code));
             }
         }
-        console.log('poss', possibleIdentifiers);
         appendingOptions = possibleIdentifiers;
     }
 
     const setAlreadyUsedCodes = async () => {
-        let identifierFields = (await getIdentifierFields(email, project, tab));
-        identifierFields = identifierFields.filter(field => !field.includes('Entry ID'));
+        identifierFields = (await getIdentifierFields(email, project, tab));
+        identifierFields = identifierFields.filter(field => !field.includes('Entry ID')).sort();
 
         let userEntriesMap = new Map(Object.entries(pUserEntries || {}));
 
@@ -30,14 +31,15 @@ export const generateId = async (email, project, tab, pWantedId, pUserEntries) =
                 return obj;
             }, {});
 
+        hasEmptyIdentifierValue = Object.values(identifierEntries)
+            .some(value => value === '' || value === null || value === undefined || value === 'Select');
+
         alreadyUsedCodes = await getEntriesWithIdFields(project, tab, email, identifierEntries);
-        console.log('already', alreadyUsedCodes);
     }
 
     const generate = async () => {
-
-        let match = alreadyUsedCodes.filter((codes) => codes === pWantedId).length > 0;
-        console.log('already', match);
+        if (!hasEmptyIdentifierValue) {
+            let match = alreadyUsedCodes.filter((codes) => codes === pWantedId).length > 0;
             if (pWantedId && !match) {
                 generatedId = pWantedId;
             } else {
@@ -49,13 +51,10 @@ export const generateId = async (email, project, tab, pWantedId, pUserEntries) =
                         let optionArray = option.match(/[A-Z]+[0-9]+/gi) || [];
                         tempArray = [...wantedArray, ...optionArray];
                         tempArray.sort();
-                        console.log('temp', tempArray);
 
                         match = alreadyUsedCodes.filter((codes) => codes === tempArray.join('-')).length > 0;
-                        console.log('match', match);
                         if (!match) {
                             generatedId = tempArray.join('-');
-                            console.log('here');
                             break;
                         }
                     };
@@ -64,6 +63,9 @@ export const generateId = async (email, project, tab, pWantedId, pUserEntries) =
                     generatedId = `No codes available.`
                 }
             }
+        } else {
+            generatedId = `Enter ${identifierFields.join(', ')} before generating code.`;
+        }
     }
 
     await setAlreadyUsedCodes();
