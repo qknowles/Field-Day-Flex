@@ -90,7 +90,7 @@ export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntry
 
     const validEntries = () => {
         for (const column of columnsCollection) {
-            const { name, data_type, required_field } = column;
+            const { name, data_type, required_field, identifier_domain } = column;
             const value = userEntries[name];
 
             if (data_type === 'number' && (value === '' || isNaN(value))) {
@@ -113,6 +113,11 @@ export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntry
 
             if (data_type === 'auto_id' && !/^(?:[A-Z]+[0-9]+)(?:-[A-Z]+[0-9]+)*$/i.test(value)) {
                 notify(Type.error, `Please enter a valid code for "${name}".`);
+                return false;
+            }
+            
+            if ((required_field === true || identifier_domain === true) && value === '' || value === null || value === undefined || value === 'Select') {
+                notify(Type.error, `"${name}" is a ${required_field ? 'required' : 'ID domain'} field that must be entered.`);
                 return false;
             }
         }
