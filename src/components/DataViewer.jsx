@@ -173,7 +173,7 @@ const DataViewer = () => {
             formattedEntries.sort((a, b) => {
                 if (!a.entry_date) return 1;
                 if (!b.entry_date) return -1;
-                return a.entry_date - b.entry_date;
+                return b.entry_date - a.entry_date;
             });
     
             setEntries(formattedEntries);
@@ -230,8 +230,8 @@ const DataViewer = () => {
     
             if (sortConfig.key === 'entry_date') {
                 return sortConfig.direction === 'asc' 
-                    ? new Date(aValue) - new Date(bValue) 
-                    : new Date(bValue) - new Date(aValue);
+                    ? new Date(bValue) - new Date(aValue) 
+                    : new Date(aValue) - new Date(bValue);
             }
     
             if (sortConfig.direction === 'asc') {
