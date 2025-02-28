@@ -1,26 +1,29 @@
+import React, { useState } from 'react';
 import { ColumnToggleIcon } from '../assets/icons';
-import { useState } from 'react';
 import ColumnSelector from './ColumnSelector';
-import React from 'react';
 
 const ColumnSelectorButton = ({ labels, columns, toggleColumn }) => {
     const [showColumnSelector, setShowColumnSelector] = useState(false);
 
     return (
-        <div className="flex-col px-5 space-x-5 items-center">
-            <div
-                className="hover:scale-125 transition h-8 cursor-pointer"
-                onClick={() => !showColumnSelector && setShowColumnSelector(true)}
+        <div className="relative">
+            {/* Compact button that fits in small spaces */}
+            <button
+                onClick={() => setShowColumnSelector(prev => !prev)}
+                className="p-2 text-white hover:bg-neutral-700 rounded"
+                title="Toggle Columns"
             >
-                <ColumnToggleIcon className="text-2xl" />
-            </div>
-            <ColumnSelector
-                show={showColumnSelector}
-                labels={labels}
-                columns={columns}
-                setShow={setShowColumnSelector}
-                toggleColumn={toggleColumn}
-            />
+                <ColumnToggleIcon className="h-6 w-6" />
+            </button>
+            
+            {showColumnSelector && (
+                <ColumnSelector
+                    show={showColumnSelector}
+                    columns={columns}
+                    setShow={setShowColumnSelector}
+                    toggleColumn={toggleColumn}
+                />
+            )}
         </div>
     );
 };
