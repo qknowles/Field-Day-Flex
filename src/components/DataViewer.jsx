@@ -10,6 +10,8 @@ import NewEntry from '../windows/NewEntry';
 import { AiFillEdit, AiFillDelete } from 'react-icons/ai';
 import { useAtom, useAtomValue } from 'jotai';
 import { currentUserEmail, currentProjectName, currentTableName, currentBatchSize } from '../utils/jotai';
+import { visibleColumnsAtom } from '../utils/jotai';
+
 
 const STATIC_COLUMNS = [
     { id: 'actions', name: 'Actions', type: 'actions', order: -3 },
@@ -32,7 +34,9 @@ const DataViewer = () => {
     const [currentProject, setCurrentProject] = useAtom(currentProjectName);
     const [currentTable, setCurrentTable] = useAtom(currentTableName);
     const [isAdminOrOwner, setIsAdminOrOwner] = useState(false);
+    const [currentTab] = useAtom(currentTableName);
 
+  
     const [showEditWindow, setEditWindow] = useState(null);
     const [showManageColumns, setShowManageColumns] = useState(false);
     const [columnOrder, setColumnOrder] = useState({});
@@ -49,7 +53,7 @@ const DataViewer = () => {
         };
         return classMap[columnName] || '';
     };
-
+    const [visibleColumns] = useAtom(visibleColumnsAtom);
     const [editedColumnTypes, setEditedColumnTypes] = useState({});
     const [editedRequiredFields, setEditedRequiredFields] = useState({});
     const [editedIdentifierDomains, setEditedIdentifierDomains] = useState({});
@@ -178,7 +182,12 @@ const DataViewer = () => {
             setError('Failed to load entries');
         }
     }, [SelectedProject, SelectedTab, Email]);
-    
+    useEffect(() => {
+        if (visibleColumns && currentTab) {
+          console.log('Current tab:', currentTab);
+          console.log('Visible columns state:', visibleColumns[currentTab]);
+        }
+      }, [visibleColumns, currentTab]);
 
     useEffect(() => {
         let mounted = true;
@@ -348,26 +357,80 @@ const DataViewer = () => {
     
         return (
             <table>
-                <thead>
-                    <tr>
-                        <th>Actions</th>
-                        <th>Date & Time</th>
-                        {columns.map((column) => (
-                            <th key={column.id}>{column.name}</th>
-                        ))}
-                    </tr>
-                </thead>
-                <tbody>
-                    {entries.map((entry) => (
-                        <tr key={entry.id}>
-                            <td>...</td>
-                            <td>{entry.entry_data?.['Date & Time'] || 'N/A'}</td>
-                            {columns.map((column) => (
-                                <td key={column.id}>{entry.entry_data?.[column.name] || 'N/A'}</td>
-                            ))}
-                        </tr>
-                    ))}
-                </tbody>
+              <thead>
+    <tr className="bg-neutral-100 dark:bg-neutral-800">
+        <th className="p-2 text-left border-b font-semibold w-32">
+            Actions
+        </th>
+        <th className="dateTimeColumn p-2 text-left border-b font-semibold">
+            Date & Time
+        </th>
+        {columns
+    .filter((col) => 
+        !['actions', 'datetime'].includes(col.id) && 
+        (visibleColumns[currentTable]?.[col.id] !== false) // Only show columns that aren't explicitly hidden
+    )
+    .map((column) => (
+                <th
+                    key={column.id}
+                    className={`p-2 text-left border-b font-semibold cursor-pointer ${
+                        column.type === 'identifier' ? 'min-w-[150px]' : ''
+                    } ${getColumnClass(column.name)}`}
+                    onClick={() => handleSort(column.name)}
+                >
+                    {column.name}
+                    {sortConfig.key === column.name && (
+                        <span className="ml-1">
+                            {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                        </span>
+                    )}
+                </th>
+            ))}
+    </tr>
+</thead>
+<tbody>
+    {paginatedEntries.map((entry) => (
+        <tr
+            key={entry.id}
+            className="hover:bg-neutral-100 dark:hover:bg-neutral-800"
+        >
+            <td className="p-2 border-b w-32">
+                <div className="flex space-x-2">
+                    <Button
+                        onClick={() => handleEdit(entry.id)}
+                        icon={AiFillEdit}
+                        flexible={true}
+                        className={'flex items-center justify-center'}
+                    />
+                    <Button
+                        onClick={() => handleDelete(entry.id)}
+                        icon={AiFillDelete}
+                        flexible={true}
+                        className={'flex items-center justify-center'}
+                    />
+                </div>
+            </td>
+            <td className="dateTimeColumn text-left p-2 border-b">
+                {entry.entry_date?.toLocaleDateString()} {entry.entry_date?.toLocaleTimeString()}
+            </td>
+            {columns
+                .filter((col) => 
+                    !['actions', 'datetime'].includes(col.id) && 
+                    (visibleColumns[currentTab]?.[col.id] !== false) // Only show columns that aren't explicitly hidden
+                )
+                .map((column) => (
+                    <td
+                        key={`${entry.id}-${column.id}`}
+                        className={`p-2 border-b text-left ${
+                            column.type === 'identifier' ? 'min-w-[150px]' : ''
+                        } ${getColumnClass(column.name)}`}
+                    >
+                        {entry.entry_data?.[column.name] || 'N/A'}
+                    </td>
+                ))}
+        </tr>
+    ))}
+</tbody>
             </table>
         );
     };
@@ -466,12 +529,16 @@ const DataViewer = () => {
                                     Date & Time
                                 </th>
                                 {columns
-                                    .filter((col) => !['actions', 'datetime'].includes(col.id))
+                                    .filter((col) => 
+                                        !['actions', 'datetime'].includes(col.id) && 
+                                        (visibleColumns[currentTab]?.[col.id] !== false) // Added visibility filter
+                                    )
                                     .map((column) => (
                                         <th
                                             key={column.id}
-                                            className={`p-2 text-left border-b font-semibold cursor-pointer ${column.type === 'identifier' ? 'min-w-[150px]' : ''
-                                                } ${getColumnClass(column.name)}`}
+                                            className={`p-2 text-left border-b font-semibold cursor-pointer ${
+                                                column.type === 'identifier' ? 'min-w-[150px]' : ''
+                                            } ${getColumnClass(column.name)}`}
                                             onClick={() => handleSort(column.name)}
                                         >
                                             {column.name}
@@ -510,11 +577,15 @@ const DataViewer = () => {
                                         {entry.entry_data?.['Date & Time'] || 'N/A'}
                                     </td>
                                     {columns
-                                        .filter((col) => !['actions', 'datetime'].includes(col.id))
+                                        .filter((col) => 
+                                            !['actions', 'datetime'].includes(col.id) && 
+                                            (visibleColumns[currentTab]?.[col.id] !== false) // Added visibility filter
+                                        )
                                         .map((column) => (
                                             <td
                                                 key={`${entry.id}-${column.id}`}
-                                                className={`p-2 border-b text-left ${column.type === 'identifier'
+                                                className={`p-2 border-b text-left ${
+                                                    column.type === 'identifier'
                                                         ? 'min-w-[150px]'
                                                         : ''
                                                     } ${getColumnClass(column.name)}`}
@@ -548,3 +619,4 @@ const DataViewer = () => {
     );
 };
 export default DataViewer;
+
