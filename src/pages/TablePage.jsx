@@ -12,7 +12,7 @@ import { currentProjectName, currentTableName, currentUserEmail, allProjectNames
 import { ExportIcon } from '../assets/icons';
 import { generateCSVData } from '../components/ExportService.jsx';
 import { CSVLink } from 'react-csv';
-import { getProjectNames, getTabNames } from '../utils/firestore.js'
+import { getProjectNames, getTabNames, getColumnsCollection } from '../utils/firestore.js';
 import ColumnSelectorButton from '../components/ColumnSelectorButton';
 import { visibleColumnsAtom } from '../utils/jotai.js';
 
@@ -34,8 +34,58 @@ export default function TablePage() {
     const csvDownloadRef = useRef(null);
     const [columnOrder, setColumnOrder] = useState([]);
     const [visibleColumns, setVisibleColumns] = useAtom(visibleColumnsAtom);
+    const [columns, setColumns] = useState([]);
 
-    <DataViewer columnOrder={columnOrder} />
+    useEffect(() => {
+        const fetchColumns = async () => {
+            if (selectedProject && selectedTab && email) {
+                try {
+                    const columnsData = await getColumnsCollection(selectedProject, selectedTab, email);
+                    const defaultColumns = [
+                        { id: 'actions', name: 'Actions', type: 'actions', order: -3 },
+                        { id: 'datetime', name: 'Date & Time', type: 'datetime', order: -2 },
+                    ];
+                    
+                    const sortedColumns = [...defaultColumns, ...columnsData].sort(
+                        (a, b) => a.order - b.order
+                    );
+                    
+                    setColumns(sortedColumns);
+                } catch (error) {
+                    console.error('Error fetching columns:', error);
+                }
+            }
+        };
+        
+        fetchColumns();
+    }, [selectedProject, selectedTab, email]);
+
+
+    const toggleColumn = (columnId) => {
+        console.log('TablePage - Toggling column:', columnId, 'Tab:', selectedTab);
+        
+        setVisibleColumns(prev => {
+          // Get the current visibility settings for the tab or initialize with empty object
+          const currentTabSettings = prev[selectedTab] || {};
+          
+          // Log the current state for debugging
+          console.log('Current visibility:', currentTabSettings[columnId]);
+          console.log('Changing to:', !currentTabSettings[columnId]);
+          
+          // Create a new state object with the updated visibility
+          const newState = {
+            ...prev,
+            [selectedTab]: {
+              ...currentTabSettings,
+              [columnId]: !currentTabSettings[columnId]
+            }
+          };
+          
+          console.log('New visibility state:', newState[selectedTab]);
+          return newState;
+        });
+      };
+   
 
  
 
@@ -56,19 +106,6 @@ export default function TablePage() {
                 }
             }, 500);
         }
-    };
-
-    const toggleColumn = (columnId) => {
-        setVisibleColumns(prev => {
-            const currentTabSettings = prev[selectedTab] || {};
-            return {
-                ...prev,
-                [selectedTab]: {
-                    ...currentTabSettings,
-                    [columnId]: !currentTabSettings[columnId]
-                }
-            };
-        });
     };
 
 
@@ -116,12 +153,13 @@ export default function TablePage() {
         
         <div className="flex items-center space-x-2"> {/* Added this container */}
             {/* Column Selector Button */}
-            <ColumnSelectorButton 
-                labels={columns.map(col => col.name)}
-                columns={columns}
-                toggleColumn={toggleColumn}
-            />
-            
+            {columns.length > 0 && (
+    <ColumnSelectorButton 
+        labels={columns.map(col => col.name)}
+        columns={columns}
+        toggleColumn={toggleColumn}
+    />
+)}
             {/* Export Icon */}
             <button
                 onClick={handleExport}
