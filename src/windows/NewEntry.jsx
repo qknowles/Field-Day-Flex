@@ -6,6 +6,7 @@ import { getColumnsCollection, addEntry, updateEntry } from '../utils/firestore'
 import { Type, notify } from '../components/Notifier';
 import { useAtomValue } from 'jotai';
 import { currentUserEmail, currentProjectName, currentTableName } from '../utils/jotai.js';
+import error from 'eslint-plugin-react/lib/util/error.js';
 
 export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntryUpdated }) {
     const [columnsCollection, setColumnsCollection] = useState([]);
@@ -56,8 +57,7 @@ export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntry
             const defaultEntries = {};
             columns.forEach((column) => {
                 const { name, data_type } = column;
-
-                if (data_type === 'number') {
+                if (data_type === 'whole number' || data_type ===  "decimal number") {
                     defaultEntries[name] = 0;
                 } else if (data_type === 'date') {
                     defaultEntries[name] = formatDateTime(new Date());
@@ -98,6 +98,10 @@ export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntry
                 return false;
             }
 
+            if(data_type === 'float' && (value === '' || isNaN(value))) {
+                notify(Type.error, `The field "${name}" must be a valid decimal number.`);
+            }
+
             if (data_type === 'date' && !/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}$/.test(value)) {
                 notify(
                     Type.error,
@@ -126,15 +130,19 @@ export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntry
     };
 
     const submitEntry = async () => {
-        if (!validEntries()) return;
-
+        if (!validEntries()) throw new Error("Invalid entries");
         const formattedEntries = { ...userEntries };
-
 
         columnsCollection.forEach((column) => {
             const { name, data_type } = column;
-
-            if (data_type === 'number') {
+    
+            if (data_type === 'whole number') {
+                if(!Number.isInteger(Number(formattedEntries[name]))) {
+                    notify(Type.error, `The field "${name}" must be an integer (whole number).`);
+                    throw new Error("Whole number column must be integer");
+                }
+                formattedEntries[name] = Number(formattedEntries[name]) || 0;
+            } else if(data_type === "decimal number") {
                 formattedEntries[name] = Number(formattedEntries[name]) || 0;
             } else if (data_type === 'date') {
                 formattedEntries[name] = new Date(formattedEntries[name]).toISOString();
