@@ -34,7 +34,7 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
     const [editedDropdownOptions, setEditedDropdownOptions] = useState({});
     const [tempEntryOptions, setTempEntryOptions] = useState([]);
     const [loading, setLoading] = useState(true);
-    const entryTypeOptions = ['number', 'text', 'date', 'multiple choice'];
+    const entryTypeOptions = ['whole number', 'decimal number', 'text', 'date', 'multiple choice'];
     const tabRef = collection(db, 'Projects', SelectedProject, 'Tabs', TabName, 'Columns');
     const columnsRef = collection(db, 'Projects', SelectedProject, 'Tabs', TabName, 'Columns');
     const setRefreshColumns = useSetAtom(refreshColumnsAtom);
@@ -135,7 +135,7 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
             Object.keys(entryData).forEach(columnId => {
                 const columnType = updatedColumns[columnId];
     
-                if (columnType === 'number') {
+                if (columnType === 'whole number' || columnType === "decimal number") {
                     formattedEntry[columnId] = Number(entryData[columnId]) || 0;
                 } else if (columnType === 'date') {
                     formattedEntry[columnId] = new Date(entryData[columnId]).toISOString();
@@ -149,7 +149,6 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
     
             notify(Type.success, "New entry added successfully!");
         } catch (error) {
-            
             notify(Type.error, "Failed to add entry");
         }
     };

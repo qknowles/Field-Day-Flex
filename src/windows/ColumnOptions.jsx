@@ -29,7 +29,7 @@ export default function ColumnOptions({
     const [identifierDomain, setIdentifierDomain] = useState(new Array(ColumnNames.length).fill(false));
     const [requiredField, setRequiredField] = useState(new Array(ColumnNames.length).fill(false));
 
-    const entryTypeOptions = ['number', 'text', 'date', 'multiple choice'];
+    const entryTypeOptions = ['whole number', 'decimal number', 'text', 'date', 'multiple choice'];
 
     const validInputs = useCallback(() => {
         if (!entryTypeOptions.includes(dataType[columnIndex])) {
