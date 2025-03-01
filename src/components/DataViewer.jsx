@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo} from 'react';
-import { getColumnsCollection, getEntriesForTab, getProjectFields, deleteEntry, getEntryDetails } from '../utils/firestore'; // Import deleteEntry
+import { getColumnsCollection, getEntriesForTab, getProjectFields, deleteEntry, getEntryDetails } from '../utils/firestore';
 import TableTools from '../wrappers/TableTools';
 import { Pagination } from './Pagination';
 import Button from './Button';
@@ -151,8 +151,7 @@ const DataViewer = () => {
     
                 Object.keys(formattedData).forEach(columnId => {
                     const columnType = editedColumnTypes[columnId];
-    
-                    if (columnType === 'number') {
+                    if (columnType === 'whole number' || columnType === 'decimal number') {
                         formattedData[columnId] = Number(formattedData[columnId]) || 0;
                     } else if (columnType === 'date') {
                         formattedData[columnId] = new Date(formattedData[columnId]).toISOString();
