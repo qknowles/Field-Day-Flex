@@ -25,6 +25,12 @@ export const generateCSVData = async (selectedProject, selectedTab, email) => {
         //**Filter out deleted entries**
         entries = entries.filter(entry => !entry.deleted || entry.deleted === false);
 
+        entries.sort((a, b) => {
+            const dateA = new Date(a.entry_date);
+            const dateB = new Date(b.entry_date);
+            return dateB - dateA; // Newest to oldest
+        });
+
         const formattedData = entries.map(entry => {
             let formattedEntry = {
                 entry_date: entry.entry_date?.toISOString?.() || "N/A"  
