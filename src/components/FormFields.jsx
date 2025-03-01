@@ -3,10 +3,11 @@ import classNames from 'classnames';
 import InputLabel from './InputLabel';
 import Button from './Button';
 import React from 'react';
-import IdentificationGenerator from '../utils/IdentificationGenerator'
-import { getIdDimension } from '../utils/firestore';
+import { generateId } from '../utils/IdentificationGenerator'
+import { getIdDimension, getUnwantedCodeInfo, getRequiredFields } from '../utils/firestore';
 import { currentUserEmail, currentProjectName, currentTableName } from '../utils/jotai.js';
 import { useAtomValue } from 'jotai';
+import { Type, notify } from '../components/Notifier';
 
 export const DropdownFlex = ({ options, setOptions, label }) => {
     const [editingIndex, setEditingIndex] = useState(null);
@@ -169,19 +170,19 @@ export const RadioButtons = ({ layout, label, options, selectedOption, setSelect
     );
 };
 
-export const IdentificationGenerator_UI = ({ label, handleInputChange }) => {
+export const IdentificationGenerator_UI = ({ handleInputChange, userEntries, reset }) => {
     const [id, setId] = useState('');
     const [idMaxLetter, setIdMaxLetter] = useState('');
     const [idMaxNumber, setIdMaxNumber] = useState('');
     const [letterArray, setLetterArray] = useState([]);
     const [numberArray, setNumberArray] = useState([]);
     const [buttonSwitch, setButtonSwitch] = useState(false);
+    const [unwantedCodes, setUnwantedCodes] = useState([]);
+    const [utilizeUnwanted, setUtilizeUnwanted] = useState([]);
 
     const email = useAtomValue(currentUserEmail);
     const project = useAtomValue(currentProjectName);
     const tab = useAtomValue(currentTableName);
-
-    const generatedId = IdentificationGenerator(id);
 
     useEffect(() => {
         const fetchIdDimension = async () => {
@@ -192,8 +193,24 @@ export const IdentificationGenerator_UI = ({ label, handleInputChange }) => {
             }
         };
 
+        const fetchUnwantedCodesInfo = async () => {
+            getUnwantedCodeInfo(email, project, tab)
+                .then(({ unwantedCodes, utilizeUnwanted }) => {
+                    setUnwantedCodes(unwantedCodes);
+                    setUtilizeUnwanted(utilizeUnwanted);
+                })
+                .catch(error => console.error('Error fetching unwanted codes:', error));
+        }
+        
         fetchIdDimension();
-    }, [email, project, tab]);
+        fetchUnwantedCodesInfo();
+    }, [email, project, tab, userEntries]);
+
+    useEffect(() => {
+            setId('');
+            handleInputChange('Entry ID', '');
+    }, [reset]);
+    
 
     useEffect(() => {
         if (idMaxLetter) {
@@ -217,6 +234,26 @@ export const IdentificationGenerator_UI = ({ label, handleInputChange }) => {
         }
     }, [idMaxLetter, idMaxNumber]);
 
+    useEffect(() => {
+        if (!isNaN(id.charAt(id.length - 1))) {
+            if (unwantedCodes.filter((code) => id.includes(code)).length > 0) {
+                if (utilizeUnwanted) {
+                    notify(Type.error, `WARNING: This ID contains an unwanted code (${unwantedCodes.join(', ')}).`);
+                } else {
+                    notify(Type.error, `Can not use unwanted codes: ${unwantedCodes.join(', ')}`);
+                    setId('');
+                    handleInputChange('Entry ID', '');
+                    return
+                }
+            }
+
+            let tempCodeArray = id.split('-');
+            tempCodeArray.sort();
+            setId(tempCodeArray.join('-'));
+            handleInputChange('Entry ID', tempCodeArray.join('-'));
+        }
+    }, [id])
+
     return (
         <div className="flex flex-col space-y-2 items-center justify-center">
             <div className="flex space-x-2 items-center justify-center">
@@ -229,9 +266,15 @@ export const IdentificationGenerator_UI = ({ label, handleInputChange }) => {
                                 flexible={false}
                                 text={letter}
                                 onClick={() => {
-                                    setId(id + letter);
-                                    setButtonSwitch(!buttonSwitch);
-                                    handleInputChange('Entry ID', id + letter);
+                                    if (id.length > 0) {
+                                        setId(id + '-' + letter);
+                                        setButtonSwitch(!buttonSwitch);
+                                        handleInputChange('Entry ID', id + '-' + letter);
+                                    } else {
+                                        setId(id + letter);
+                                        setButtonSwitch(!buttonSwitch);
+                                        handleInputChange('Entry ID', id + letter);
+                                    }
                                 }}
                                 disabled={buttonSwitch}
                             />
@@ -264,7 +307,7 @@ export const IdentificationGenerator_UI = ({ label, handleInputChange }) => {
             </div>
 
             <InputLabel
-                label={label + ' entry id'}
+                label={'Entry ID'}
                 layout={'horizontal-single'}
                 input={
                     <input
@@ -273,25 +316,45 @@ export const IdentificationGenerator_UI = ({ label, handleInputChange }) => {
                         onChange={(e) => {
                             let value = e.target.value;
 
-                            if (value === '' || value.length - id.length < -1 ) {
+                            if (value === '' || value.length - id.length < -1) {
                                 setId('');
                                 setButtonSwitch(false);
                                 handleInputChange('Entry ID', '');
                                 return;
                             }
 
-                            if (value.length - id.length < 2) {
+                            if (value.length - id.length === 1) {
                                 if (!buttonSwitch) {
                                     value = value.toUpperCase();
                                     if (letterArray.includes(value.charAt(value.length - 1))) {
                                         if (!value.slice(0, value.length - 1).includes(value.charAt(value.length - 1))) {
-                                            setId(value);
-                                            setButtonSwitch(!buttonSwitch);
-                                            handleInputChange('Entry ID', value);
+                                            if (id.length > 0) {
+                                                setId(value.slice(0, value.length - 1) + '-' + value.charAt(value.length - 1));
+                                                setButtonSwitch(!buttonSwitch);
+                                                handleInputChange(value.slice(0, value.length - 1) + '-' + value.charAt(value.length - 1));
+                                            } else {
+                                                setId(value);
+                                                setButtonSwitch(!buttonSwitch);
+                                                handleInputChange('Entry ID', value);
+                                            }
                                         }
                                     }
                                 } else {
-                                    if (numberArray.includes(value.charAt(value.length - 1))) {
+                                    if (value.charAt(value.length - 1) === '-' || numberArray.includes(value.charAt(value.length - 1))) {
+                                        setId(value);
+                                        if (value.charAt(value.length - 1) !== '-') {
+                                            setButtonSwitch(!buttonSwitch);
+                                        }
+                                        handleInputChange('Entry ID', value);
+                                    }
+                                }
+                            } else if (value.length - id.length === -1) {
+                                if (value.charAt(value.length - 1) !== id.charAt(id.length - 1)) {
+                                    if (value.charAt(value.length - 1) === '-') {
+                                        setId(value.slice(0, value.length - 1));
+                                        setButtonSwitch(!buttonSwitch);
+                                        handleInputChange('Entry ID', value.slice(0, value.length - 1));
+                                    } else {
                                         setId(value);
                                         setButtonSwitch(!buttonSwitch);
                                         handleInputChange('Entry ID', value);
@@ -306,9 +369,25 @@ export const IdentificationGenerator_UI = ({ label, handleInputChange }) => {
             <Button
                 flexible={false}
                 text="Generate id"
-                onClick={() => {
-                    setId(generatedId);
-                    handleInputChange('Entry ID', generatedId);
+                onClick={async () => {
+                        const temp = await generateId(email, project, tab, id, userEntries);
+                        if (temp === `No codes available.`) {
+                            notify(Type.error, temp);
+                            setId('');
+                            handleInputChange('Entry ID', '');
+                        } else if (temp === `Can't include ${id} in Entry ID.`) {
+                            notify(Type.error, temp);
+                            setId('');
+                            handleInputChange('Entry ID', '');
+                        } else if (temp.includes('before generating code')) {
+                            notify(Type.error, temp);
+                            setId('');
+                            handleInputChange('Entry ID', '');
+                        } else if (temp) {
+                            notify(Type.success, 'Id is available.');
+                            setId(temp);
+                            handleInputChange('Entry ID', temp);
+                        }
                 }}
             />
         </div>

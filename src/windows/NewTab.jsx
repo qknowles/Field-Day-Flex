@@ -20,8 +20,8 @@ export default function NewTab({ CancelTab, OpenNewTab }) {
     const [unwantedCodes, setUnwantedCodes] = useState([]);
     const [utilizeUnwantedCodes, setUtilizeUnwantedCodes] = useState(false);
 
-    const [firstIdentifierDimension, setFirstIdentifierDimension] = useState('');
-    const [secondIdentifierDimension, setSecondIdentifierDimension] = useState('');
+    const [firstIdentifierDimension, setFirstIdentifierDimension] = useState('A');
+    const [secondIdentifierDimension, setSecondIdentifierDimension] = useState(1);
     const [columnNames, setColumnNames] = useState([]);
 
     const dimensionsChar = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
@@ -62,7 +62,6 @@ export default function NewTab({ CancelTab, OpenNewTab }) {
                 if (numEntries > 22000) {
                     throw new Error('Max entries reached.');
                 }
-
                 const appendedIdentifiers = pAppendedIdentifiers.slice(highestNumber);
                 const newBaseIdentifiers = [];
                 if (appendedIdentifiers.length === 0) {
@@ -84,9 +83,7 @@ export default function NewTab({ CancelTab, OpenNewTab }) {
             }
 
             identifiers.push(...recursiveGeneration(identifiers, identifiers, identifiers.length));
-
             const filteredIdentifiers = identifiers.filter(identifier => !unwanted.some(item => identifier.includes(item)));
-
             return filteredIdentifiers;
 
         } catch (error) {
@@ -134,6 +131,7 @@ export default function NewTab({ CancelTab, OpenNewTab }) {
                 unwantedCodesWithoutDuplicates,
             );
             if (finalPossibleIdentifiers.length === 0) {
+                notify(Type.error, "Couldn't generate identifiers.");
                 return;
             }
         }
@@ -205,11 +203,6 @@ export default function NewTab({ CancelTab, OpenNewTab }) {
                     CancelColumnOptions={closeColumnOptions}
                     OpenNewTab={OpenNewTab}
                     tabName={tabName}
-                    GenerateIdentifiers={generateIdentifiers}
-                    PossibleIdentifiers={possibleIdentifiers}
-                    IdentifierDimension={identifierDimension}
-                    UnwantedCodes={unwantedCodes}
-                    UtilizeUnwantedCodes={utilizeUnwantedCodes}
                 />
             ) : (
                 <WindowWrapper

@@ -13,11 +13,6 @@ export default function ColumnOptions({
     CancelColumnOptions,
     OpenNewTab,
     tabName = '',
-    GenerateIdentifiers,
-    PossibleIdentifiers,
-    IdentifierDimension,
-    UnwantedCodes,
-    UtilizeUnwantedCodes,
     header = 'Column Options',
 }) {
 
@@ -33,7 +28,6 @@ export default function ColumnOptions({
     const [entryOptions, setEntryOptions] = useState(Array.from({ length: ColumnNames.length }, () => []));
     const [identifierDomain, setIdentifierDomain] = useState(new Array(ColumnNames.length).fill(false));
     const [requiredField, setRequiredField] = useState(new Array(ColumnNames.length).fill(false));
-    const [order, setOrder] = useState(Array.from({ length: ColumnNames.length }, (_, i) => i));
 
     const entryTypeOptions = ['whole number', 'decimal number', 'text', 'date', 'multiple choice'];
 
@@ -53,6 +47,12 @@ export default function ColumnOptions({
                 return false;
             }
         }
+
+        if (ColumnNames[columnIndex] === '' || ColumnNames[columnIndex] === null || ColumnNames[columnIndex] === undefined) {
+            notify(Type.error, "Collumn name can't be empty.");
+            return false;
+        }
+
         return true;
     }, [columnIndex, dataType, entryOptions, entryTypeOptions]);
 
@@ -80,10 +80,14 @@ export default function ColumnOptions({
 
     const storeNewTab = useCallback(async () => {
         if (validInputs()) {
-            const finalEntryOptions = Array.from({ length: ColumnNames.length }, (_, i) =>
-                entryOptions[i].filter((name) => name !== 'Add Here'),
+            let finalEntryOptions = entryOptions.map((option, i) =>
+                i === columnIndex ? [...tempEntryOptions] : option
             );
-
+            
+            finalEntryOptions = finalEntryOptions.map((options) =>
+                options.filter((name) => name !== 'Add Here')
+            );
+    
             const tabAlreadyExists = await tabExists(Email, SelectedProject, TabName);
             if (tabAlreadyExists) {
                 for (let i = 0; i < ColumnNames.length; i++) {
@@ -111,16 +115,11 @@ export default function ColumnOptions({
         Email,
         SelectedProject,
         TabName,
-        GenerateIdentifiers,
-        PossibleIdentifiers,
-        IdentifierDimension,
-        UnwantedCodes,
-        UtilizeUnwantedCodes,
         entryOptions,
+        tempEntryOptions,
         dataType,
         identifierDomain,
         requiredField,
-        order,
         OpenNewTab,
     ]);
 
