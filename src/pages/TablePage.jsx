@@ -201,6 +201,7 @@ export default function TablePage() {
                 <NewEntry
                     CloseNewEntry={() => setShowNewEntry(false)}
                     onEntryUpdated={() => {
+                        // Refresh DataViewer after adding an entry
                         if (dataViewerRef.current && dataViewerRef.current.fetchEntries) {
                             dataViewerRef.current.fetchEntries();
                         }
@@ -213,7 +214,18 @@ export default function TablePage() {
                     ColumnNames={newColumn}
                     SetColumnNames={setNewColumn}
                     CancelColumnOptions={() => setShowColumnOptions(false)}
-                    OpenNewTab={() => setShowColumnOptions(false)}
+                    OpenNewTab={() => {
+                        setShowColumnOptions(false);
+                        // Refresh DataViewer after adding a column
+                        if (dataViewerRef.current) {
+                            if (dataViewerRef.current.fetchColumns) {
+                                dataViewerRef.current.fetchColumns();
+                            }
+                            if (dataViewerRef.current.fetchEntries) {
+                                dataViewerRef.current.fetchEntries();
+                            }
+                        }
+                    }}
                     GenerateIdentifiers={null}
                     PossibleIdentifiers={null}
                     IdentifierDimension={null}

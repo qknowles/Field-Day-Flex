@@ -189,7 +189,8 @@ const DataViewer = forwardRef((props, ref) => {
       }, [visibleColumns, currentTab]);
     
     useImperativeHandle(ref, () => ({
-        fetchEntries
+        fetchEntries,
+        fetchColumns
     }));
 
     useEffect(() => {
