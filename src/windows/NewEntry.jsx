@@ -6,6 +6,7 @@ import { getColumnsCollection, addEntry, updateEntry } from '../utils/firestore'
 import { Type, notify } from '../components/Notifier';
 import { useAtomValue } from 'jotai';
 import { currentUserEmail, currentProjectName, currentTableName } from '../utils/jotai.js';
+import error from 'eslint-plugin-react/lib/util/error.js';
 
 export default function NewEntry({ CloseNewEntry, existingEntry, onEntryUpdated }) {
     const [columnsCollection, setColumnsCollection] = useState([]);
@@ -54,7 +55,7 @@ export default function NewEntry({ CloseNewEntry, existingEntry, onEntryUpdated 
             columns.forEach((column) => {
                 const { name, data_type } = column;
     
-                if (data_type === 'number' || data_type ===  "float") {
+                if (data_type === 'whole number' || data_type ===  "decimal number") {
                     defaultEntries[name] = 0; // Default number type
                 } else if (data_type === 'date') {
                     defaultEntries[name] = formatDateTime(new Date()); // Default date
@@ -115,16 +116,20 @@ export default function NewEntry({ CloseNewEntry, existingEntry, onEntryUpdated 
     };
 
     const submitEntry = async () => {
-        if (!validEntries()) return;
-    
+        if (!validEntries()) throw new Error("Invalid entries");
         const formattedEntries = { ...userEntries };
-    
-        
+
         columnsCollection.forEach((column) => {
             const { name, data_type } = column;
     
-            if (data_type === 'number') {
-                formattedEntries[name] = Number(formattedEntries[name]) || 0; // Ensure number
+            if (data_type === 'whole number') {
+                if(!Number.isInteger(Number(formattedEntries[name]))) {
+                    notify(Type.error, `The field "${name}" must be an integer (whole number).`);
+                    throw new Error("Whole number column must be integer");
+                }
+                formattedEntries[name] = Number(formattedEntries[name]) || 0;
+            } else if(data_type === "decimal number") {
+                formattedEntries[name] = Number(formattedEntries[name]) || 0;
             } else if (data_type === 'date') {
                 formattedEntries[name] = new Date(formattedEntries[name]).toISOString(); // Ensure date format
             }
