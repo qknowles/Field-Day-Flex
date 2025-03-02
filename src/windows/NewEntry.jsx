@@ -6,10 +6,13 @@ import { getColumnsCollection, addEntry, updateEntry } from '../utils/firestore'
 import { Type, notify } from '../components/Notifier';
 import { useAtomValue } from 'jotai';
 import { currentUserEmail, currentProjectName, currentTableName } from '../utils/jotai.js';
+import error from 'eslint-plugin-react/lib/util/error.js';
 
-export default function NewEntry({ CloseNewEntry, existingEntry, onEntryUpdated }) {
+export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntryUpdated }) {
     const [columnsCollection, setColumnsCollection] = useState([]);
     const [userEntries, setUserEntries] = useState({});
+    const [hasAutoId, setHasAutoId] = useState(false);
+    const [resetIdEntry, setResetIdEntry] = useState(false);
 
     const projectName = useAtomValue(currentProjectName);
     const tabName = useAtomValue(currentTableName);
@@ -18,6 +21,7 @@ export default function NewEntry({ CloseNewEntry, existingEntry, onEntryUpdated 
     useEffect(() => {
         const fetchData = async () => {
             await loadCollection();
+            setHasAutoId(columnsCollection.some(column => column.data_type === 'auto_id'));
         };
         fetchData();
     }, [projectName, tabName, email]);
@@ -48,27 +52,28 @@ export default function NewEntry({ CloseNewEntry, existingEntry, onEntryUpdated 
     const loadCollection = async () => {
         const columns = await getColumnsCollection(projectName, tabName, email);
         setColumnsCollection(columns);
-    
+
         if (!existingEntry) {
             const defaultEntries = {};
             columns.forEach((column) => {
                 const { name, data_type } = column;
-    
-                if (data_type === 'number') {
-                    defaultEntries[name] = 0; // Default number type
+                if (data_type === 'whole number' || data_type ===  "decimal number") {
+                    defaultEntries[name] = 0;
                 } else if (data_type === 'date') {
-                    defaultEntries[name] = formatDateTime(new Date()); // Default date
+                    defaultEntries[name] = formatDateTime(new Date());
                 } else if (data_type === 'multiple choice') {
-                    defaultEntries[name] = 'Select'; // Default dropdown
+                    defaultEntries[name] = 'Select';
+                } else if (data_type === 'auto_id') {
+                    defaultEntries[name] = '';
                 } else {
-                    defaultEntries[name] = ''; // Default text
+                    defaultEntries[name] = '';
                 }
             });
-    
+
             setUserEntries(defaultEntries);
         }
     };
-    
+
 
     const handleInputChange = (name, value) => {
         setUserEntries((prev) => ({
@@ -85,12 +90,16 @@ export default function NewEntry({ CloseNewEntry, existingEntry, onEntryUpdated 
 
     const validEntries = () => {
         for (const column of columnsCollection) {
-            const { name, data_type, required_field } = column;
+            const { name, data_type, required_field, identifier_domain } = column;
             const value = userEntries[name];
 
             if (data_type === 'number' && (value === '' || isNaN(value))) {
                 notify(Type.error, `The field "${name}" must be a valid number.`);
                 return false;
+            }
+
+            if(data_type === 'float' && (value === '' || isNaN(value))) {
+                notify(Type.error, `The field "${name}" must be a valid decimal number.`);
             }
 
             if (data_type === 'date' && !/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}$/.test(value)) {
@@ -105,27 +114,41 @@ export default function NewEntry({ CloseNewEntry, existingEntry, onEntryUpdated 
                 notify(Type.error, `Please select a valid option for "${name}".`);
                 return false;
             }
+
+            if (data_type === 'auto_id' && !/^(?:[A-Z]+[0-9]+)(?:-[A-Z]+[0-9]+)*$/i.test(value)) {
+                notify(Type.error, `Please enter a valid code for "${name}".`);
+                return false;
+            }
+            
+            if ((required_field === true || identifier_domain === true) && value === '' || value === null || value === undefined || value === 'Select') {
+                notify(Type.error, `"${name}" is a ${required_field ? 'required' : 'ID domain'} field that must be entered.`);
+                return false;
+            }
         }
 
         return true;
     };
 
     const submitEntry = async () => {
-        if (!validEntries()) return;
-    
+        if (!validEntries()) throw new Error("Invalid entries");
         const formattedEntries = { ...userEntries };
-    
-        
+
         columnsCollection.forEach((column) => {
             const { name, data_type } = column;
     
-            if (data_type === 'number') {
-                formattedEntries[name] = Number(formattedEntries[name]) || 0; // Ensure number
+            if (data_type === 'whole number') {
+                if(!Number.isInteger(Number(formattedEntries[name]))) {
+                    notify(Type.error, `The field "${name}" must be an integer (whole number).`);
+                    throw new Error("Whole number column must be integer");
+                }
+                formattedEntries[name] = Number(formattedEntries[name]) || 0;
+            } else if(data_type === "decimal number") {
+                formattedEntries[name] = Number(formattedEntries[name]) || 0;
             } else if (data_type === 'date') {
-                formattedEntries[name] = new Date(formattedEntries[name]).toISOString(); // Ensure date format
+                formattedEntries[name] = new Date(formattedEntries[name]).toISOString();
             }
         });
-    
+
         try {
             if (existingEntry) {
                 await updateEntry(projectName, tabName, email, existingEntry.id, formattedEntries);
@@ -134,7 +157,7 @@ export default function NewEntry({ CloseNewEntry, existingEntry, onEntryUpdated 
                 await addEntry(projectName, tabName, email, formattedEntries);
                 notify(Type.success, `Entry submitted.`);
             }
-    
+
             CloseNewEntry();
             if (onEntryUpdated) {
                 onEntryUpdated();
@@ -144,14 +167,19 @@ export default function NewEntry({ CloseNewEntry, existingEntry, onEntryUpdated 
             notify(Type.error, "Failed to save entry.");
         }
     };
-    
+
+    const idReset = () => {
+        if (hasAutoId) {
+            setResetIdEntry((prev) => !prev);
+        }
+    }    
 
     const renderDynamicInputs = () => {
         const sortedColumns = [...columnsCollection].sort((a, b) => a.order - b.order);
-    
+
         return sortedColumns.map((column, index) => {
-            const { name, data_type, entry_options, required_field } = column;
-    
+            const { name, data_type, entry_options = [], required_field, identifier_domain } = column;
+
             if (data_type === 'multiple choice') {
                 return (
                     <DropdownSelector
@@ -159,7 +187,12 @@ export default function NewEntry({ CloseNewEntry, existingEntry, onEntryUpdated 
                         label={name}
                         options={['Select', ...entry_options]}
                         selection={userEntries[name] || ''}
-                        setSelection={(selectedOption) => handleInputChange(name, selectedOption)}
+                        setSelection={(selectedOption) => {
+                            if (identifier_domain) {
+                                idReset();
+                            }
+                            handleInputChange(name, selectedOption)
+                        }}
                         layout="horizontal-single"
                     />
                 );
@@ -172,9 +205,9 @@ export default function NewEntry({ CloseNewEntry, existingEntry, onEntryUpdated 
                         key={index}
                         label={tabName}
                         handleInputChange={handleInputChange}
-                        userEntry={userEntries || {}}
+                        userEntries={userEntries || {}}
+                        reset={resetIdEntry}
                     />
-
                 );
             }
 
@@ -203,6 +236,9 @@ export default function NewEntry({ CloseNewEntry, existingEntry, onEntryUpdated 
                             }
                             onChange={(e) => {
                                 const value = e.target.value;
+                                if (identifier_domain) {
+                                    idReset();
+                                }
                                 handleInputChange(name, data_type === 'date' ? formatDateTime(value) : value);
                             }}
                         />
@@ -211,7 +247,7 @@ export default function NewEntry({ CloseNewEntry, existingEntry, onEntryUpdated 
             );
         });
     };
-    
+
 
     return (
         <WindowWrapper
