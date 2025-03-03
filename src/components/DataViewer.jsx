@@ -1,11 +1,9 @@
 import React, { useState, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle, useRef } from 'react';
 import { getColumnsCollection, getEntriesForTab, getProjectFields, deleteEntry, getEntryDetails } from '../utils/firestore'; // Import deleteEntry
-import TableTools from '../wrappers/TableTools';
 import { Pagination } from './Pagination';
 import Button from './Button';
 import WindowWrapper from '../wrappers/WindowWrapper';
 import { Type, notify } from './Notifier';
-import { db } from '../utils/firebase';
 import NewEntry from '../windows/NewEntry';
 import { AiFillEdit, AiFillDelete } from 'react-icons/ai';
 import { useAtom, useAtomValue } from 'jotai';
@@ -15,10 +13,7 @@ import { searchQueryAtom, filteredEntriesAtom } from './SearchBar';
 import { filterEntriesBySearch, highlightSearchTerms } from '../utils/searchUtils';
 
 
-const STATIC_COLUMNS = [
-    { id: 'actions', name: 'Actions', type: 'actions', order: -3 },
-    { id: 'datetime', name: 'Date & Time', type: 'datetime', order: -2 },
-];
+
 
 const DataViewer = forwardRef((props, ref) => {
 
@@ -41,14 +36,12 @@ const DataViewer = forwardRef((props, ref) => {
     const [searchQuery] = useAtom(searchQueryAtom); // Get the search query from the atom
     const [filteredEntries, setFilteredEntries] = useAtom(filteredEntriesAtom); // Store filtered entries
 
-
-
-
     const [showEditWindow, setEditWindow] = useState(null);
     const [showManageColumns, setShowManageColumns] = useState(false);
     const [columnOrder, setColumnOrder] = useState({});
     const [columnsToDelete, setColumnsToDelete] = useState([]);
     const [editedColumnNames, setEditedColumnNames] = useState({});
+
     const getColumnClass = (columnName) => {
         const classMap = {
             'Date & Time': 'dateTimeColumn',
@@ -60,11 +53,13 @@ const DataViewer = forwardRef((props, ref) => {
         };
         return classMap[columnName] || '';
     };
+
     const [visibleColumns] = useAtom(visibleColumnsAtom);
     const [editedColumnTypes, setEditedColumnTypes] = useState({});
     const [editedRequiredFields, setEditedRequiredFields] = useState({});
     const [editedIdentifierDomains, setEditedIdentifierDomains] = useState({});
     const [editedDropdownOptions, setEditedDropdownOptions] = useState({});
+
     const defaultColumns = useMemo(() => {
         return [
             { id: 'actions', name: 'Actions', type: 'actions', order: -3 },
@@ -403,9 +398,7 @@ const DataViewer = forwardRef((props, ref) => {
                                 <th className="p-2 text-left border-b font-semibold w-32">
                                     Actions
                                 </th>
-                                <th className="dateTimeColumn p-2 text-left border-b font-semibold">
-                                    Date & Time
-                                </th>
+                                
                                 {columns
                                     .filter((col) =>
                                         !['actions', 'datetime'].includes(col.id) &&
@@ -450,9 +443,7 @@ const DataViewer = forwardRef((props, ref) => {
                                             />
                                         </div>
                                     </td>
-                                    <td className="dateTimeColumn text-left p-2 border-b">
-                                        {entry.entry_data?.['Date & Time'] || 'N/A'}
-                                    </td>
+                                    
                                     {columns
                                         .filter((col) =>
                                             !['actions', 'datetime'].includes(col.id) &&
