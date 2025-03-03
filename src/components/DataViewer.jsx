@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo} from 'react';
-import { getColumnsCollection, getEntriesForTab, getProjectFields, deleteEntry, getEntryDetails } from '../utils/firestore';
+import React, { useState, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle, useRef } from 'react';
+import { getColumnsCollection, getEntriesForTab, getProjectFields, deleteEntry, getEntryDetails } from '../utils/firestore'; // Import deleteEntry
 import TableTools from '../wrappers/TableTools';
 import { Pagination } from './Pagination';
 import Button from './Button';
@@ -20,7 +20,7 @@ const STATIC_COLUMNS = [
     { id: 'datetime', name: 'Date & Time', type: 'datetime', order: -2 },
 ];
 
-const DataViewer = () => {
+const DataViewer = forwardRef((props, ref) => {
 
     const SelectedProject = useAtomValue(currentProjectName);
     const SelectedTab = useAtomValue(currentTableName);
@@ -40,10 +40,10 @@ const DataViewer = () => {
     const [allEntries, setAllEntries] = useState([]); // Store all entries for search filtering
     const [searchQuery] = useAtom(searchQueryAtom); // Get the search query from the atom
     const [filteredEntries, setFilteredEntries] = useAtom(filteredEntriesAtom); // Store filtered entries
-    
 
-    
-  
+
+
+
     const [showEditWindow, setEditWindow] = useState(null);
     const [showManageColumns, setShowManageColumns] = useState(false);
     const [columnOrder, setColumnOrder] = useState({});
@@ -120,27 +120,27 @@ const DataViewer = () => {
 
     const fetchEntries = useCallback(async () => {
         if (!SelectedProject || !SelectedTab) return;
-    
+
         try {
             const entriesData = await getEntriesForTab(SelectedProject, SelectedTab, Email);
             const filteredEntries = entriesData.filter(entry => !entry.deleted);
-    
+
             const formattedEntries = filteredEntries.map((entry) => {
                 const formattedData = { ...entry.entry_data };
-                return { 
-                    ...entry, 
-                    entry_data: formattedData, 
+                return {
+                    ...entry,
+                    entry_data: formattedData,
                     entry_date: entry.entry_date ? new Date(entry.entry_date) : null
                 };
             });
-    
+
             // Sort by date (newest first)
             formattedEntries.sort((a, b) => {
                 if (!a.entry_date) return 1;
                 if (!b.entry_date) return -1;
                 return b.entry_date - a.entry_date;
             });
-    
+
             setAllEntries(formattedEntries); // Store all entries
             setEntries(formattedEntries); // Set entries (will be filtered by search)
         } catch (err) {
@@ -148,7 +148,7 @@ const DataViewer = () => {
             setError('Failed to load entries');
         }
     }, [SelectedProject, SelectedTab, Email]);
-    
+
     // Apply search filtering when searchQuery changes - ONLY ONCE
     useEffect(() => {
         if (allEntries.length > 0) {
@@ -159,6 +159,11 @@ const DataViewer = () => {
             setCurrentPage(1);
         }
     }, [searchQuery, allEntries, setFilteredEntries, setCurrentPage]);
+
+    useImperativeHandle(ref, () => ({
+        fetchEntries,
+        fetchColumns
+    }));
 
     useEffect(() => {
         let mounted = true;
@@ -194,24 +199,24 @@ const DataViewer = () => {
 
     const sortedEntries = React.useMemo(() => {
         if (!sortConfig.key) return entries;
-    
+
         return [...entries].sort((a, b) => {
             const aValue = a.entry_data[sortConfig.key] || '';
             const bValue = b.entry_data[sortConfig.key] || '';
-    
+
             if (sortConfig.key === 'entry_date') {
-                return sortConfig.direction === 'asc' 
-                    ? new Date(bValue) - new Date(aValue) 
+                return sortConfig.direction === 'asc'
+                    ? new Date(bValue) - new Date(aValue)
                     : new Date(aValue) - new Date(bValue);
             }
-    
+
             if (sortConfig.direction === 'asc') {
                 return aValue.toString().localeCompare(bValue.toString());
             }
             return bValue.toString().localeCompare(aValue.toString());
         });
     }, [entries, sortConfig]);
-    
+
     const paginatedEntries = React.useMemo(() => {
         const startIndex = (currentPage - 1) * batchSize;
         return sortedEntries.slice(startIndex, startIndex + batchSize);
@@ -256,7 +261,7 @@ const DataViewer = () => {
         };
     }, [SelectedProject, SelectedTab, fetchColumns, fetchEntries]);
 
-    
+
 
     // New column management handlers
     const handleColumnOrderChange = (columnId, newValue) => {
@@ -271,7 +276,7 @@ const DataViewer = () => {
             setColumnsToDelete((prev) => prev.filter((id) => id !== columnId));
         }
     };
-   
+
     const handleColumnNameChange = (columnId, newName) => {
         setEditedColumnNames((prev) => ({
             ...prev,
@@ -310,6 +315,7 @@ const DataViewer = () => {
         }
     };
 
+
     const handleEdit = async (entryId) => {
         try {
             const entryDetails = await getEntryDetails(Email, SelectedProject, SelectedTab, entryId);
@@ -345,152 +351,20 @@ const DataViewer = () => {
             notify(Type.error, 'Failed to delete entry');
         }
     };
-    
-    
-    const DataViewer = ({ columnOrder }) => {
 
-        const [columns, setColumns] = useState([]);
-    
-        useEffect(() => {
-            if (columns.length > 0) {
-                setColumns([...columns].sort((a, b) => a.order - b.order));
-            }
-        }, [columns]);
-        
-        
-    
-        return (
-            <table>
-              <thead>
-    <tr className="bg-neutral-100 dark:bg-neutral-800">
-        <th className="p-2 text-left border-b font-semibold w-32">
-            Actions
-        </th>
-        <th className="dateTimeColumn p-2 text-left border-b font-semibold">
-            Date & Time
-        </th>
-        {columns
-    .filter((col) => 
-        !['actions', 'datetime'].includes(col.id) && 
-        (visibleColumns[currentTable]?.[col.id] !== false) // Only show columns that aren't explicitly hidden
-    )
-    .map((column) => (
-                <th
-                    key={column.id}
-                    className={`p-2 text-left border-b font-semibold cursor-pointer ${
-                        column.type === 'identifier' ? 'min-w-[150px]' : ''
-                    } ${getColumnClass(column.name)}`}
-                    onClick={() => handleSort(column.name)}
-                >
-                    {column.name}
-                    {sortConfig.key === column.name && (
-                        <span className="ml-1">
-                            {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                        </span>
-                    )}
-                </th>
-            ))}
-    </tr>
-</thead>
-<tbody>
-    {paginatedEntries.map((entry) => (
-        <tr
-            key={entry.id}
-            className="hover:bg-neutral-100 dark:hover:bg-neutral-800"
-        >
-            <td className="p-2 border-b w-32">
-                <div className="flex space-x-2">
-                    <Button
-                        onClick={() => handleEdit(entry.id)}
-                        icon={AiFillEdit}
-                        flexible={true}
-                        className={'flex items-center justify-center'}
-                    />
-                    <Button
-                        onClick={() => handleDelete(entry.id)}
-                        icon={AiFillDelete}
-                        flexible={true}
-                        className={'flex items-center justify-center'}
-                    />
-                </div>
-            </td>
-            <td className="dateTimeColumn text-left p-2 border-b">
-                {entry.entry_date?.toLocaleDateString()} {entry.entry_date?.toLocaleTimeString()}
-            </td>
-            {columns
-                .filter((col) => 
-                    !['actions', 'datetime'].includes(col.id) && 
-                    (visibleColumns[currentTab]?.[col.id] !== false) // Only show columns that aren't explicitly hidden
-                )
-                .map((column) => (
-                    <td
-  key={`${entry.id}-${column.id}`}
-  className={`p-2 border-b text-left ${
-    column.type === 'identifier' ? 'min-w-[150px]' : ''
-  } ${getColumnClass(column.name)}`}
->
-  {renderCellContent(entry, column.name)}
-</td>
-                ))}
-        </tr>
-    ))}
-</tbody>
-            </table>
-        );
-    };
-    
-
-    const ManageColumnsModal = () => (
-        <WindowWrapper
-            header="Manage Columns"
-            onLeftButton={() => setShowManageColumns(false)}
-            onRightButton={handleSaveColumnChanges}
-            leftButtonText="Cancel"
-            rightButtonText="Save Changes"
-        >
-            <div className="flex flex-col space-y-4">
-                {columns.map((column) => (
-                    <div key={column.id} className="flex justify-between items-center p-2">
-                        <input
-                            type="text"
-                            value={editedColumnNames[column.id]}
-                            className="border rounded px-2 py-1"
-                            onChange={(e) => handleColumnNameChange(column.id, e.target.value)}
-                        />
-                        <select
-                            value={
-                                columnsToDelete.includes(column.id)
-                                    ? 'DELETE'
-                                    : columnOrder[column.id]
-                            }
-                            onChange={(e) => handleColumnOrderChange(column.id, e.target.value)}
-                            className="border rounded px-2 py-1"
-                        >
-                            {Array.from({ length: columns.length }, (_, i) => i + 1).map((num) => (
-                                <option key={num} value={num}>
-                                    {num}
-                                </option>
-                            ))}
-                            <option value="DELETE">DELETE</option>
-                        </select>
-                    </div>
-                ))}
-            </div>
-        </WindowWrapper>
-    );
     useEffect(() => {
         const refreshColumnsListener = () => {
             console.log("Refreshing columns after update...");
             fetchColumns();
         };
-    
+
         window.addEventListener("refreshColumns", refreshColumnsListener);
-    
+
         return () => {
             window.removeEventListener("refreshColumns", refreshColumnsListener);
         };
     }, []);
-    
+
     useEffect(() => {
         const checkPermissions = async () => {
             if (!SelectedProject || !Email) {
@@ -533,16 +407,15 @@ const DataViewer = () => {
                                     Date & Time
                                 </th>
                                 {columns
-                                    .filter((col) => 
-                                        !['actions', 'datetime'].includes(col.id) && 
+                                    .filter((col) =>
+                                        !['actions', 'datetime'].includes(col.id) &&
                                         (visibleColumns[currentTab]?.[col.id] !== false) // Added visibility filter
                                     )
                                     .map((column) => (
                                         <th
                                             key={column.id}
-                                            className={`p-2 text-left border-b font-semibold cursor-pointer ${
-                                                column.type === 'identifier' ? 'min-w-[150px]' : ''
-                                            } ${getColumnClass(column.name)}`}
+                                            className={`p-2 text-left border-b font-semibold cursor-pointer ${column.type === 'identifier' ? 'min-w-[150px]' : ''
+                                                } ${getColumnClass(column.name)}`}
                                             onClick={() => handleSort(column.name)}
                                         >
                                             {column.name}
@@ -581,15 +454,14 @@ const DataViewer = () => {
                                         {entry.entry_data?.['Date & Time'] || 'N/A'}
                                     </td>
                                     {columns
-                                        .filter((col) => 
-                                            !['actions', 'datetime'].includes(col.id) && 
+                                        .filter((col) =>
+                                            !['actions', 'datetime'].includes(col.id) &&
                                             (visibleColumns[currentTab]?.[col.id] !== false) // Added visibility filter
                                         )
                                         .map((column) => (
                                             <td
                                                 key={`${entry.id}-${column.id}`}
-                                                className={`p-2 border-b text-left ${
-                                                    column.type === 'identifier'
+                                                className={`p-2 border-b text-left ${column.type === 'identifier'
                                                         ? 'min-w-[150px]'
                                                         : ''
                                                     } ${getColumnClass(column.name)}`}
@@ -621,7 +493,7 @@ const DataViewer = () => {
             </div>
         </div>
     );
-};
+});
 export default DataViewer;
 
 
