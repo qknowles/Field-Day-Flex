@@ -14,6 +14,8 @@ import { generateCSVData } from '../components/ExportService.jsx';
 import { CSVLink } from 'react-csv';
 import { getProjectNames, getTabNames, getColumnsCollection } from '../utils/firestore.js';
 import ColumnSelectorButton from '../components/ColumnSelectorButton';
+import SearchBar from '../components/SearchBar'; // Import the SearchBar component
+import { filteredEntriesAtom } from '../components/SearchBar'; // Import the filteredEntriesAtom
 import { visibleColumnsAtom } from '../utils/jotai.js';
 
 export default function TablePage() {
@@ -35,6 +37,30 @@ export default function TablePage() {
     const [columnOrder, setColumnOrder] = useState([]);
     const [visibleColumns, setVisibleColumns] = useAtom(visibleColumnsAtom);
     const [columns, setColumns] = useState([]);
+    const [filteredEntries] = useAtom(filteredEntriesAtom); // Get filtered entries
+
+    // Handle search functionality
+    const handleSearch = (query) => {
+        console.log("Searching for:", query);
+        // The actual filtering is handled in the DataViewer component
+    };
+
+    // Reset column visibility
+    const resetColumns = () => {
+        if (columns.length > 0 && selectedTab) {
+            const resetVisibility = {};
+            columns.forEach(col => {
+                resetVisibility[col.id] = true;
+            });
+            
+            setVisibleColumns(prev => ({
+                ...prev,
+                [selectedTab]: resetVisibility
+            }));
+            
+            notify(Type.success, "Column visibility reset");
+        }
+    };
 
     useEffect(() => {
         const fetchColumns = async () => {
@@ -151,7 +177,18 @@ export default function TablePage() {
             <Button text="Manage Columns" onClick={() => setShowManageColumns(true)} />
         </div>
         
-        <div className="flex items-center space-x-2"> {/* Added this container */}
+        <div className="flex items-center space-x-2">
+                        {/* Reset Columns Button */}
+                        <Button 
+                            text="Reset Columns" 
+                            onClick={resetColumns}
+                            className="text-sm"
+                        />
+
+                        {/* Search Bar Component - positioned between reset and column selector */}
+                        <SearchBar onSearch={handleSearch} />
+
+
             {/* Column Selector Button */}
             {columns.length > 0 && (
     <ColumnSelectorButton 
