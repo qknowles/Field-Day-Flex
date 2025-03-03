@@ -11,6 +11,8 @@ import { AiFillEdit, AiFillDelete } from 'react-icons/ai';
 import { useAtom, useAtomValue } from 'jotai';
 import { currentUserEmail, currentProjectName, currentTableName, currentBatchSize } from '../utils/jotai';
 import { visibleColumnsAtom } from '../utils/jotai';
+import { searchQueryAtom, filteredEntriesAtom } from './SearchBar';
+import { filterEntriesBySearch, highlightSearchTerms } from '../utils/searchUtils';
 
 
 const STATIC_COLUMNS = [
@@ -35,7 +37,12 @@ const DataViewer = () => {
     const [currentTable, setCurrentTable] = useAtom(currentTableName);
     const [isAdminOrOwner, setIsAdminOrOwner] = useState(false);
     const [currentTab] = useAtom(currentTableName);
+    const [allEntries, setAllEntries] = useState([]); // Store all entries for search filtering
+    const [searchQuery] = useAtom(searchQueryAtom); // Get the search query from the atom
+    const [filteredEntries, setFilteredEntries] = useAtom(filteredEntriesAtom); // Store filtered entries
+    
 
+    
   
     const [showEditWindow, setEditWindow] = useState(null);
     const [showManageColumns, setShowManageColumns] = useState(false);
@@ -64,6 +71,15 @@ const DataViewer = () => {
             { id: 'datetime', name: 'Date & Time', type: 'datetime', order: -2 },
         ];
     }, []);
+
+    const renderCellContent = (entry, columnName) => {
+        const value = entry.entry_data?.[columnName] || 'N/A';
+        return highlightSearchTerms(value, searchQuery);
+    };
+
+
+
+
     const fetchColumns = useCallback(async () => {
         if (!SelectedProject || !SelectedTab) return;
 
@@ -74,13 +90,9 @@ const DataViewer = () => {
             );
             setColumns(sortedColumns);
 
-            // Not sure this is needed
             const orderObj = {};
             const namesObj = {};
             const typesObj = {};
-            sortedColumns.forEach((col) => {
-                typesObj[col.id] = col.data_type || 'text'; // Store latest column type
-            });
             const requiredObj = {};
             const identifierObj = {};
             const optionsObj = {};
@@ -106,62 +118,15 @@ const DataViewer = () => {
         }
     }, [SelectedProject, SelectedTab, Email, defaultColumns]);
 
-    const handleColumnTypeChange = (columnId, newType) => {
-        setEditedColumnTypes((prev) => ({
-            ...prev,
-            [columnId]: newType,
-        }));
-    };
-
-    const handleRequiredFieldChange = (columnId, isRequired) => {
-        setEditedRequiredFields((prev) => ({
-            ...prev,
-            [columnId]: isRequired,
-        }));
-    };
-
-    const handleIdentifierDomainChange = (columnId, isIdentifier) => {
-        setEditedIdentifierDomains((prev) => ({
-            ...prev,
-            [columnId]: isIdentifier,
-        }));
-    };
-
-    const handleDropdownOptionsChange = (columnId, options) => {
-        setEditedDropdownOptions((prev) => ({
-            ...prev,
-            [columnId]: options,
-        }));
-    };
-
-    const handleAddDropdownOption = (columnId) => {
-        const option = prompt('Enter new option:');
-        if (option) {
-            setEditedDropdownOptions((prev) => ({
-                ...prev,
-                [columnId]: [...(prev[columnId] || []), option],
-            }));
-        }
-    };
     const fetchEntries = useCallback(async () => {
         if (!SelectedProject || !SelectedTab) return;
     
         try {
             const entriesData = await getEntriesForTab(SelectedProject, SelectedTab, Email);
-            const filteredEntries = entriesData.filter(entry => !entry.deleted); // Filter out deleted entries
+            const filteredEntries = entriesData.filter(entry => !entry.deleted);
     
             const formattedEntries = filteredEntries.map((entry) => {
                 const formattedData = { ...entry.entry_data };
-    
-                Object.keys(formattedData).forEach(columnId => {
-                    const columnType = editedColumnTypes[columnId];
-                    if (columnType === 'whole number' || columnType === 'decimal number') {
-                        formattedData[columnId] = Number(formattedData[columnId]) || 0;
-                    } else if (columnType === 'date') {
-                        formattedData[columnId] = new Date(formattedData[columnId]).toISOString();
-                    }
-                });
-    
                 return { 
                     ...entry, 
                     entry_data: formattedData, 
@@ -169,25 +134,96 @@ const DataViewer = () => {
                 };
             });
     
+            // Sort by date (newest first)
             formattedEntries.sort((a, b) => {
                 if (!a.entry_date) return 1;
                 if (!b.entry_date) return -1;
                 return b.entry_date - a.entry_date;
             });
     
-            setEntries(formattedEntries);
+            setAllEntries(formattedEntries); // Store all entries
+            setEntries(formattedEntries); // Set entries (will be filtered by search)
         } catch (err) {
             console.error('Error fetching entries:', err);
             setError('Failed to load entries');
         }
     }, [SelectedProject, SelectedTab, Email]);
+    
+    // Apply search filtering when searchQuery changes - ONLY ONCE
     useEffect(() => {
-        if (visibleColumns && currentTab) {
-          console.log('Current tab:', currentTab);
-          console.log('Visible columns state:', visibleColumns[currentTab]);
+        if (allEntries.length > 0) {
+            const filtered = filterEntriesBySearch(allEntries, searchQuery);
+            setFilteredEntries(filtered);
+            setEntries(filtered);
+            // Reset to first page when search changes
+            setCurrentPage(1);
         }
-      }, [visibleColumns, currentTab]);
+    }, [searchQuery, allEntries, setFilteredEntries, setCurrentPage]);
 
+    useEffect(() => {
+        let mounted = true;
+
+        const loadData = async () => {
+            setLoading(true);
+            setError(null);
+
+            try {
+                if (!mounted) return;
+                setCurrentProject(SelectedProject);
+                setCurrentTable(SelectedTab);
+
+                await Promise.all([fetchColumns(), fetchEntries()]);
+            } catch (err) {
+                if (mounted) {
+                    console.error('Error loading data:', err);
+                    setError('Failed to load data');
+                }
+            } finally {
+                if (mounted) {
+                    setLoading(false);
+                }
+            }
+        };
+
+        loadData();
+
+        return () => {
+            mounted = false;
+        };
+    }, [SelectedProject, SelectedTab, fetchColumns, fetchEntries, setCurrentProject, setCurrentTable]);
+
+    const sortedEntries = React.useMemo(() => {
+        if (!sortConfig.key) return entries;
+    
+        return [...entries].sort((a, b) => {
+            const aValue = a.entry_data[sortConfig.key] || '';
+            const bValue = b.entry_data[sortConfig.key] || '';
+    
+            if (sortConfig.key === 'entry_date') {
+                return sortConfig.direction === 'asc' 
+                    ? new Date(bValue) - new Date(aValue) 
+                    : new Date(aValue) - new Date(bValue);
+            }
+    
+            if (sortConfig.direction === 'asc') {
+                return aValue.toString().localeCompare(bValue.toString());
+            }
+            return bValue.toString().localeCompare(aValue.toString());
+        });
+    }, [entries, sortConfig]);
+    
+    const paginatedEntries = React.useMemo(() => {
+        const startIndex = (currentPage - 1) * batchSize;
+        return sortedEntries.slice(startIndex, startIndex + batchSize);
+    }, [sortedEntries, currentPage, batchSize]);
+
+    // Handlers
+    const handleSort = (columnName) => {
+        setSortConfig((prev) => ({
+            key: columnName,
+            direction: prev.key === columnName && prev.direction === 'asc' ? 'desc' : 'asc',
+        }));
+    };
     useEffect(() => {
         let mounted = true;
 
@@ -220,34 +256,7 @@ const DataViewer = () => {
         };
     }, [SelectedProject, SelectedTab, fetchColumns, fetchEntries]);
 
-    const sortedEntries = React.useMemo(() => {
-        if (!sortConfig.key) return entries;
     
-        return [...entries].sort((a, b) => {
-            const aValue = a.entry_data[sortConfig.key] || '';
-            const bValue = b.entry_data[sortConfig.key] || '';
-    
-            if (sortConfig.key === 'entry_date') {
-                return sortConfig.direction === 'asc' 
-                    ? new Date(bValue) - new Date(aValue) 
-                    : new Date(aValue) - new Date(bValue);
-            }
-    
-            if (sortConfig.direction === 'asc') {
-                return aValue.toString().localeCompare(bValue.toString());
-            }
-            return bValue.toString().localeCompare(aValue.toString());
-        });
-    }, [entries, sortConfig]);
-    
-
-    // Existing sorting logic
-    const handleSort = (columnName) => {
-        setSortConfig((prev) => ({
-            key: columnName,
-            direction: prev.key === columnName && prev.direction === 'asc' ? 'desc' : 'asc',
-        }));
-    };
 
     // New column management handlers
     const handleColumnOrderChange = (columnId, newValue) => {
@@ -262,7 +271,7 @@ const DataViewer = () => {
             setColumnsToDelete((prev) => prev.filter((id) => id !== columnId));
         }
     };
-
+   
     const handleColumnNameChange = (columnId, newName) => {
         setEditedColumnNames((prev) => ({
             ...prev,
@@ -337,11 +346,7 @@ const DataViewer = () => {
         }
     };
     
-    const paginatedEntries = React.useMemo(() => {
-        const startIndex = (currentPage - 1) * batchSize;
-        return sortedEntries.slice(startIndex, startIndex + batchSize);
-    }, [sortedEntries, currentPage, batchSize]);
-
+    
     const DataViewer = ({ columnOrder }) => {
 
         const [columns, setColumns] = useState([]);
@@ -419,13 +424,13 @@ const DataViewer = () => {
                 )
                 .map((column) => (
                     <td
-                        key={`${entry.id}-${column.id}`}
-                        className={`p-2 border-b text-left ${
-                            column.type === 'identifier' ? 'min-w-[150px]' : ''
-                        } ${getColumnClass(column.name)}`}
-                    >
-                        {entry.entry_data?.[column.name] || 'N/A'}
-                    </td>
+  key={`${entry.id}-${column.id}`}
+  className={`p-2 border-b text-left ${
+    column.type === 'identifier' ? 'min-w-[150px]' : ''
+  } ${getColumnClass(column.name)}`}
+>
+  {renderCellContent(entry, column.name)}
+</td>
                 ))}
         </tr>
     ))}
@@ -618,4 +623,5 @@ const DataViewer = () => {
     );
 };
 export default DataViewer;
+
 
