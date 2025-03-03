@@ -6,7 +6,6 @@ import { getColumnsCollection, addEntry, updateEntry } from '../utils/firestore'
 import { Type, notify } from '../components/Notifier';
 import { useAtomValue } from 'jotai';
 import { currentUserEmail, currentProjectName, currentTableName } from '../utils/jotai.js';
-import error from 'eslint-plugin-react/lib/util/error.js';
 
 export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntryUpdated }) {
     const [columnsCollection, setColumnsCollection] = useState([]);
@@ -159,9 +158,11 @@ export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntry
             }
 
             CloseNewEntry();
+
             if (onEntryUpdated) {
-                onEntryUpdated();
+                await onEntryUpdated();
             }
+
         } catch (error) {
             console.error("Error saving entry:", error);
             notify(Type.error, "Failed to save entry.");
