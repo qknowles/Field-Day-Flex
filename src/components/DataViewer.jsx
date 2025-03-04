@@ -411,42 +411,15 @@ const DataViewer = forwardRef((props, ref) => {
     return (
         <div className="flex-grow bg-white dark:bg-neutral-950">
             <div className="flex flex-col">
-                {/* Search Bar and Entry Count - Add this section */}
-                <div className="px-5 py-3 flex justify-between items-center">
-                    <div className="flex items-center">
-                        {searchTerm !== undefined && (
-                            <div className="flex items-center border border-neutral-300 dark:border-neutral-600 rounded-md px-3 py-1 w-64">
-                                <SearchIcon className="w-5 h-5 text-neutral-400 mr-2" />
-                                <input
-                                    type="text"
-                                    placeholder="Search entries..."
-                                    value={searchTerm}
-                                    onChange={(e) => {
-                                        setSearchTerm(e.target.value);
-                                        setCurrentPage(1); // Reset to first page when search changes
-                                    }}
-                                    className="bg-transparent border-none focus:outline-none w-full"
-                                />
-                                {searchTerm && (
-                                    <button
-                                        className="text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300"
-                                        onClick={() => setSearchTerm('')}
-                                    >
-                                        ×
-                                    </button>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                    
-                    {/* Entry count display at the top */}
+                {/* Top section with entry count display -*/}
+                {/* <div className="px-5 py-3 flex justify-end items-center">
                     <EntryCountDisplay 
                         currentPageCount={paginatedEntries.length}
                         totalFilteredCount={filteredEntries.length}
-                        totalCount={entries.length}
-                        isFiltered={searchTerm && searchTerm.trim() !== ''}
+                        totalCount={allEntries.length}
+                        isFiltered={searchQuery && searchQuery.trim() !== ''}
                     />
-                </div>
+                </div> */}
     
                 <div className="overflow-x-auto">
                     <table className="w-full border-collapse">
@@ -523,7 +496,7 @@ const DataViewer = forwardRef((props, ref) => {
                             ) : (
                                 <tr>
                                     <td colSpan={columns.length + 1} className="p-4 text-center text-neutral-500">
-                                        {searchTerm ? 'No entries match your search criteria.' : 'No entries found.'}
+                                        {searchQuery ? 'No entries match your search criteria.' : 'No entries found.'}
                                     </td>
                                 </tr>
                             )}
@@ -542,17 +515,17 @@ const DataViewer = forwardRef((props, ref) => {
                 )}
                 
                 <div className="px-5 py-3 flex justify-between items-center w-full">
-                    {/* Entry count display at the bottom */}
+                    {/* Entry count display at the bottom - kept this one */}
                     <EntryCountDisplay 
                         currentPageCount={paginatedEntries.length}
                         totalFilteredCount={filteredEntries.length}
-                        totalCount={entries.length}
-                        isFiltered={searchTerm && searchTerm.trim() !== ''}
+                        totalCount={allEntries.length}
+                        isFiltered={searchQuery && searchQuery.trim() !== ''}
                     />
                     
                     <Pagination
                         currentPage={currentPage}
-                        totalPages={Math.ceil(filteredEntries.length / batchSize)} // Use filteredEntries.length instead of entries.length
+                        totalPages={Math.ceil(filteredEntries.length / batchSize)}
                         onPageChange={setCurrentPage}
                     />
                 </div>
