@@ -11,7 +11,7 @@ import { currentUserEmail, currentProjectName, currentTableName, currentBatchSiz
 import { visibleColumnsAtom } from '../utils/jotai';
 import { searchQueryAtom, filteredEntriesAtom } from './SearchBar';
 import { filterEntriesBySearch, highlightSearchTerms } from '../utils/searchUtils';
-
+import EntryCountDisplay from './EntryCountDisplay';
 
 
 
@@ -41,7 +41,7 @@ const DataViewer = forwardRef((props, ref) => {
     const [columnOrder, setColumnOrder] = useState({});
     const [columnsToDelete, setColumnsToDelete] = useState([]);
     const [editedColumnNames, setEditedColumnNames] = useState({});
-
+    const [searchTerm, setSearchTerm] = useState('');
     const getColumnClass = (columnName) => {
         const classMap = {
             'Date & Time': 'dateTimeColumn',
@@ -214,8 +214,9 @@ const DataViewer = forwardRef((props, ref) => {
 
     const paginatedEntries = React.useMemo(() => {
         const startIndex = (currentPage - 1) * batchSize;
-        return sortedEntries.slice(startIndex, startIndex + batchSize);
-    }, [sortedEntries, currentPage, batchSize]);
+        return filteredEntries.slice(startIndex, startIndex + batchSize);
+      }, [filteredEntries, currentPage, batchSize]);
+      
 
     // Handlers
     const handleSort = (columnName) => {
@@ -255,7 +256,26 @@ const DataViewer = forwardRef((props, ref) => {
             mounted = false;
         };
     }, [SelectedProject, SelectedTab, fetchColumns, fetchEntries]);
-
+    useEffect(() => {
+        if (!searchTerm || searchTerm.trim() === '') {
+          // No search filter applied, use all entries
+          setFilteredEntries(sortedEntries);
+        } else {
+          // Apply search filter
+          const searchTermLower = searchTerm.toLowerCase();
+          const filtered = sortedEntries.filter(entry => {
+            // Search across all fields in entry_data
+            return Object.entries(entry.entry_data || {}).some(([key, value]) => 
+              String(value).toLowerCase().includes(searchTermLower)
+            );
+          });
+          setFilteredEntries(filtered);
+        }
+        
+        // Reset to first page when filters change
+        setCurrentPage(1);
+      }, [sortedEntries, searchTerm]);
+      
 
 
     // New column management handlers
@@ -391,6 +411,43 @@ const DataViewer = forwardRef((props, ref) => {
     return (
         <div className="flex-grow bg-white dark:bg-neutral-950">
             <div className="flex flex-col">
+                {/* Search Bar and Entry Count - Add this section */}
+                <div className="px-5 py-3 flex justify-between items-center">
+                    <div className="flex items-center">
+                        {searchTerm !== undefined && (
+                            <div className="flex items-center border border-neutral-300 dark:border-neutral-600 rounded-md px-3 py-1 w-64">
+                                <SearchIcon className="w-5 h-5 text-neutral-400 mr-2" />
+                                <input
+                                    type="text"
+                                    placeholder="Search entries..."
+                                    value={searchTerm}
+                                    onChange={(e) => {
+                                        setSearchTerm(e.target.value);
+                                        setCurrentPage(1); // Reset to first page when search changes
+                                    }}
+                                    className="bg-transparent border-none focus:outline-none w-full"
+                                />
+                                {searchTerm && (
+                                    <button
+                                        className="text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-300"
+                                        onClick={() => setSearchTerm('')}
+                                    >
+                                        ×
+                                    </button>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                    
+                    {/* Entry count display at the top */}
+                    <EntryCountDisplay 
+                        currentPageCount={paginatedEntries.length}
+                        totalFilteredCount={filteredEntries.length}
+                        totalCount={entries.length}
+                        isFiltered={searchTerm && searchTerm.trim() !== ''}
+                    />
+                </div>
+    
                 <div className="overflow-x-auto">
                     <table className="w-full border-collapse">
                         <thead>
@@ -402,13 +459,14 @@ const DataViewer = forwardRef((props, ref) => {
                                 {columns
                                     .filter((col) =>
                                         !['actions', 'datetime'].includes(col.id) &&
-                                        (visibleColumns[currentTab]?.[col.id] !== false) // Added visibility filter
+                                        (visibleColumns[currentTab]?.[col.id] !== false)
                                     )
                                     .map((column) => (
                                         <th
                                             key={column.id}
-                                            className={`p-2 text-left border-b font-semibold cursor-pointer ${column.type === 'identifier' ? 'min-w-[150px]' : ''
-                                                } ${getColumnClass(column.name)}`}
+                                            className={`p-2 text-left border-b font-semibold cursor-pointer ${
+                                                column.type === 'identifier' ? 'min-w-[150px]' : ''
+                                            } ${getColumnClass(column.name)}`}
                                             onClick={() => handleSort(column.name)}
                                         >
                                             {column.name}
@@ -422,49 +480,57 @@ const DataViewer = forwardRef((props, ref) => {
                             </tr>
                         </thead>
                         <tbody>
-                            {paginatedEntries.map((entry) => (
-                                <tr
-                                    key={entry.id}
-                                    className="hover:bg-neutral-100 dark:hover:bg-neutral-800"
-                                >
-                                    <td className="p-2 border-b w-32">
-                                        <div className="flex space-x-2">
-                                            <Button
-                                                onClick={() => handleEdit(entry.id)}
-                                                icon={AiFillEdit}
-                                                flexible={true}
-                                                className={'flex items-center justify-center'}
-                                            />
-                                            <Button
-                                                onClick={() => handleDelete(entry.id)}
-                                                icon={AiFillDelete}
-                                                flexible={true}
-                                                className={'flex items-center justify-center'}
-                                            />
-                                        </div>
-                                    </td>
-                                    
-                                    {columns
-                                        .filter((col) =>
-                                            !['actions', 'datetime'].includes(col.id) &&
-                                            (visibleColumns[currentTab]?.[col.id] !== false) // Added visibility filter
-                                        )
-                                        .map((column) => (
-                                            <td
-                                                key={`${entry.id}-${column.id}`}
-                                                className={`p-2 border-b text-left ${column.type === 'identifier'
-                                                        ? 'min-w-[150px]'
-                                                        : ''
+                            {paginatedEntries.length > 0 ? (
+                                paginatedEntries.map((entry) => (
+                                    <tr
+                                        key={entry.id}
+                                        className="hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                                    >
+                                        <td className="p-2 border-b w-32">
+                                            <div className="flex space-x-2">
+                                                <Button
+                                                    onClick={() => handleEdit(entry.id)}
+                                                    icon={AiFillEdit}
+                                                    flexible={true}
+                                                    className={'flex items-center justify-center'}
+                                                />
+                                                <Button
+                                                    onClick={() => handleDelete(entry.id)}
+                                                    icon={AiFillDelete}
+                                                    flexible={true}
+                                                    className={'flex items-center justify-center'}
+                                                />
+                                            </div>
+                                        </td>
+                                        
+                                        {columns
+                                            .filter((col) =>
+                                                !['actions', 'datetime'].includes(col.id) &&
+                                                (visibleColumns[currentTab]?.[col.id] !== false)
+                                            )
+                                            .map((column) => (
+                                                <td
+                                                    key={`${entry.id}-${column.id}`}
+                                                    className={`p-2 border-b text-left ${
+                                                        column.type === 'identifier' ? 'min-w-[150px]' : ''
                                                     } ${getColumnClass(column.name)}`}
-                                            >
-                                                {entry.entry_data?.[column.name] || 'N/A'}
-                                            </td>
-                                        ))}
+                                                >
+                                                    {entry.entry_data?.[column.name] || 'N/A'}
+                                                </td>
+                                            ))}
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan={columns.length + 1} className="p-4 text-center text-neutral-500">
+                                        {searchTerm ? 'No entries match your search criteria.' : 'No entries found.'}
+                                    </td>
                                 </tr>
-                            ))}
+                            )}
                         </tbody>
                     </table>
                 </div>
+                
                 {showEditWindow && (
                     <WindowWrapper
                         header="Edit Entry"
@@ -474,10 +540,19 @@ const DataViewer = forwardRef((props, ref) => {
                         {showEditWindow}
                     </WindowWrapper>
                 )}
-                <div className="px-5 py-3 flex items-center w-full">
+                
+                <div className="px-5 py-3 flex justify-between items-center w-full">
+                    {/* Entry count display at the bottom */}
+                    <EntryCountDisplay 
+                        currentPageCount={paginatedEntries.length}
+                        totalFilteredCount={filteredEntries.length}
+                        totalCount={entries.length}
+                        isFiltered={searchTerm && searchTerm.trim() !== ''}
+                    />
+                    
                     <Pagination
                         currentPage={currentPage}
-                        totalPages={Math.ceil(entries.length / batchSize)}
+                        totalPages={Math.ceil(filteredEntries.length / batchSize)} // Use filteredEntries.length instead of entries.length
                         onPageChange={setCurrentPage}
                     />
                 </div>
