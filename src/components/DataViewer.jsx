@@ -12,6 +12,8 @@ import { visibleColumnsAtom } from '../utils/jotai';
 import { searchQueryAtom, filteredEntriesAtom } from './SearchBar';
 import { filterEntriesBySearch, highlightSearchTerms } from '../utils/searchUtils';
 import EntryCountDisplay from './EntryCountDisplay';
+import { ResizableBox } from 'react-resizable';
+import 'react-resizable/css/styles.css';
 
 
 
@@ -408,6 +410,9 @@ const DataViewer = forwardRef((props, ref) => {
     if (loading) return <div className="p-4 text-center">Loading...</div>;
     if (error) return <div className="p-4 text-center text-red-600">{error}</div>;
 
+    const filteredColumns = columns.filter((col) => !['actions', 'datetime'].includes(col.id)); 
+    const lastColumnIndex = filteredColumns.length - 1;
+    
     return (
         <div className="flex-grow bg-white dark:bg-neutral-950">
             <div className="flex flex-col">
@@ -425,31 +430,43 @@ const DataViewer = forwardRef((props, ref) => {
                     <table className="w-full border-collapse">
                         <thead>
                             <tr className="bg-neutral-100 dark:bg-neutral-800">
-                                <th className="p-2 text-left border-b font-semibold w-32">
+                                <th className="p-2 text-left border-b font-semibold w-32 column-border">
                                     Actions
                                 </th>
                                 
                                 {columns
-                                    .filter((col) =>
+                                    .filter((col) => 
                                         !['actions', 'datetime'].includes(col.id) &&
                                         (visibleColumns[currentTab]?.[col.id] !== false)
                                     )
-                                    .map((column) => (
-                                        <th
-                                            key={column.id}
-                                            className={`p-2 text-left border-b font-semibold cursor-pointer ${
-                                                column.type === 'identifier' ? 'min-w-[150px]' : ''
-                                            } ${getColumnClass(column.name)}`}
-                                            onClick={() => handleSort(column.name)}
-                                        >
-                                            {column.name}
-                                            {sortConfig.key === column.name && (
-                                                <span className="ml-1">
-                                                    {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                                                </span>
-                                            )}
-                                        </th>
-                                    ))}
+                                    .map((column, index) => {
+                                        const isLastColumn = index === lastColumnIndex;
+                                        return (
+                                            <th 
+                                                key={column.id} 
+                                                className="p-2 text-left border-b font-semibold cursor-pointer column-border" 
+                                                onClick={() => handleSort(column.name)}
+                                            >
+                                                <ResizableBox
+                                                    width={isLastColumn ? 300 : Math.max(50, column.name.length * 10)}
+                                                    height={30}
+                                                    axis="x"
+                                                    minConstraints={[isLastColumn ? 300 : Math.max(50, column.name.length * 10), 30]}
+                                                    maxConstraints={[isLastColumn ? 300 : Math.max(300, column.name.length * 30), 30]}
+                                                    className={`resizable-box ${isLastColumn ? 'no-grabber' : ''}`}
+                                                >
+                                                    <div className={`flex items-center ${column.type === 'identifier' ? 'min-w-[150px]' : ''} ${getColumnClass(column.name)}`}>
+                                                        {column.name}
+                                                        {sortConfig.key === column.name && (
+                                                            <span className="ml-1">
+                                                                {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </ResizableBox>
+                                            </th>
+                                        );
+                                    })}
                             </tr>
                         </thead>
                         <tbody>
@@ -533,6 +550,7 @@ const DataViewer = forwardRef((props, ref) => {
         </div>
     );
 });
+
 export default DataViewer;
 
 
