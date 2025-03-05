@@ -427,7 +427,7 @@ const DataViewer = forwardRef((props, ref) => {
                 </div> */}
     
                 <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
+                    <table className="w-full data-table">
                         <thead>
                             <tr className="bg-neutral-100 dark:bg-neutral-800">
                                 <th className="p-2 text-left border-b font-semibold w-32 column-border">
@@ -442,31 +442,56 @@ const DataViewer = forwardRef((props, ref) => {
                                     .map((column, index) => {
                                         const isLastColumn = index === lastColumnIndex;
                                         return (
-                                            <th 
-                                                key={column.id} 
-                                                className="p-2 text-left border-b font-semibold cursor-pointer column-border" 
-                                                onClick={() => handleSort(column.name)}
+                                        <th 
+                                            key={column.id} 
+                                            className="p-2 text-left border-b font-semibold cursor-pointer column-border"
+                                            style={{ width: column.width || 150 }} // Store column widths in state
+                                        >
+                                            <div 
+                                            className="flex items-center justify-between"
+                                            onClick={() => handleSort(column.name)}
                                             >
-                                                <ResizableBox
-                                                    width={isLastColumn ? 300 : Math.max(50, column.name.length * 10)}
-                                                    height={30}
-                                                    axis="x"
-                                                    minConstraints={[isLastColumn ? 300 : Math.max(50, column.name.length * 10), 30]}
-                                                    maxConstraints={[isLastColumn ? 300 : Math.max(300, column.name.length * 30), 30]}
-                                                    className={`resizable-box ${isLastColumn ? 'no-grabber' : ''}`}
-                                                >
-                                                    <div className={`flex items-center ${column.type === 'identifier' ? 'min-w-[150px]' : ''} ${getColumnClass(column.name)}`}>
-                                                        {column.name}
-                                                        {sortConfig.key === column.name && (
-                                                            <span className="ml-1">
-                                                                {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </ResizableBox>
-                                            </th>
+                                            <div className={`flex-1 ${column.type === 'identifier' ? 'min-w-[100px]' : ''} ${getColumnClass(column.name)}`}>
+                                                {column.name}
+                                                {sortConfig.key === column.name && (
+                                                <span className="ml-1">
+                                                    {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                                                </span>
+                                                )}
+                                            </div>
+                                            </div>
+                                            {!isLastColumn && (
+                                            <div
+                                                className="react-resizable-handle"
+                                                onMouseDown={(e) => {
+                                                // Add custom resize handler
+                                                const startX = e.clientX;
+                                                const startWidth = column.width || 150;
+                                                
+                                                const onMouseMove = (moveEvent) => {
+                                                    const newWidth = Math.max(50, startWidth + (moveEvent.clientX - startX));
+                                                    // Update column width in state
+                                                    setColumns(prev => 
+                                                    prev.map(col => 
+                                                        col.id === column.id ? {...col, width: newWidth} : col
+                                                    )
+                                                    );
+                                                };
+                                                
+                                                const onMouseUp = () => {
+                                                    document.removeEventListener('mousemove', onMouseMove);
+                                                    document.removeEventListener('mouseup', onMouseUp);
+                                                };
+                                                
+                                                document.addEventListener('mousemove', onMouseMove);
+                                                document.addEventListener('mouseup', onMouseUp);
+                                                }}
+                                            />
+                                            )}
+                                        </th>
                                         );
-                                    })}
+                                    })
+                                }
                             </tr>
                         </thead>
                         <tbody>
