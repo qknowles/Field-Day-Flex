@@ -396,6 +396,16 @@ export default function ProjectSettings({ CloseProjectSettings }) {
                     </div>
                 )}
 
+                {/* Edit Tabs Button */}
+                {canEdit && (
+                    <div className="flex justify-end mt-4">
+                        <Button
+                           text="Edit Tabs"
+                        />
+                    </div>
+                )}
+
+
                 {/* Delete Project Button (Only shown to owners) */}
                 {isOwner && (
                     <div className="flex justify-end mt-4">
