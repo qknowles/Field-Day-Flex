@@ -46,22 +46,7 @@ export default function TablePage() {
         // The actual filtering is handled in the DataViewer component
     };
 
-    // Reset column visibility
-    const resetColumns = () => {
-        if (columns.length > 0 && selectedTab) {
-            const resetVisibility = {};
-            columns.forEach(col => {
-                resetVisibility[col.id] = true;
-            });
-            
-            setVisibleColumns(prev => ({
-                ...prev,
-                [selectedTab]: resetVisibility
-            }));
-            
-            notify(Type.success, "Column visibility reset");
-        }
-    };
+    
 
     useEffect(() => {
         const fetchColumns = async () => {
@@ -163,6 +148,21 @@ export default function TablePage() {
         setNewColumn(['']);
     }, [showColumnOptions]);
 
+const resetColumns = () => {
+    if (columns.length > 0 && selectedTab) {
+        const resetVisibility = {};
+        columns.forEach(col => {
+            resetVisibility[col.id] = true;
+        });
+        
+        setVisibleColumns(prev => ({
+            ...prev,
+            [selectedTab]: resetVisibility
+        }));
+        
+        notify(Type.success, "Column visibility reset");
+    }
+};
     return (
         <PageWrapper>
             {/* Tab Navigation */}
