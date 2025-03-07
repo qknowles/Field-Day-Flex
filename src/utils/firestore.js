@@ -1051,3 +1051,76 @@ export const getRequiredFields = async (email, projectName, tabName) => {
         return [];
     }
 };
+
+export const updateTabName = async (projectName, oldTabName, newTabName, email) => {
+    try {
+        const projectRef = collection(db, 'Projects');
+        const projectQuery = query(
+            projectRef,
+            where('project_name', '==', projectName)
+        );
+        const projectSnapshot = await getDocs(projectQuery);
+
+        if (projectSnapshot.empty) {
+            throw new Error('Project not found.');
+        }
+
+        const projectDoc = projectSnapshot.docs[0];
+
+        // Locate the specific tab document
+        const tabsRef = collection(projectDoc.ref, 'Tabs');
+        const tabQuery = query(tabsRef, where('tab_name', '==', oldTabName));
+        const tabSnapshot = await getDocs(tabQuery);
+
+        if (tabSnapshot.empty) {
+            throw new Error('Tab not found.');
+        }
+
+        const tabDoc = tabSnapshot.docs[0];
+
+        // Update the tab name
+        await updateDoc(tabDoc.ref, { tab_name: newTabName });
+        return true;
+    } catch (error) {
+        console.error('Error updating tab name:', error);
+        return false;
+    }
+};
+export const deleteTab = async (projectName, tabName, email) => {
+    try {
+        const projectRef = collection(db, 'Projects');
+        const projectQuery = query(
+            projectRef,
+            where('project_name', '==', projectName)
+        );
+        const projectSnapshot = await getDocs(projectQuery);
+
+        if (projectSnapshot.empty) {
+            console.error('Project not found:', projectName);
+            return false;
+        }
+
+        const projectDoc = projectSnapshot.docs[0];
+
+        // Locate the tab document
+        const tabsRef = collection(projectDoc.ref, 'Tabs');
+        const tabQuery = query(tabsRef, where('tab_name', '==', tabName));
+        const tabSnapshot = await getDocs(tabQuery);
+
+        if (tabSnapshot.empty) {
+            console.error('Tab not found:', tabName);
+            return false;
+        }
+
+        const tabDoc = tabSnapshot.docs[0];
+
+        // Delete the tab document
+        await deleteDoc(tabDoc.ref);
+        console.log(`Deleted tab: ${tabName}`);
+
+        return true;
+    } catch (error) {
+        console.error('Error deleting tab:', error);
+        return false;
+    }
+};
