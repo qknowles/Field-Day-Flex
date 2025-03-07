@@ -76,4 +76,49 @@
         transition: background-color 0.3s ease-in-out;
         background-color: white;
     }
+
+    .data-table {
+        table-layout: fixed;
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+      
+    .data-table th, .data-table td {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        position: relative;
+    }
+    
+    .resizable-box {
+    position: relative;
+    overflow: hidden;
+    width: 100%;
+    }
+    
+    .react-resizable-handle {
+    position: absolute;
+    right: -5px;
+    bottom: 0;
+    z-index: 1;
+    width: 10px;
+    height: 100%;
+    cursor: col-resize;
+    }
+    
+    .react-resizable-handle::after {
+        content: "";
+        position: absolute;
+        right: 3px;
+        top: 5px;
+        bottom: 5px;
+        width: 4px;
+        background-color: rgba(127, 127, 127, 0.2);
+        border-radius: 2px;
+    }
+      
+    .react-resizable-handle:hover::after {
+    background-color: rgba(127, 127, 127, 0.5);
+    }
 }

@@ -12,6 +12,8 @@ import { visibleColumnsAtom } from '../utils/jotai';
 import { searchQueryAtom, filteredEntriesAtom } from './SearchBar';
 import { filterEntriesBySearch, highlightSearchTerms } from '../utils/searchUtils';
 import EntryCountDisplay from './EntryCountDisplay';
+import { ResizableBox } from 'react-resizable';
+import 'react-resizable/css/styles.css';
 
 
 
@@ -225,6 +227,7 @@ const DataViewer = forwardRef((props, ref) => {
             direction: prev.key === columnName && prev.direction === 'asc' ? 'desc' : 'asc',
         }));
     };
+
     useEffect(() => {
         let mounted = true;
 
@@ -408,6 +411,9 @@ const DataViewer = forwardRef((props, ref) => {
     if (loading) return <div className="p-4 text-center">Loading...</div>;
     if (error) return <div className="p-4 text-center text-red-600">{error}</div>;
 
+    const filteredColumns = columns.filter((col) => !['actions', 'datetime'].includes(col.id)); 
+    const lastColumnIndex = filteredColumns.length - 1;
+    
     return (
         <div className="flex-grow bg-white dark:bg-neutral-950">
             <div className="flex flex-col">
@@ -422,34 +428,72 @@ const DataViewer = forwardRef((props, ref) => {
                 </div> */}
     
                 <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
+                    <table className="w-full data-table">
                         <thead>
                             <tr className="bg-neutral-100 dark:bg-neutral-800">
-                                <th className="p-2 text-left border-b font-semibold w-32">
+                                <th className="p-2 text-left border-b font-semibold w-32 column-border">
                                     Actions
                                 </th>
                                 
                                 {columns
-                                    .filter((col) =>
+                                    .filter((col) => 
                                         !['actions', 'datetime'].includes(col.id) &&
                                         (visibleColumns[currentTab]?.[col.id] !== false)
                                     )
-                                    .map((column) => (
-                                        <th
-                                            key={column.id}
-                                            className={`p-2 text-left border-b font-semibold cursor-pointer ${
-                                                column.type === 'identifier' ? 'min-w-[150px]' : ''
-                                            } ${getColumnClass(column.name)}`}
-                                            onClick={() => handleSort(column.name)}
+                                    .map((column, index) => {
+                                        const isLastColumn = index === lastColumnIndex;
+                                        return (
+                                        <th 
+                                            key={column.id} 
+                                            className="p-2 text-left border-b font-semibold cursor-pointer column-border"
+                                            style={{ width: column.width || 150 }} // Store column widths in state
                                         >
-                                            {column.name}
-                                            {sortConfig.key === column.name && (
+                                            <div 
+                                            className="flex items-center justify-between"
+                                            onClick={() => handleSort(column.name)}
+                                            >
+                                            <div className={`flex-1 ${column.type === 'identifier' ? 'min-w-[100px]' : ''} ${getColumnClass(column.name)}`}>
+                                                {column.name}
+                                                {sortConfig.key === column.name && (
                                                 <span className="ml-1">
                                                     {sortConfig.direction === 'asc' ? '↑' : '↓'}
                                                 </span>
+                                                )}
+                                            </div>
+                                            </div>
+                                            {!isLastColumn && (
+                                            <div
+                                                className="react-resizable-handle"
+                                                onMouseDown={(e) => {
+                                                // Add custom resize handler
+                                                const startX = e.clientX;
+                                                const startWidth = column.width || 150;
+                                                e.stopPropagation(); // Prevent sort trigger
+                                                
+                                                const onMouseMove = (moveEvent) => {
+                                                    const newWidth = Math.max(50, startWidth + (moveEvent.clientX - startX));
+                                                    // Update column width in state
+                                                    setColumns(prev => 
+                                                    prev.map(col => 
+                                                        col.id === column.id ? {...col, width: newWidth} : col
+                                                    )
+                                                    );
+                                                };
+                                                
+                                                const onMouseUp = () => {
+                                                    document.removeEventListener('mousemove', onMouseMove);
+                                                    document.removeEventListener('mouseup', onMouseUp);
+                                                };
+                                                
+                                                document.addEventListener('mousemove', onMouseMove);
+                                                document.addEventListener('mouseup', onMouseUp);
+                                                }}
+                                            />
                                             )}
                                         </th>
-                                    ))}
+                                        );
+                                    })
+                                }
                             </tr>
                         </thead>
                         <tbody>
@@ -533,6 +577,7 @@ const DataViewer = forwardRef((props, ref) => {
         </div>
     );
 });
+
 export default DataViewer;
 
 
