@@ -14,6 +14,7 @@ import Button from '../components/Button.jsx';
 import { notify, Type } from '../components/Notifier.jsx';
 import { useAtomValue, useAtom } from 'jotai';
 import { currentUserEmail, currentProjectName, allProjectNames } from '../utils/jotai.js';
+import EditTab from './EditTab.jsx';
 
 export default function ProjectSettings({ CloseProjectSettings }) {
     // State definitions
@@ -30,6 +31,8 @@ export default function ProjectSettings({ CloseProjectSettings }) {
     const [isInitialLoad, setIsInitialLoad] = useState(true);
     const [projectNames, setProjectNames] = useAtom(allProjectNames);
     const userEmail = useAtomValue(currentUserEmail);
+    const [showEditTab, setShowEditTab] = useState(false);
+
 
     // Fetch document ID when project name is available
     useEffect(() => {
@@ -400,16 +403,20 @@ export default function ProjectSettings({ CloseProjectSettings }) {
                 {canEdit && (
                     <div className="flex justify-end mt-4">
                         <Button
-                           text="Edit Tab"
+                           text="Edit Tab Name"
+                           onClick={() => setShowEditTab(true)}
                         />
                     </div>
                 )}
+                {showEditTab && <EditTab CloseEditTab={() => setShowEditTab(false)} />}
+
 
                 {/* Delete Tabs Button */}
                 {canEdit && (
                     <div className="flex justify-end mt-4">
                         <Button
                            text="Delete Tab"
+                        
                         />
                     </div>
                 )}
