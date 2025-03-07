@@ -15,6 +15,7 @@ import { notify, Type } from '../components/Notifier.jsx';
 import { useAtomValue, useAtom } from 'jotai';
 import { currentUserEmail, currentProjectName, allProjectNames } from '../utils/jotai.js';
 import EditTab from './EditTab.jsx';
+import DeleteTab from './DeleteTab.jsx';
 
 export default function ProjectSettings({ CloseProjectSettings }) {
     // State definitions
@@ -32,6 +33,7 @@ export default function ProjectSettings({ CloseProjectSettings }) {
     const [projectNames, setProjectNames] = useAtom(allProjectNames);
     const userEmail = useAtomValue(currentUserEmail);
     const [showEditTab, setShowEditTab] = useState(false);
+    const [showDeleteTab, setShowDeleteTab] = useState(false);
 
 
     // Fetch document ID when project name is available
@@ -394,7 +396,7 @@ export default function ProjectSettings({ CloseProjectSettings }) {
                         />
                         <br />
                         <div className="flex justify-end mt-4">
-                            <Button text="Add member" onClick={addMember} />
+                            <Button text="Add member" onClick={addMember} className="w-full" />
                         </div>
                     </div>
                 )}
@@ -405,6 +407,7 @@ export default function ProjectSettings({ CloseProjectSettings }) {
                         <Button
                            text="Edit Tab Name"
                            onClick={() => setShowEditTab(true)}
+                           className="w-full"
                         />
                     </div>
                 )}
@@ -416,10 +419,13 @@ export default function ProjectSettings({ CloseProjectSettings }) {
                     <div className="flex justify-end mt-4">
                         <Button
                            text="Delete Tab"
+                           onClick={() => setShowDeleteTab(true)}
+                        className="w-full"
                         
                         />
                     </div>
                 )}
+                 {showDeleteTab && <DeleteTab CloseDeleteTab={() => setShowDeleteTab(false)} />}
 
 
                 {/* Delete Project Button (Only shown to owners) */}
@@ -428,7 +434,7 @@ export default function ProjectSettings({ CloseProjectSettings }) {
                         <Button
                             text="Delete Project"
                             onClick={() => setShowDeleteConfirm(true)}
-                            className="bg-red-600 hover:bg-red-700"
+                            className="bg-red-600 hover:bg-red-700 w-full"
                         />
                     </div>
                 )}
