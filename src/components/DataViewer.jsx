@@ -370,30 +370,6 @@ const DataViewer = forwardRef((props, ref) => {
         }
     };
 
-    // Save column widths to local storage
-    useEffect(() => {
-        if (columns.length > 0 && SelectedProject && SelectedTab) {
-            const widthsObj = {};
-            columns.forEach(col => {
-                if (col.width) widthsObj[col.id] = col.width;
-            });
-            localStorage.setItem(`columnWidths-${SelectedProject}-${SelectedTab}`, JSON.stringify(widthsObj));
-        }
-    }, [columns, SelectedProject, SelectedTab]);
-    
-    const savedWidths = localStorage.getItem(`columnWidths-${SelectedProject}-${SelectedTab}`);
-    if (savedWidths) {
-        try {
-            const widthsObj = JSON.parse(savedWidths);
-            sortedColumns = sortedColumns.map(col => ({
-                ...col,
-                width: widthsObj[col.id] || col.width || 150
-            }));
-        } catch (e) {
-            console.error('Failed to load saved column widths', e);
-        }
-    }
-
     useEffect(() => {
         const refreshColumnsListener = () => {
             console.log("Refreshing columns after update...");
