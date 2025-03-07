@@ -225,6 +225,7 @@ const DataViewer = forwardRef((props, ref) => {
             direction: prev.key === columnName && prev.direction === 'asc' ? 'desc' : 'asc',
         }));
     };
+
     useEffect(() => {
         let mounted = true;
 
@@ -347,6 +348,30 @@ const DataViewer = forwardRef((props, ref) => {
             notify(Type.error, 'Failed to delete entry');
         }
     };
+
+    // Save column widths to local storage
+    useEffect(() => {
+        if (columns.length > 0 && SelectedProject && SelectedTab) {
+            const widthsObj = {};
+            columns.forEach(col => {
+                if (col.width) widthsObj[col.id] = col.width;
+            });
+            localStorage.setItem(`columnWidths-${SelectedProject}-${SelectedTab}`, JSON.stringify(widthsObj));
+        }
+    }, [columns, SelectedProject, SelectedTab]);
+    
+    const savedWidths = localStorage.getItem(`columnWidths-${SelectedProject}-${SelectedTab}`);
+    if (savedWidths) {
+        try {
+            const widthsObj = JSON.parse(savedWidths);
+            sortedColumns = sortedColumns.map(col => ({
+                ...col,
+                width: widthsObj[col.id] || col.width || 150
+            }));
+        } catch (e) {
+            console.error('Failed to load saved column widths', e);
+        }
+    }
 
     useEffect(() => {
         const refreshColumnsListener = () => {
