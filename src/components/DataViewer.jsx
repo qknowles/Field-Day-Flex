@@ -492,6 +492,7 @@ const DataViewer = forwardRef((props, ref) => {
                                                 // Add custom resize handler
                                                 const startX = e.clientX;
                                                 const startWidth = column.width || 150;
+                                                e.stopPropagation(); // Prevent sort trigger
                                                 
                                                 const onMouseMove = (moveEvent) => {
                                                     const newWidth = Math.max(50, startWidth + (moveEvent.clientX - startX));
