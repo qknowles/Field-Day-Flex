@@ -7,6 +7,7 @@ import { tabExists, createTab } from '../utils/firestore';
 import ColumnOptions from './ColumnOptions.jsx';
 import { useAtomValue } from 'jotai';
 import { currentUserEmail, currentProjectName } from '../utils/jotai.js';
+import { entryTypeOptions } from '../utils/globals.js';
 
 export default function NewTab({ CancelTab, OpenNewTab }) {
 
@@ -151,7 +152,7 @@ export default function NewTab({ CancelTab, OpenNewTab }) {
                 let columnOrder = '';
                 if (generateIdentifiers) {
                     columnName = 'Entry ID';
-                    columnDataType = 'auto_id';
+                    columnDataType = entryTypeOptions.AUTO_ID;
                     columnIdentifierDomain = true;
                     columnRequiredField = true;
                     columnOrder = 0;
