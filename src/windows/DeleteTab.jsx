@@ -44,6 +44,7 @@ export default function DeleteTab({ CloseDeleteTab }) {
         }
     };
 
+
     return (
         <WindowWrapper
             header="Delete Tab"
@@ -70,6 +71,15 @@ export default function DeleteTab({ CloseDeleteTab }) {
 
                 {/* Delete Button */}
                 <Button text="Delete Tab" onClick={handleDelete} className="bg-red-600 hover:bg-red-700 w-full" />
+            </div>
+            <div className="p-5 space-y-4">
+                <p className="text-red-500 font-bold">Please be sure you want to delete this tab.</p>
+                <p>This will permanently delete:</p>
+                <ul className="list-disc pl-5 space-y-2">
+                    <li>All tab data</li>
+                    <li>All content in the tab</li>
+                </ul>
+                <p className="font-bold">This action cannot be undone.</p>
             </div>
         </WindowWrapper>
     );
