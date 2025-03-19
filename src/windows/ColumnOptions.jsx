@@ -6,6 +6,7 @@ import { Type, notify } from '../components/Notifier';
 import { tabExists, createTab, addColumn } from '../utils/firestore';
 import { useAtomValue } from 'jotai';
 import { currentUserEmail, currentProjectName, currentTableName } from '../utils/jotai.js';
+import { entryTypeOptions } from '../utils/globals.js';
 
 export default function ColumnOptions({
     ColumnNames,
@@ -29,65 +30,81 @@ export default function ColumnOptions({
     const [identifierDomain, setIdentifierDomain] = useState(new Array(ColumnNames.length).fill(false));
     const [requiredField, setRequiredField] = useState(new Array(ColumnNames.length).fill(false));
 
-    const entryTypeOptions = ['whole number', 'decimal number', 'text', 'date', 'multiple choice'];
+    // Create an array of options for components that need a list.
+    const entryTypeOptionsArray = Object.values(entryTypeOptions).filter(
+        (option) => option !== entryTypeOptions.AUTO_ID
+    );
 
-    const validInputs = useCallback(() => {
-        if (!entryTypeOptions.includes(dataType[columnIndex])) {
+    /**
+     * This validation function now accepts an override for the entryOptions
+     * so that we can pass in an updated copy that includes tempEntryOptions.
+     */
+    const validInputs = useCallback((direction, overrideEntryOptions = entryOptions) => {
+        // Validate that a proper entry type was selected unless going backward.
+        if (!entryTypeOptionsArray.includes(dataType[columnIndex]) && direction !== 'goBackward') {
             notify(Type.error, 'Must first select an entry type.');
             return false;
         }
 
-        if (dataType[columnIndex] === entryTypeOptions[3]) {
-            if (!entryOptions[columnIndex]) {
+        // If it's a multiple choice, ensure we have entry options.
+        if (dataType[columnIndex] === entryTypeOptions.MULTIPLE_CHOICE) {
+            if (!overrideEntryOptions[columnIndex] || overrideEntryOptions[columnIndex].length === 0) {
                 notify(Type.error, 'Must include entry options for multiple choice entry.');
                 return false;
             }
-            if (entryOptions[columnIndex].length !== new Set(entryOptions[columnIndex]).size) {
+            if (overrideEntryOptions[columnIndex].length !== new Set(overrideEntryOptions[columnIndex]).size) {
                 notify(Type.error, 'Entry choices must not contain duplicates.');
                 return false;
             }
         }
 
         if (ColumnNames[columnIndex] === '' || ColumnNames[columnIndex] === null || ColumnNames[columnIndex] === undefined) {
-            notify(Type.error, "Collumn name can't be empty.");
+            notify(Type.error, "Column name can't be empty.");
             return false;
         }
 
         return true;
-    }, [columnIndex, dataType, entryOptions, entryTypeOptions]);
+    }, [columnIndex, dataType, entryOptions, entryTypeOptions, entryTypeOptionsArray, ColumnNames]);
 
-    const storeEntryOptions = useCallback(() => {
-        setEntryOptions((prevOptions) =>
-            prevOptions.map((option, i) =>
+    /**
+     * Helper to compute updated entry options for the current column,
+     * replacing its value with tempEntryOptions.
+     */
+    const getUpdatedEntryOptions = () => {
+        if (dataType[columnIndex] === entryTypeOptions.MULTIPLE_CHOICE) {
+            return entryOptions.map((option, i) =>
                 i === columnIndex ? [...tempEntryOptions] : option
-            )
-        );
-    }, [tempEntryOptions, columnIndex]);
+            );
+        } else {
+            return entryOptions.map((option, i) =>
+                i === columnIndex ? [] : option
+            );
+        }
+    };
 
     const goBackward = useCallback(() => {
-        if (validInputs()) {
-            storeEntryOptions();
+        const updatedEntryOptions = getUpdatedEntryOptions();
+        if (validInputs('goBackward', updatedEntryOptions)) {
+            setEntryOptions(updatedEntryOptions);
             setColumnIndex((prevIndex) => prevIndex - 1);
         }
-    }, [validInputs]);
+    }, [columnIndex, tempEntryOptions, entryOptions, validInputs]);
 
     const goForward = useCallback(() => {
-        if (validInputs()) {
-            storeEntryOptions();
+        const updatedEntryOptions = getUpdatedEntryOptions();
+        if (validInputs(undefined, updatedEntryOptions)) {
+            setEntryOptions(updatedEntryOptions);
             setColumnIndex((prevIndex) => prevIndex + 1);
         }
-    }, [validInputs]);
+    }, [columnIndex, tempEntryOptions, entryOptions, validInputs]);
 
     const storeNewTab = useCallback(async () => {
-        if (validInputs()) {
-            let finalEntryOptions = entryOptions.map((option, i) =>
-                i === columnIndex ? [...tempEntryOptions] : option
-            );
-            
-            finalEntryOptions = finalEntryOptions.map((options) =>
+        const updatedEntryOptions = getUpdatedEntryOptions();
+        if (validInputs(undefined, updatedEntryOptions)) {
+            let finalEntryOptions = updatedEntryOptions.map((options) =>
                 options.filter((name) => name !== 'Add Here')
             );
-    
+
             const tabAlreadyExists = await tabExists(Email, SelectedProject, TabName);
             if (tabAlreadyExists) {
                 for (let i = 0; i < ColumnNames.length; i++) {
@@ -110,17 +127,17 @@ export default function ColumnOptions({
             OpenNewTab(TabName);
         }
     }, [
-        validInputs,
         ColumnNames,
         Email,
         SelectedProject,
         TabName,
+        dataType,
         entryOptions,
         tempEntryOptions,
-        dataType,
         identifierDomain,
         requiredField,
         OpenNewTab,
+        validInputs,
     ]);
 
     const leftButtonClick = useMemo(() => {
@@ -129,7 +146,7 @@ export default function ColumnOptions({
 
     const rightButtonClick = useMemo(() => {
         return columnIndex === ColumnNames.length - 1 ? storeNewTab : goForward;
-    }, [columnIndex, storeNewTab, goForward]);
+    }, [columnIndex, storeNewTab, goForward, ColumnNames]);
 
     const handleColumnNameChange = (newName) => {
         const updatedColumnNames = [...ColumnNames];
@@ -140,7 +157,7 @@ export default function ColumnOptions({
     useEffect(() => {
         setTempEntryOptions(entryOptions[columnIndex]);
         setRightButtonText(columnIndex === ColumnNames.length - 1 ? 'Finish' : 'Next Column');
-    }, [columnIndex, ColumnNames.length]);
+    }, [columnIndex, ColumnNames.length, entryOptions]);
 
     return (
         <WindowWrapper
@@ -164,7 +181,7 @@ export default function ColumnOptions({
                 <span className="text-sm">Data Entry Type:</span>
                 <RadioButtons
                     layout="horizontal"
-                    options={entryTypeOptions}
+                    options={entryTypeOptionsArray}
                     selectedOption={dataType[columnIndex]}
                     setSelectedOption={(type) => {
                         setDataType((prev) => {
@@ -174,7 +191,7 @@ export default function ColumnOptions({
                         });
                     }}
                 />
-                {dataType[columnIndex] === entryTypeOptions[3] && (
+                {dataType[columnIndex] === entryTypeOptions.MULTIPLE_CHOICE && (
                     <DropdownFlex
                         options={tempEntryOptions}
                         setOptions={setTempEntryOptions}

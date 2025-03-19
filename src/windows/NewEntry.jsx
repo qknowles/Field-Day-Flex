@@ -6,6 +6,7 @@ import { getColumnsCollection, addEntry, updateEntry } from '../utils/firestore'
 import { Type, notify } from '../components/Notifier';
 import { useAtomValue } from 'jotai';
 import { currentUserEmail, currentProjectName, currentTableName } from '../utils/jotai.js';
+import { entryTypeOptions } from '../utils/globals.js';
 
 export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntryUpdated }) {
     const [columnsCollection, setColumnsCollection] = useState([]);
@@ -20,7 +21,7 @@ export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntry
     useEffect(() => {
         const fetchData = async () => {
             await loadCollection();
-            setHasAutoId(columnsCollection.some(column => column.data_type === 'auto_id'));
+            setHasAutoId(columnsCollection.some(column => column.data_type === entryTypeOptions.AUTO_ID));
         };
         fetchData();
     }, [projectName, tabName, email]);
@@ -56,13 +57,13 @@ export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntry
             const defaultEntries = {};
             columns.forEach((column) => {
                 const { name, data_type } = column;
-                if (data_type === 'whole number' || data_type ===  "decimal number") {
-                    defaultEntries[name] = 0;
-                } else if (data_type === 'date') {
+                if (data_type === entryTypeOptions.INTEGER || data_type === entryTypeOptions.DECIMAL) {
+                    defaultEntries[name] = '';
+                } else if (data_type === entryTypeOptions.DATE) {
                     defaultEntries[name] = formatDateTime(new Date());
-                } else if (data_type === 'multiple choice') {
+                } else if (data_type === entryTypeOptions.MULTIPLE_CHOICE) {
                     defaultEntries[name] = 'Select';
-                } else if (data_type === 'auto_id') {
+                } else if (data_type === entryTypeOptions.AUTO_ID) {
                     defaultEntries[name] = '';
                 } else {
                     defaultEntries[name] = '';
@@ -88,39 +89,37 @@ export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntry
     };
 
     const validEntries = () => {
-        for (const column of columnsCollection) {
+        for (const column of columnsCollection.sort((a, b) => a.order - b.order)) {
             const { name, data_type, required_field, identifier_domain } = column;
             const value = userEntries[name];
 
-            if (data_type === 'number' && (value === '' || isNaN(value))) {
-                notify(Type.error, `The field "${name}" must be a valid number.`);
-                return false;
+            if (value && data_type !== entryTypeOptions.MULTIPLE_CHOICE) {
+                if (data_type === entryTypeOptions.INTEGER && !/^-?\d+$/.test(value)) {
+                    notify(Type.error, `The field "${name}" must be a valid integer number.`);
+                    return false;
+                }
+
+                if (data_type === entryTypeOptions.DECIMAL && !/^-?\d+\.\d+$/.test(value)) {
+                    notify(Type.error, `The field "${name}" must be a valid decimal number.`);
+                    return false;
+                }
+
+                if (data_type === entryTypeOptions.DATE && !/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}$/.test(value)) {
+                    notify(
+                        Type.error,
+                        `The field "${name}" must be in the format YYYY/MM/DD HH:MM:SS.`,
+                    );
+                    return false;
+                }
+
+                if (data_type === entryTypeOptions.AUTO_ID && !/^(?:[A-Z]+[0-9]+)(?:-[A-Z]+[0-9]+)*$/i.test(value)) {
+                    notify(Type.error, `Please enter a valid code for "${name}".`);
+                    return false;
+                }
             }
 
-            if(data_type === 'float' && (value === '' || isNaN(value))) {
-                notify(Type.error, `The field "${name}" must be a valid decimal number.`);
-            }
-
-            if (data_type === 'date' && !/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}$/.test(value)) {
-                notify(
-                    Type.error,
-                    `The field "${name}" must be in the format YYYY/MM/DD HH:MM:SS.`,
-                );
-                return false;
-            }
-
-            if (data_type === 'multiple choice' && value === 'Select') {
-                notify(Type.error, `Please select a valid option for "${name}".`);
-                return false;
-            }
-
-            if (data_type === 'auto_id' && !/^(?:[A-Z]+[0-9]+)(?:-[A-Z]+[0-9]+)*$/i.test(value)) {
-                notify(Type.error, `Please enter a valid code for "${name}".`);
-                return false;
-            }
-            
-            if ((required_field === true || identifier_domain === true) && value === '' || value === null || value === undefined || value === 'Select') {
-                notify(Type.error, `"${name}" is a ${required_field ? 'required' : 'ID domain'} field that must be entered.`);
+            if ((required_field || identifier_domain) && (value === '' || value === null || value === undefined || value === 'Select')) {
+                notify(Type.error, `"${name}" is a ${required_field ? 'required' : 'ID domain'} ${data_type} field that must be entered.`);
                 return false;
             }
         }
@@ -129,21 +128,21 @@ export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntry
     };
 
     const submitEntry = async () => {
-        if (!validEntries()) throw new Error("Invalid entries");
+        if (!validEntries()) return;
         const formattedEntries = { ...userEntries };
 
         columnsCollection.forEach((column) => {
             const { name, data_type } = column;
-    
-            if (data_type === 'whole number') {
-                if(!Number.isInteger(Number(formattedEntries[name]))) {
+
+            if (data_type === entryTypeOptions.INTEGER) {
+                if (!Number.isInteger(Number(formattedEntries[name]))) {
                     notify(Type.error, `The field "${name}" must be an integer (whole number).`);
                     throw new Error("Whole number column must be integer");
                 }
                 formattedEntries[name] = Number(formattedEntries[name]) || 0;
-            } else if(data_type === "decimal number") {
+            } else if (data_type === entryTypeOptions.DECIMAL) {
                 formattedEntries[name] = Number(formattedEntries[name]) || 0;
-            } else if (data_type === 'date') {
+            } else if (data_type === entryTypeOptions.DATE) {
                 formattedEntries[name] = new Date(formattedEntries[name]).toISOString();
             }
         });
@@ -173,7 +172,7 @@ export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntry
         if (hasAutoId) {
             setResetIdEntry((prev) => !prev);
         }
-    }    
+    }
 
     const renderDynamicInputs = () => {
         const sortedColumns = [...columnsCollection].sort((a, b) => a.order - b.order);
@@ -181,7 +180,7 @@ export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntry
         return sortedColumns.map((column, index) => {
             const { name, data_type, entry_options = [], required_field, identifier_domain } = column;
 
-            if (data_type === 'multiple choice') {
+            if (data_type === entryTypeOptions.MULTIPLE_CHOICE) {
                 return (
                     <DropdownSelector
                         key={index}
@@ -200,7 +199,7 @@ export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntry
             }
 
 
-            if (data_type === 'auto_id') {
+            if (data_type === entryTypeOptions.AUTO_ID) {
                 return (
                     <IdentificationGenerator_UI
                         key={index}
@@ -212,13 +211,7 @@ export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntry
                 );
             }
 
-            const inputType =
-                data_type === 'number'
-                    ? 'number'
-                    : data_type === 'date'
-                        ? 'datetime-local'
-                        : 'text';
-
+            const inputType = data_type === entryTypeOptions.DATE ? 'datetime-local' : 'text';
 
             return (
                 <InputLabel
@@ -231,7 +224,7 @@ export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntry
                             placeholder={name}
                             required={required_field}
                             value={
-                                data_type === 'date'
+                                data_type === entryTypeOptions.DATE
                                     ? parseDateTimeInput(userEntries[name])
                                     : userEntries[name] || ''
                             }
@@ -240,7 +233,10 @@ export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntry
                                 if (identifier_domain) {
                                     idReset();
                                 }
-                                handleInputChange(name, data_type === 'date' ? formatDateTime(value) : value);
+                                handleInputChange(
+                                    name,
+                                    data_type === entryTypeOptions.DATE ? formatDateTime(value) : value
+                                );
                             }}
                         />
                     }
