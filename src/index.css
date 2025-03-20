@@ -50,25 +50,10 @@
         @apply min-w-[200px] whitespace-nowrap overflow-visible;
     }
 
-    .siteColumn {
-        @apply min-w-[100px] whitespace-nowrap overflow-visible;
-    }
-
     .yearColumn {
         @apply min-w-[90px] whitespace-nowrap overflow-visible;
     }
 
-    .taxaColumn {
-        @apply min-w-[100px] whitespace-nowrap overflow-visible;
-    }
-
-    .genusColumn {
-        @apply min-w-[120px] whitespace-nowrap overflow-visible;
-    }
-
-    .speciesColumn {
-        @apply min-w-[100px] whitespace-nowrap overflow-visible;
-    }
     .hamburger-line {
         width: 24px;
         height: 3px;
