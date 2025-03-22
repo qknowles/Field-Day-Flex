@@ -12,7 +12,6 @@ import { visibleColumnsAtom } from '../utils/jotai';
 import { searchQueryAtom, filteredEntriesAtom } from './SearchBar';
 import { filterEntriesBySearch, highlightSearchTerms } from '../utils/searchUtils';
 import EntryCountDisplay from './EntryCountDisplay';
-import { ResizableBox } from 'react-resizable';
 import 'react-resizable/css/styles.css';
 
 
