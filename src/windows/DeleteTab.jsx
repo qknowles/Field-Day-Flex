@@ -26,15 +26,14 @@ export default function DeleteTab({ CloseDeleteTab }) {
             notify(Type.error, 'Please select a tab to delete.');
             return;
         }
-
+    
         try {
             const success = await deleteTab(projectName, selectedTab, email);
             if (success) {
                 const updatedTabs = await getTabNames(email, projectName);
-                setTabNames(updatedTabs);
+                setTabNames(updatedTabs); // Update UI to remove deleted tab from view
                 notify(Type.success, `Tab "${selectedTab}" deleted successfully.`);
                 CloseDeleteTab();
-                window.location.reload();
             } else {
                 notify(Type.error, `Failed to delete tab "${selectedTab}".`);
             }
@@ -43,8 +42,7 @@ export default function DeleteTab({ CloseDeleteTab }) {
             notify(Type.error, `Error deleting tab "${selectedTab}".`);
         }
     };
-
-
+  
     return (
         <WindowWrapper
             header="Delete Tab"
