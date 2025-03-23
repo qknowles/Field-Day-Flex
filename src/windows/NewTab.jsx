@@ -119,7 +119,7 @@ export default function NewTab({ CancelTab, OpenNewTab }) {
         }
 
         const cleanedTabName = tabName.trim();
-        if (!tabName) {
+        if (!cleanedTabName) {
             notify(Type.error, 'Tab name cannot be empty.');
             return;
         }
@@ -137,13 +137,14 @@ export default function NewTab({ CancelTab, OpenNewTab }) {
             }
         }
 
-        setColumnNames(filteredColumnNames);
         setTabName(cleanedTabName);
         setPossibleIdentifiers(finalPossibleIdentifiers);
         setUnwantedCodes(unwantedCodesWithoutDuplicates);
+        setColumnNames(uniqueColumnNames);
 
-        const tabAlreadyExists = await tabExists(Email, SelectedProject, tabName);
-            if (!tabAlreadyExists) {
+        const tabAlreadyExists = await tabExists(Email, SelectedProject, cleanedTabName);
+        if (!tabAlreadyExists) {
+            if (uniqueColumnNames && uniqueColumnNames.length === 0) {
                 let columnName = '';
                 let columnDataType = '';
                 let entryOptions = [];
@@ -175,20 +176,19 @@ export default function NewTab({ CancelTab, OpenNewTab }) {
                 );
                 if (tabCreated) {
                     notify(Type.success, `Tab created.`);
+                    OpenNewTab(cleanedTabName);
+                    return;
                 } else {
                     notify(Type.error, 'Error creating new tab.');
+                    return;
                 }
-            } else {
-                notify(Type.error, 'Tab already exists.');
-                return;
             }
-
-        if (filteredColumnNames.length > 0) {
-            setShowColumnOptions(true);
         } else {
-            OpenNewTab(tabName);
+            notify(Type.error, 'Tab already exists.');
             return;
         }
+        
+        setShowColumnOptions(true);
     };
 
     const closeColumnOptions = () => {
@@ -204,6 +204,11 @@ export default function NewTab({ CancelTab, OpenNewTab }) {
                     CancelColumnOptions={closeColumnOptions}
                     OpenNewTab={OpenNewTab}
                     tabName={tabName}
+                    generateIdentifiers={generateIdentifiers}
+                    possibleIdentifiers={possibleIdentifiers}
+                    identifierDimension={identifierDimension}
+                    unwantedCodes={unwantedCodes}
+                    utilizeUnwantedCodes={utilizeUnwantedCodes}
                 />
             ) : (
                 <WindowWrapper
