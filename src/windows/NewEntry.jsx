@@ -7,6 +7,7 @@ import { Type, notify } from '../components/Notifier';
 import { useAtomValue } from 'jotai';
 import { currentUserEmail, currentProjectName, currentTableName } from '../utils/jotai.js';
 import { entryTypeOptions } from '../utils/globals.js';
+import { idAlreadyUsed } from '../utils/IdentificationGenerator';
 
 export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntryUpdated }) {
     const [columnsCollection, setColumnsCollection] = useState([]);
@@ -21,7 +22,6 @@ export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntry
     useEffect(() => {
         const fetchData = async () => {
             await loadCollection();
-            setHasAutoId(columnsCollection.some(column => column.data_type === entryTypeOptions.AUTO_ID));
         };
         fetchData();
     }, [projectName, tabName, email]);
@@ -52,6 +52,7 @@ export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntry
     const loadCollection = async () => {
         const columns = await getColumnsCollection(projectName, tabName, email);
         setColumnsCollection(columns);
+        setHasAutoId(columns.some(column => column.data_type === entryTypeOptions.AUTO_ID));
 
         if (!existingEntry) {
             const defaultEntries = {};
@@ -88,7 +89,7 @@ export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntry
         return date.replace(/\//g, '-') + 'T' + time;
     };
 
-    const validEntries = () => {
+    const validEntries = async () => {
         for (const column of columnsCollection.sort((a, b) => a.order - b.order)) {
             const { name, data_type, required_field, identifier_domain } = column;
             const value = userEntries[name];
@@ -116,6 +117,14 @@ export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntry
                     notify(Type.error, `Please enter a valid code for "${name}".`);
                     return false;
                 }
+
+                if (value && data_type === entryTypeOptions.AUTO_ID) {
+                    const idIsAlreadyUsed = await idAlreadyUsed(email, projectName, tabName, value, userEntries);
+                    if (idIsAlreadyUsed) {
+                        notify(Type.error, idIsAlreadyUsed);
+                        return false;
+                    }
+                }
             }
 
             if ((required_field || identifier_domain) && (value === '' || value === null || value === undefined || value === 'Select')) {
@@ -128,7 +137,8 @@ export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntry
     };
 
     const submitEntry = async () => {
-        if (!validEntries()) return;
+        const areValid = await validEntries();
+        if (!areValid) return;
         const formattedEntries = { ...userEntries };
 
         columnsCollection.forEach((column) => {
