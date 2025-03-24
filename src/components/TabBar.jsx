@@ -39,10 +39,6 @@ export default function TabBar() {
         setTabNames((prevTabNames) => [...prevTabNames, tabName]);
         setSelectedTab(tabName);
     };
-
-    if (!selectedTab && tabs[0]) {
-        setSelectedTab(tabs[0]);
-    }
     
     useEffect(() => {
         const fetchTabNames = async () => {
@@ -51,16 +47,22 @@ export default function TabBar() {
                     const tabs = await getTabNames(email, selectedProject);
                     setTabNames(tabs);
     
-                    // Only reset tab if this was a manual switch
-                    if (manualSwitchRef.current && tabs.length > 0) {
-                        setSelectedTab(tabs[0]);
-                        manualSwitchRef.current = false; // reset flag
+                    if (tabs.length > 0) {
+                        // Manual switch: reset to first tab
+                        if (manualSwitchRef.current) {
+                            setSelectedTab(tabs[0]);
+                            manualSwitchRef.current = false;
+                        }
+                    } else {
+                        
+                        setSelectedTab('');
                     }
                 } catch (error) {
                     console.error('Failed to fetch tab names.');
                 }
             } else {
                 setTabNames([]);
+                setSelectedTab('');
             }
         };
     

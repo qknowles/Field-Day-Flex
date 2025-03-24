@@ -47,6 +47,8 @@ export default function TablePage() {
     const [visibleColumns, setVisibleColumns] = useAtom(visibleColumnsAtom);
     const [columns, setColumns] = useState([]);
     const [filteredEntries] = useAtom(filteredEntriesAtom); // Get filtered entries
+    const [ready, setReady] = useState(false);
+
 
     // Track component mounted status with a ref that persists across re-renders
     const mountedRef = useRef(false);
@@ -177,34 +179,44 @@ export default function TablePage() {
             const savedProject = localStorage.getItem('selectedProject');
             const savedTab = localStorage.getItem('selectedTab');
     
-            if (savedProject) {
-                setSelectedProject(savedProject);
-                const tabs = await getTabNames(email, savedProject);
+            if (!email) return;
+    
+            try {
+                const allProjectNames = await getProjectNames(email);
+                setProjectNames(allProjectNames);
+    
+                const defaultProject = savedProject && allProjectNames.includes(savedProject)
+                    ? savedProject
+                    : allProjectNames[0];
+    
+                setSelectedProject(defaultProject);
+    
+                const tabs = await getTabNames(email, defaultProject);
                 setTabNames(tabs);
     
-                // if savedTab still exists, use it. Otherwise fallback to first tab
-                if (tabs.includes(savedTab)) {
-                    setSelectedTab(savedTab);
-                } else if (tabs.length > 0) {
-                    setSelectedTab(tabs[0]);
-                }
-            } else {
-                // First-time users — fallback to first project and tab
-                const allProjectNames = await getProjectNames(email);
-                if (allProjectNames.length > 0) {
-                    setProjectNames(allProjectNames);
-                    setSelectedProject(allProjectNames[0]);
-                    const allTabNames = await getTabNames(email, allProjectNames[0]);
-                    setTabNames(allTabNames);
-                    if (allTabNames.length > 0) {
-                        setSelectedTab(allTabNames[0]);
-                    }
-                }
+                const defaultTab = savedTab && tabs.includes(savedTab)
+                    ? savedTab
+                    : tabs[0] || '';
+    
+                setSelectedTab(defaultTab);
+    
+                setReady(true); 
+            } catch (error) {
+                console.error('Error restoring session:', error);
             }
         };
     
         if (email) restoreLastSession();
     }, [email]);
+    
+    
+    useEffect(() => {
+        if (!ready) return;
+        if (dataViewerRef.current && dataViewerRef.current.fetchEntries) {
+            dataViewerRef.current.fetchEntries();
+        }
+    }, [selectedProject, selectedTab, ready]);
+    
     
     useEffect(() => {
         setNewColumn(['']);
@@ -314,15 +326,18 @@ export default function TablePage() {
 
            
             {/* Content Area */}
-            <div className="flex-grow bg-white dark:bg-neutral-950">
-                {!selectedProject ? (
-                    <NoProjectDisplay />
-                ) : !selectedTab ? (
-                    <NoTabsDisplay />
-                ) : (
-                    <DataViewer ref={dataViewerRef} />
-                )}
-            </div>
+<div className="flex-grow bg-white dark:bg-neutral-950">
+    {!selectedProject ? (
+        <NoProjectDisplay />
+    ) : !selectedTab ? (
+        <NoTabsDisplay />
+    ) : !ready ? (
+        <div className="p-4 text-center text-neutral-400">Loading...</div>
+    ) : (
+        <DataViewer ref={dataViewerRef} />
+    )}
+</div>
+
 
             {/* Pages */}
             {showNewEntry && (
