@@ -150,23 +150,62 @@ export default function TablePage() {
         const getFirstProject = async () => {
             try {
                 const allProjectNames = await getProjectNames(email);
-                if (allProjectNames[0]) {
+                setProjectNames(allProjectNames);
+    
+                const defaultProject = selectedProject || allProjectNames[0];
+                if (!selectedProject && allProjectNames[0]) {
+                    setSelectedProject(allProjectNames[0]);
+                }
+    
+                const allTabNames = await getTabNames(email, defaultProject);
+                setTabNames(allTabNames);
+    
+                if (!selectedTab && allTabNames[0]) {
+                    setSelectedTab(allTabNames[0]);
+                }
+            } catch (error) {
+                console.error("Error fetching project names or tabs in TablePage.");
+            }
+        };
+    
+        getFirstProject();
+    }, [email]);
+    
+
+    useEffect(() => {
+        const restoreLastSession = async () => {
+            const savedProject = localStorage.getItem('selectedProject');
+            const savedTab = localStorage.getItem('selectedTab');
+    
+            if (savedProject) {
+                setSelectedProject(savedProject);
+                const tabs = await getTabNames(email, savedProject);
+                setTabNames(tabs);
+    
+                // if savedTab still exists, use it. Otherwise fallback to first tab
+                if (tabs.includes(savedTab)) {
+                    setSelectedTab(savedTab);
+                } else if (tabs.length > 0) {
+                    setSelectedTab(tabs[0]);
+                }
+            } else {
+                // First-time users — fallback to first project and tab
+                const allProjectNames = await getProjectNames(email);
+                if (allProjectNames.length > 0) {
                     setProjectNames(allProjectNames);
                     setSelectedProject(allProjectNames[0]);
                     const allTabNames = await getTabNames(email, allProjectNames[0]);
-                    if (allTabNames[0]) {
-                        setTabNames(allTabNames);
+                    setTabNames(allTabNames);
+                    if (allTabNames.length > 0) {
                         setSelectedTab(allTabNames[0]);
                     }
                 }
-            } catch (error) {
-                console.error("Error fetching project names or tabs in TablePage.")
             }
-        }
-
-        getFirstProject();
+        };
+    
+        if (email) restoreLastSession();
     }, [email]);
-
+    
     useEffect(() => {
         setNewColumn(['']);
     }, [showColumnOptions]);
