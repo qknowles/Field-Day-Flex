@@ -480,6 +480,8 @@ export const getColumnsCollection = async (projectName, tabName, email) => {
     }
 };
 
+import { Timestamp } from 'firebase/firestore';
+
 export const addEntry = async (projectName, tabName, email, newEntry) => {
     try {
         const projectRef = collection(db, 'Projects');
@@ -513,10 +515,25 @@ export const addEntry = async (projectName, tabName, email, newEntry) => {
 
         const tabDoc = tabSnapshot.docs[0];
 
+        const columnsRef = collection(tabDoc.ref, 'Columns');
+        const columnsSnapshot = await getDocs(columnsRef);
+
+        let columnTypes = {};
+        columnsSnapshot.docs.forEach(doc => {
+            columnTypes[doc.data().name] = doc.data().data_type;
+        });
+
+        // Convert all date-type fields to Firestore Timestamps
+        Object.keys(newEntry).forEach(key => {
+            if (columnTypes[key] === 'date' && typeof newEntry[key] === 'string') {
+                newEntry[key] = Timestamp.fromDate(new Date(newEntry[key]));
+            }
+        });
+
         const entriesRef = collection(tabDoc.ref, 'Entries');
         await addDoc(entriesRef, {
             entry_data: newEntry,
-            entry_date: new Date(),
+            entry_date: Timestamp.now(), 
             deleted: false,
         });
 
@@ -527,9 +544,69 @@ export const addEntry = async (projectName, tabName, email, newEntry) => {
     }
 };
 
+
+export const updateEntriesToTimestamps = async (projectName, tabName, email) => {
+    try {
+        const projectRef = collection(db, 'Projects');
+        const projectsQuery = query(projectRef, where('project_name', '==', projectName));
+        const projectSnapshot = await getDocs(projectsQuery);
+
+        if (projectSnapshot.empty) {
+            console.error('No matching project found.');
+            return;
+        }
+
+        const projectDoc = projectSnapshot.docs[0];
+        const tabsRef = collection(projectDoc.ref, 'Tabs');
+        const tabsQuery = query(tabsRef, where('tab_name', '==', tabName));
+        const tabSnapshot = await getDocs(tabsQuery);
+
+        if (tabSnapshot.empty) {
+            console.error('No matching tab found.');
+            return;
+        }
+
+        const tabDoc = tabSnapshot.docs[0];
+
+        const columnsRef = collection(tabDoc.ref, 'Columns');
+        const columnsSnapshot = await getDocs(columnsRef);
+
+        let columnTypes = {};
+        columnsSnapshot.docs.forEach(doc => {
+            columnTypes[doc.data().name] = doc.data().data_type;
+        });
+
+        const entriesRef = collection(tabDoc.ref, 'Entries');
+        const entriesSnapshot = await getDocs(entriesRef);
+
+        const batch = writeBatch(db);
+
+        entriesSnapshot.forEach((entryDoc) => {
+            const entryData = entryDoc.data();
+            let updatedFields = {};
+
+            Object.keys(entryData.entry_data).forEach(key => {
+                if (columnTypes[key] === 'date' && typeof entryData.entry_data[key] === 'string') {
+                    updatedFields[`entry_data.${key}`] = Timestamp.fromDate(new Date(entryData.entry_data[key]));
+                }
+            });
+
+            if (Object.keys(updatedFields).length > 0) {
+                const entryRef = doc(entriesRef, entryDoc.id);
+                batch.update(entryRef, updatedFields);
+            }
+        });
+
+        await batch.commit();
+        console.log('Updated all string dates to Firestore Timestamps.');
+    } catch (error) {
+        console.error('Error updating entries:', error);
+    }
+};
+
+
 export const getEntriesForTab = async (projectName, tabName, email) => {
     try {
-        // Get project reference
         const projectRef = collection(db, 'Projects');
         const projectQuery = query(
             projectRef,
@@ -549,8 +626,6 @@ export const getEntriesForTab = async (projectName, tabName, email) => {
         }
 
         const projectDoc = projectSnapshot.docs[0];
-
-        // Get tab reference
         const tabsRef = collection(projectDoc.ref, 'Tabs');
         const tabQuery = query(tabsRef, where('tab_name', '==', tabName));
         const tabSnapshot = await getDocs(tabQuery);
@@ -561,20 +636,57 @@ export const getEntriesForTab = async (projectName, tabName, email) => {
 
         const tabDoc = tabSnapshot.docs[0];
 
-        // Get entries
+        const columnsRef = collection(tabDoc.ref, 'Columns');
+        const columnsSnapshot = await getDocs(columnsRef);
+
+        let columnTypes = {};
+        columnsSnapshot.docs.forEach(doc => {
+            columnTypes[doc.data().name] = doc.data().data_type;
+        });
+
         const entriesRef = collection(tabDoc.ref, 'Entries');
         const entriesSnapshot = await getDocs(entriesRef);
 
-        return entriesSnapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-            entry_date: doc.data().entry_date?.toDate?.() || doc.data().entry_date,
-        }));
+        // Function to format timestamps in 24-hour format
+        const formatDate = (timestamp) => {
+            if (!timestamp?.toDate) return timestamp; 
+            
+            return new Intl.DateTimeFormat('en-US', {
+                year: 'numeric',
+                month: 'numeric',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hourCycle: 'h23'  // 24-hour format
+            }).format(timestamp.toDate());
+        };
+
+        return entriesSnapshot.docs.map((doc) => {
+            const data = doc.data();
+
+            return {
+                id: doc.id,
+                ...data,
+                entry_date: formatDate(data.entry_date),
+                entry_data: Object.keys(data.entry_data).reduce((formattedData, key) => {
+                    if (columnTypes[key] === 'date') {
+                        formattedData[key] = formatDate(data.entry_data[key]);
+                    } else {
+                        formattedData[key] = data.entry_data[key];
+                    }
+                    return formattedData;
+                }, {}),
+            };
+        });
 
     } catch (error) {
-        console.error('Error in getEntriesForTab');
+        console.error('Error in getEntriesForTab:', error);
+        return [];
     }
 };
+
+
 
 export const updateDocInCollection = async (collectionName, docId, data) => {
     try {
