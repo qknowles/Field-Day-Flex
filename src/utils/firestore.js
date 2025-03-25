@@ -227,9 +227,11 @@ export const getTabNames = async (email, projectName) => {
         const tabsRef = collection(projectDoc.ref, 'Tabs');
         const tabsSnapshot = await getDocs(tabsRef);
 
+        // Filter out deleted tabs
         const tabNames = tabsSnapshot.docs
-            .map((tabDoc) => tabDoc.data().tab_name)
-            .filter((name) => name);
+            .map((tabDoc) => tabDoc.data())
+            .filter((tab) => !tab.deleted)  
+            .map((tab) => tab.tab_name);
 
         return tabNames;
     } catch (error) {
@@ -237,6 +239,7 @@ export const getTabNames = async (email, projectName) => {
         return [];
     }
 };
+
 
 export const tabExists = async (email, selectedProject, tabName) => {
     try {
@@ -1226,9 +1229,9 @@ export const deleteTab = async (projectName, tabName, email) => {
 
         const tabDoc = tabSnapshot.docs[0];
 
-        // Delete the tab document
-        await deleteDoc(tabDoc.ref);
-        console.log(`Deleted tab: ${tabName}`);
+        // Update the tab document to mark it as deleted
+        await updateDoc(tabDoc.ref, { deleted: true });
+        console.log(`Marked tab "${tabName}" as deleted.`);
 
         return true;
     } catch (error) {

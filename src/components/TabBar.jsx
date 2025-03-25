@@ -1,5 +1,5 @@
 import Tab from './Tab';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef} from 'react';
 import { getTabNames } from '../utils/firestore';
 import Button from './Button';
 import { DropdownSelector } from './FormFields';
@@ -21,6 +21,7 @@ export default function TabBar() {
     const [showNewTab, setShowNewTab] = useState(false);
     const [showNewProject, setShowNewProject] = useState(false);
     const [activeTabs, setActiveTabs] = useState({});
+    const manualSwitchRef = useRef(false);
 
 
     const closeNewProject = () => setShowNewProject(false);
@@ -38,30 +39,50 @@ export default function TabBar() {
         setTabNames((prevTabNames) => [...prevTabNames, tabName]);
         setSelectedTab(tabName);
     };
-
+    
     useEffect(() => {
         const fetchTabNames = async () => {
             if (selectedProject) {
                 try {
                     const tabs = await getTabNames(email, selectedProject);
-                    if (tabs[0]) {
-                        setTabNames(tabs);
-                        setSelectedTab(tabs[0]);
+                    setTabNames(tabs);
+    
+                    if (tabs.length > 0) {
+                        // Manual switch: reset to first tab
+                        if (manualSwitchRef.current) {
+                            setSelectedTab(tabs[0]);
+                            manualSwitchRef.current = false;
+                        }
                     } else {
-                        setTabNames([]);
+                        
                         setSelectedTab('');
                     }
-                    
                 } catch (error) {
                     console.error('Failed to fetch tab names.');
                 }
             } else {
                 setTabNames([]);
+                setSelectedTab('');
             }
         };
-
+    
         fetchTabNames();
     }, [selectedProject]);
+    
+    
+    const handleProjectChange = (newProject) => {
+        manualSwitchRef.current = true;
+        setSelectedProject(newProject);
+    };
+
+    useEffect(() => {
+        if (selectedProject) localStorage.setItem('selectedProject', selectedProject);
+    }, [selectedProject]);
+    
+    useEffect(() => {
+        if (selectedTab) localStorage.setItem('selectedTab', selectedTab);
+    }, [selectedTab]);
+    
 
     useEffect(() => {
         const activeStatusMap = tabNames.reduce((map, tab) => {
@@ -102,7 +123,7 @@ export default function TabBar() {
                         label="Project"
                         options={projects}
                         selection={selectedProject}
-                        setSelection={setSelectedProject}
+                        setSelection={handleProjectChange}
                         layout={'horizontal'}
                     />
                 </div>

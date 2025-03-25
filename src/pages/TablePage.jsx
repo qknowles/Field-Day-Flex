@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef} from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import TabBar from '../components/TabBar';
 import DataViewer from '../components/DataViewer';
 import PageWrapper from '../wrappers/PageWrapper';
@@ -8,7 +8,7 @@ import ColumnOptions from '../windows/ColumnOptions';
 import Button from '../components/Button';
 import ManageColumns from '../windows/MangeColumns';
 import { useAtomValue, useAtom } from 'jotai';
-import { currentProjectName, currentTableName, currentUserEmail, allProjectNames, allTableNames } from '../utils/jotai.js';
+import { currentProjectName, currentTableName, currentUserEmail, allProjectNames, allTableNames, isAuthenticated } from '../utils/jotai.js';
 import { ExportIcon } from '../assets/icons';
 import { generateCSVData } from '../components/ExportService.jsx';
 import { CSVLink } from 'react-csv';
@@ -17,6 +17,12 @@ import ColumnSelectorButton from '../components/ColumnSelectorButton';
 import SearchBar from '../components/SearchBar'; // Import the SearchBar component
 import { filteredEntriesAtom } from '../components/SearchBar'; // Import the filteredEntriesAtom
 import { visibleColumnsAtom } from '../utils/jotai.js';
+import { notify, Type } from '../components/Notifier';
+import { db } from '../utils/firebase';
+import { collection, addDoc } from 'firebase/firestore';
+
+// variable to track if login was recorded across all renders, tablepage renders like 20 times :(
+const hasRecordedLoginForSession = { value: false };
 
 export default function TablePage() {
     const [selectedProject, setSelectedProject] = useAtom(currentProjectName);
@@ -24,7 +30,9 @@ export default function TablePage() {
     const [tabNames, setTabNames] = useAtom(allTableNames);
     const [projectNames, setProjectNames] = useAtom(allProjectNames);
     const email = useAtomValue(currentUserEmail);
+    const authenticated = useAtomValue(isAuthenticated);
     const dataViewerRef = useRef(null);
+    const autoLoginRecordedRef = useRef(false); // Add a ref to track if login was recorded
 
     const [showNewEntry, setShowNewEntry] = useState(false);
     const [showManageColumns, setShowManageColumns] = useState(false);
@@ -39,6 +47,11 @@ export default function TablePage() {
     const [visibleColumns, setVisibleColumns] = useAtom(visibleColumnsAtom);
     const [columns, setColumns] = useState([]);
     const [filteredEntries] = useAtom(filteredEntriesAtom); // Get filtered entries
+    const [ready, setReady] = useState(false);
+
+
+    // Track component mounted status with a ref that persists across re-renders
+    const mountedRef = useRef(false);
 
     // Handle search functionality
     const handleSearch = (query) => {
@@ -135,33 +148,123 @@ export default function TablePage() {
         }
     };
 
-
-
-
     useEffect(() => {
         const getFirstProject = async () => {
             try {
                 const allProjectNames = await getProjectNames(email);
-                if (allProjectNames[0]) {
-                    setProjectNames(allProjectNames);
+                setProjectNames(allProjectNames);
+    
+                const defaultProject = selectedProject || allProjectNames[0];
+                if (!selectedProject && allProjectNames[0]) {
                     setSelectedProject(allProjectNames[0]);
-                    const allTabNames = await getTabNames(email, allProjectNames[0]);
-                    if (allTabNames[0]) {
-                        setTabNames(allTabNames);
-                        setSelectedTab(allTabNames[0]);
-                    }
+                }
+    
+                const allTabNames = await getTabNames(email, defaultProject);
+                setTabNames(allTabNames);
+    
+                if (!selectedTab && allTabNames[0]) {
+                    setSelectedTab(allTabNames[0]);
                 }
             } catch (error) {
-                console.error("Error fetching project names or tabs in TablePage.")
+                console.error("Error fetching project names or tabs in TablePage.");
             }
-        }
-
+        };
+    
         getFirstProject();
     }, [email]);
+    
 
+    useEffect(() => {
+        const restoreLastSession = async () => {
+            const savedProject = localStorage.getItem('selectedProject');
+            const savedTab = localStorage.getItem('selectedTab');
+    
+            if (!email) return;
+    
+            try {
+                const allProjectNames = await getProjectNames(email);
+                setProjectNames(allProjectNames);
+    
+                const defaultProject = savedProject && allProjectNames.includes(savedProject)
+                    ? savedProject
+                    : allProjectNames[0];
+    
+                setSelectedProject(defaultProject);
+    
+                const tabs = await getTabNames(email, defaultProject);
+                setTabNames(tabs);
+    
+                const defaultTab = savedTab && tabs.includes(savedTab)
+                    ? savedTab
+                    : tabs[0] || '';
+    
+                setSelectedTab(defaultTab);
+    
+                setReady(true); 
+            } catch (error) {
+                console.error('Error restoring session:', error);
+            }
+        };
+    
+        if (email) restoreLastSession();
+    }, [email]);
+    
+    
+    useEffect(() => {
+        if (!ready) return;
+        if (dataViewerRef.current && dataViewerRef.current.fetchEntries) {
+            dataViewerRef.current.fetchEntries();
+        }
+    }, [selectedProject, selectedTab, ready]);
+    
+    
     useEffect(() => {
         setNewColumn(['']);
     }, [showColumnOptions]);
+
+    const recordAutoLogin = async () => {
+        // Check both the module variable and the ref to be extra safe
+        if (!email || hasRecordedLoginForSession.value || autoLoginRecordedRef.current) {
+            console.log('Auto login already recorded this session, skipping');
+            return;
+        }
+        
+        try {
+            const loginHistoryRef = collection(db, 'loginHistory');
+            const loginTime = new Date();
+                        
+            await addDoc(loginHistoryRef, {
+                email: email,
+                loginDate: loginTime.toLocaleDateString(),
+                loginTime: loginTime.toLocaleTimeString(),
+                platform: 'desktop',
+                type: 'auto_login'
+            });
+            
+            // Mark as recorded in both places
+            autoLoginRecordedRef.current = true;
+            hasRecordedLoginForSession.value = true;
+            
+            console.log('Auto login recorded for:', email);
+        } catch (error) {
+            console.error('Error recording login history:', error);
+        }
+    };
+
+    useEffect(() => {
+        // Don't log every render
+        if (email && authenticated && !hasRecordedLoginForSession.value) {
+            
+            // Queue the login recording with a slight delay to avoid race conditions
+            const timer = setTimeout(() => {
+                recordAutoLogin();
+            }, 500);
+            
+            return () => {
+                clearTimeout(timer);
+            };
+        }
+    }, [email, authenticated]);
 
     return (
         <PageWrapper>
@@ -223,15 +326,18 @@ export default function TablePage() {
 
            
             {/* Content Area */}
-            <div className="flex-grow bg-white dark:bg-neutral-950">
-                {!selectedProject ? (
-                    <NoProjectDisplay />
-                ) : !selectedTab ? (
-                    <NoTabsDisplay />
-                ) : (
-                    <DataViewer ref={dataViewerRef} />
-                )}
-            </div>
+<div className="flex-grow bg-white dark:bg-neutral-950">
+    {!selectedProject ? (
+        <NoProjectDisplay />
+    ) : !selectedTab ? (
+        <NoTabsDisplay />
+    ) : !ready ? (
+        <div className="p-4 text-center text-neutral-400">Loading...</div>
+    ) : (
+        <DataViewer ref={dataViewerRef} />
+    )}
+</div>
+
 
             {/* Pages */}
             {showNewEntry && (

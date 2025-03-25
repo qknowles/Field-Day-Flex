@@ -24,7 +24,7 @@ export default function Hamburger() {
     };
 
     return (
-        <div className="relative">
+        <div className="relative z-50">
             <button
                 onClick={toggleMenu}
                 aria-label="Toggle menu"

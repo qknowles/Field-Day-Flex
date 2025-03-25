@@ -3,11 +3,12 @@ import classNames from 'classnames';
 import InputLabel from './InputLabel';
 import Button from './Button';
 import React from 'react';
-import { generateId } from '../utils/IdentificationGenerator'
+import { generateId } from '../utils/IdentificationGenerator';
 import { getIdDimension, getUnwantedCodeInfo, getRequiredFields } from '../utils/firestore';
 import { currentUserEmail, currentProjectName, currentTableName } from '../utils/jotai.js';
 import { useAtomValue } from 'jotai';
 import { Type, notify } from '../components/Notifier';
+import { entryTypeOptions } from '../utils/globals.js';
 
 export const DropdownFlex = ({ options, setOptions, label }) => {
     const [editingIndex, setEditingIndex] = useState(null);
@@ -201,16 +202,17 @@ export const IdentificationGenerator_UI = ({ handleInputChange, userEntries, res
                 })
                 .catch(error => console.error('Error fetching unwanted codes:', error));
         }
-        
+
         fetchIdDimension();
         fetchUnwantedCodesInfo();
     }, [email, project, tab, userEntries]);
 
     useEffect(() => {
-            setId('');
-            handleInputChange('Entry ID', '');
+        setButtonSwitch(false);
+        setId('');
+        handleInputChange('Entry_ID', '');
     }, [reset]);
-    
+
 
     useEffect(() => {
         if (idMaxLetter) {
@@ -242,6 +244,7 @@ export const IdentificationGenerator_UI = ({ handleInputChange, userEntries, res
                 } else {
                     notify(Type.error, `Can not use unwanted codes: ${unwantedCodes.join(', ')}`);
                     setId('');
+                    setButtonSwitch(false);
                     handleInputChange('Entry ID', '');
                     return
                 }
@@ -370,24 +373,39 @@ export const IdentificationGenerator_UI = ({ handleInputChange, userEntries, res
                 flexible={false}
                 text="Generate id"
                 onClick={async () => {
+
+                    if (id && !/^(?:[A-Z]+[0-9]+)(?:-[A-Z]+[0-9]+)*$/i.test(id)) {
+                        notify(Type.error, `Please enter a valid code for Entry ID.`);
+                        setButtonSwitch(false);
+                        setId('');
+                        handleInputChange('Entry ID', '');
+                    } else {
                         const temp = await generateId(email, project, tab, id, userEntries);
                         if (temp === `No codes available.`) {
                             notify(Type.error, temp);
+                            setButtonSwitch(false);
                             setId('');
                             handleInputChange('Entry ID', '');
                         } else if (temp === `Can't include ${id} in Entry ID.`) {
                             notify(Type.error, temp);
+                            setButtonSwitch(false);
                             setId('');
                             handleInputChange('Entry ID', '');
                         } else if (temp.includes('before generating code')) {
                             notify(Type.error, temp);
+                            setButtonSwitch(false);
                             setId('');
                             handleInputChange('Entry ID', '');
-                        } else if (temp) {
-                            notify(Type.success, 'Id is available.');
+                        } else if (!id || temp === id) {
+                            notify(Type.success, `${temp} is available.`);
+                            setId(temp);
+                            handleInputChange('Entry ID', temp);
+                        }  else if (temp) {
+                            notify(Type.error, `${id} is not available.\nBut ${temp} is available.`);
                             setId(temp);
                             handleInputChange('Entry ID', temp);
                         }
+                    }
                 }}
             />
         </div>

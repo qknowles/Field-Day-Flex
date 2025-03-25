@@ -26,15 +26,14 @@ export default function DeleteTab({ CloseDeleteTab }) {
             notify(Type.error, 'Please select a tab to delete.');
             return;
         }
-
+    
         try {
             const success = await deleteTab(projectName, selectedTab, email);
             if (success) {
                 const updatedTabs = await getTabNames(email, projectName);
-                setTabNames(updatedTabs);
+                setTabNames(updatedTabs); // Update UI to remove deleted tab from view
                 notify(Type.success, `Tab "${selectedTab}" deleted successfully.`);
                 CloseDeleteTab();
-                window.location.reload();
             } else {
                 notify(Type.error, `Failed to delete tab "${selectedTab}".`);
             }
@@ -43,7 +42,7 @@ export default function DeleteTab({ CloseDeleteTab }) {
             notify(Type.error, `Error deleting tab "${selectedTab}".`);
         }
     };
-
+  
     return (
         <WindowWrapper
             header="Delete Tab"
@@ -70,6 +69,15 @@ export default function DeleteTab({ CloseDeleteTab }) {
 
                 {/* Delete Button */}
                 <Button text="Delete Tab" onClick={handleDelete} className="bg-red-600 hover:bg-red-700 w-full" />
+            </div>
+            <div className="p-5 space-y-4">
+                <p className="text-red-500 font-bold">Please be sure you want to delete this tab.</p>
+                <p>This will permanently delete:</p>
+                <ul className="list-disc pl-5 space-y-2">
+                    <li>All tab data</li>
+                    <li>All content in the tab</li>
+                </ul>
+                <p className="font-bold">This action cannot be undone.</p>
             </div>
         </WindowWrapper>
     );

@@ -12,7 +12,6 @@ import { visibleColumnsAtom } from '../utils/jotai';
 import { searchQueryAtom, filteredEntriesAtom } from './SearchBar';
 import { filterEntriesBySearch, highlightSearchTerms } from '../utils/searchUtils';
 import EntryCountDisplay from './EntryCountDisplay';
-import { ResizableBox } from 'react-resizable';
 import 'react-resizable/css/styles.css';
 
 
@@ -73,9 +72,6 @@ const DataViewer = forwardRef((props, ref) => {
         const value = entry.entry_data?.[columnName] || 'N/A';
         return highlightSearchTerms(value, searchQuery);
     };
-
-
-
 
     const fetchColumns = useCallback(async () => {
         if (!SelectedProject || !SelectedTab) return;
@@ -230,16 +226,22 @@ const DataViewer = forwardRef((props, ref) => {
 
     useEffect(() => {
         let mounted = true;
-
+    
         const loadData = async () => {
+            if (!SelectedProject || !SelectedTab) {
+                console.log('Skipping fetch — missing project or tab:', SelectedProject, SelectedTab);
+                return;
+            }
+    
             setLoading(true);
             setError(null);
-
+    
             try {
                 if (!mounted) return;
+    
                 setCurrentProject(SelectedProject);
                 setCurrentTable(SelectedTab);
-
+    
                 await Promise.all([fetchColumns(), fetchEntries()]);
             } catch (err) {
                 if (mounted) {
@@ -252,13 +254,16 @@ const DataViewer = forwardRef((props, ref) => {
                 }
             }
         };
-
+    
         loadData();
-
+    
         return () => {
             mounted = false;
         };
     }, [SelectedProject, SelectedTab, fetchColumns, fetchEntries]);
+    
+
+
     useEffect(() => {
         if (!searchTerm || searchTerm.trim() === '') {
           // No search filter applied, use all entries

@@ -15,11 +15,15 @@ export default function ColumnOptions({
     OpenNewTab,
     tabName = '',
     header = 'Column Options',
+    generateIdentifiers,
+    possibleIdentifiers,
+    identifierDimension,
+    unwantedCodes,
+    utilizeUnwantedCodes,
 }) {
 
     const SelectedProject = useAtomValue(currentProjectName);
-    const storedTabName = useAtomValue(currentTableName);
-    const TabName = tabName || storedTabName;
+    const TabName = tabName || useAtomValue(currentTableName);
     const Email = useAtomValue(currentUserEmail);
 
     const [rightButtonText, setRightButtonText] = useState('Next Column');
@@ -105,7 +109,43 @@ export default function ColumnOptions({
                 options.filter((name) => name !== 'Add Here')
             );
 
-            const tabAlreadyExists = await tabExists(Email, SelectedProject, TabName);
+            let tabAlreadyExists = await tabExists(Email, SelectedProject, TabName);
+
+            if (!tabAlreadyExists) {
+                let columnName = '';
+                let columnDataType = '';
+                let entryOptions = [];
+                let columnIdentifierDomain = '';
+                let columnRequiredField = '';
+                let columnOrder = '';
+                if (generateIdentifiers) {
+                    columnName = 'Entry ID';
+                    columnDataType = entryTypeOptions.AUTO_ID;
+                    columnIdentifierDomain = true;
+                    columnRequiredField = true;
+                    columnOrder = 0;
+                }
+
+                const tabCreated = await createTab(
+                    Email,
+                    SelectedProject,
+                    TabName,
+                    generateIdentifiers,
+                    possibleIdentifiers,
+                    identifierDimension,
+                    unwantedCodes,
+                    utilizeUnwantedCodes,
+                    columnName,
+                    columnDataType,
+                    entryOptions,
+                    columnIdentifierDomain,
+                    columnRequiredField,
+                    columnOrder,
+                );
+
+                tabAlreadyExists = tabCreated;
+            }
+
             if (tabAlreadyExists) {
                 for (let i = 0; i < ColumnNames.length; i++) {
                     const columnAdded = await addColumn(
@@ -122,6 +162,32 @@ export default function ColumnOptions({
                         notify(Type.error, 'Error adding columns.');
                         return;
                     }
+                }
+            } else {
+
+                const tabCreated = await createTab(
+                    Email,
+                    SelectedProject,
+                    cleanedTabName,
+                    generateIdentifiers,
+                    possibleIdentifiers,
+                    identifierDimension,
+                    unwantedCodesWithoutDuplicates,
+                    utilizeUnwantedCodes,
+                    columnName,
+                    columnDataType,
+                    entryOptions,
+                    columnIdentifierDomain,
+                    columnRequiredField,
+                    columnOrder,
+                );
+                if (tabCreated) {
+                    notify(Type.success, `Tab created.`);
+                    OpenNewTab(cleanedTabName);
+                    return;
+                } else {
+                    notify(Type.error, 'Error creating new tab.');
+                    return;
                 }
             }
             OpenNewTab(TabName);
