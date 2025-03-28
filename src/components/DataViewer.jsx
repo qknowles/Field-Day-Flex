@@ -436,9 +436,9 @@ const DataViewer = forwardRef((props, ref) => {
                     <table className="w-full data-table">
                         <thead>
                             <tr className="bg-neutral-100 dark:bg-neutral-800">
-                                <th className="p-2 text-left border-b font-semibold w-32 column-border">
-                                    Actions
-                                </th>
+                            <th className="p-2 text-left border-b font-semibold w-24" style={{ width: '96px' }}>
+    Actions
+</th>
                                 
                                 {columns
                                     .filter((col) => 
@@ -508,22 +508,22 @@ const DataViewer = forwardRef((props, ref) => {
                                         key={entry.id}
                                         className="hover:bg-neutral-100 dark:hover:bg-neutral-800"
                                     >
-                                        <td className="p-2 border-b w-32">
-                                            <div className="flex space-x-2">
-                                                <Button
-                                                    onClick={() => handleEdit(entry.id)}
-                                                    icon={AiFillEdit}
-                                                    flexible={true}
-                                                    className={'flex items-center justify-center'}
-                                                />
-                                                <Button
-                                                    onClick={() => handleDelete(entry.id)}
-                                                    icon={AiFillDelete}
-                                                    flexible={true}
-                                                    className={'flex items-center justify-center'}
-                                                />
-                                            </div>
-                                        </td>
+                                       <td className="p-2 border-b w-24" style={{ width: '96px' }}>
+    <div className="flex space-x-2">
+        <Button
+            onClick={() => handleEdit(entry.id)}
+            icon={AiFillEdit}
+            flexible={true}
+            className={'flex items-center justify-center'}
+        />
+        <Button
+            onClick={() => handleDelete(entry.id)}
+            icon={AiFillDelete}
+            flexible={true}
+            className={'flex items-center justify-center'}
+        />
+    </div>
+</td>
                                         
                                         {columns
                                             .filter((col) =>
@@ -583,6 +583,10 @@ const DataViewer = forwardRef((props, ref) => {
     );
 });
 
+export default DataViewer;
+
+
+  
 export default DataViewer;
 
 
