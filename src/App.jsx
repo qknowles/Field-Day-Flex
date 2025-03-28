@@ -5,6 +5,7 @@ import TopNav from './components/TopNav';
 import { Notifier } from './components/Notifier';
 import { useAtomValue } from 'jotai';
 import { isAuthenticated } from './utils/jotai.js';
+import './index.css';
 
 function App() {
     const authenticated = useAtomValue(isAuthenticated);
