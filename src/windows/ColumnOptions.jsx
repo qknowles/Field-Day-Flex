@@ -52,16 +52,27 @@ export default function ColumnOptions({
 
         // If it's a multiple choice, ensure we have entry options.
         if (dataType[columnIndex] === entryTypeOptions.MULTIPLE_CHOICE) {
-            if (!overrideEntryOptions[columnIndex] || overrideEntryOptions[columnIndex].length === 0) {
-                notify(Type.error, 'Must include entry options for multiple choice entry.');
+            let currentOptions = overrideEntryOptions[columnIndex] || [];
+        
+            // Filter out placeholder or empty string values
+            currentOptions = currentOptions.filter(
+                (opt) => opt.trim() !== '' && opt.trim().toLowerCase() !== 'add here'
+            );
+        
+            const uniqueOptions = new Set(currentOptions);
+        
+            if (currentOptions.length < 2) {
+                notify(Type.error, 'Must include at least two valid entry options for multiple choice entry.');
                 return false;
             }
-            if (overrideEntryOptions[columnIndex].length !== new Set(overrideEntryOptions[columnIndex]).size) {
-                notify(Type.error, 'Entry choices must not contain duplicates.');
+        
+            if (uniqueOptions.size < 2) {
+                notify(Type.error, 'Entry choices must include at least two unique values.');
                 return false;
             }
         }
-
+        
+        
         if (ColumnNames[columnIndex] === '' || ColumnNames[columnIndex] === null || ColumnNames[columnIndex] === undefined) {
             notify(Type.error, "Column name can't be empty.");
             return false;
@@ -84,7 +95,7 @@ export default function ColumnOptions({
                 i === columnIndex ? [] : option
             );
         }
-    };
+    };    
 
     const goBackward = useCallback(() => {
         const updatedEntryOptions = getUpdatedEntryOptions();
@@ -96,11 +107,13 @@ export default function ColumnOptions({
 
     const goForward = useCallback(() => {
         const updatedEntryOptions = getUpdatedEntryOptions();
+    
         if (validInputs(undefined, updatedEntryOptions)) {
             setEntryOptions(updatedEntryOptions);
             setColumnIndex((prevIndex) => prevIndex + 1);
         }
     }, [columnIndex, tempEntryOptions, entryOptions, validInputs]);
+    
 
     const storeNewTab = useCallback(async () => {
         const updatedEntryOptions = getUpdatedEntryOptions();
