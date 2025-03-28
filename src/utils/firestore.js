@@ -784,7 +784,7 @@ export const getCollectionName = async (environment, projectName, tableName) => 
         throw error;
     }
 };
-export const getDocsFromCollection = async (projectName, tabName, constraints = []) => {
+export const getDocsFromCollection = async (projectName, tabName, constraints = [],  subCollection='Columns') => {
     try {
         if (!projectName || !tabName) {
             throw new Error('projectName or tabName is missing');
@@ -809,7 +809,7 @@ export const getDocsFromCollection = async (projectName, tabName, constraints = 
         }
 
         const tabDoc = tabSnapshot.docs[0];
-        const columnsRef = collection(tabDoc.ref, 'Columns');
+        const columnsRef = collection(tabDoc.ref, subCollection);
         const queryConstraints = query(columnsRef, ...constraints);
         const columnsSnapshot = await getDocs(queryConstraints);
 

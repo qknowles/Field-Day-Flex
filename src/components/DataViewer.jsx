@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle, useRef } from 'react';
 import { getColumnsCollection, getEntriesForTab, getProjectFields, deleteEntry, getEntryDetails } from '../utils/firestore'; // Import deleteEntry
 import { Pagination } from './Pagination';
+import {usePagination} from '../hooks/usePagination.js';
 import Button from './Button';
 import WindowWrapper from '../wrappers/WindowWrapper';
 import { Type, notify } from './Notifier';
@@ -23,6 +24,7 @@ const DataViewer = forwardRef((props, ref) => {
     const Email = useAtomValue(currentUserEmail);
 
     const [entries, setEntries] = useState([]);
+    const {loadBatch, loadNextBatch, loadPrevBatch} = usePagination(setEntries);
     const [columns, setColumns] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -574,6 +576,8 @@ const DataViewer = forwardRef((props, ref) => {
                     
                     <Pagination
                         currentPage={currentPage}
+                        loadNextBatch={loadNextBatch}
+                        loadPrevBatch={loadPrevBatch}
                         totalPages={Math.ceil(filteredEntries.length / batchSize)}
                         onPageChange={setCurrentPage}
                     />

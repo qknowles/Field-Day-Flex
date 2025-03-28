@@ -1,4 +1,4 @@
-import { limit, startAfter, where, endAt } from 'firebase/firestore';
+import { limit, startAfter, where, endAt, collection } from 'firebase/firestore';
 import { useAtomValue } from 'jotai';
 import { useEffect, useState } from 'react';
 import { appMode, currentBatchSize, currentProjectName, currentTableName } from '../utils/jotai';
@@ -18,9 +18,13 @@ import { getDocsFromCollection, getCollectionName } from '../utils/firestore';
 
 export const usePagination = (updateEntries) => {
     const batchSize = useAtomValue(currentBatchSize);
+    console.log("[usePagination] batchSize", batchSize);
     const currentProject = useAtomValue(currentProjectName);
+    console.log("[usePagination] currentProject", currentProject);
     const currentTable = useAtomValue(currentTableName);
+    console.log("[usePagination] currentTable", currentTable);
     const environment = useAtomValue(appMode);
+    console.log("[usePagination] environment", environment);
 
     const collectionName = getCollectionName(environment, currentProject, currentTable);
 
@@ -32,19 +36,23 @@ export const usePagination = (updateEntries) => {
         setQueryCursorStack([]);
     }, [currentTableName, batchSize]);
 
-    const getBatch = async (constraints = []) => {
-        if (!Array.isArray(constraints)) {
-            constraints = [constraints];
+    const getBatch = async (incomingConstraints = []) => {
+        const constraints = [];
+        if (currentTable && currentTable !== 'Session') {
+            constraints.push(
+                where('taxa', '==', currentTable === 'Arthropod' ? 'N/A' : currentTable)
+            );
         }
-
-        const whereClause =
-            currentTable !== 'Session' &&
-            where('taxa', '==', currentTable === 'Arthropod' ? 'N/A' : currentTable);
-        whereClause && constraints.push(whereClause);
+        if (Array.isArray(incomingConstraints)) {
+            constraints.push(...incomingConstraints);
+        } else {
+            constraints.push(incomingConstraints);
+        }
         constraints.push(limit(batchSize));
-        console.log(constraints);
-        return await getDocsFromCollection(collectionName, constraints);
+        console.log('Firestore constraints:', constraints);
+        return await getDocsFromCollection(currentProject, currentTable, constraints, 'Entries');
     };
+
 
     const loadBatch = async (constraints = []) => {
         const docs = (await getBatch(constraints)).docs;
@@ -59,7 +67,7 @@ export const usePagination = (updateEntries) => {
         setQueryCursorStack(newQueryCursorStack);
         const batch = await getBatch(startAfter(lastVisibleDoc));
         const docs = batch.docs;
-        if (docs.length === 0) {
+        if (!docs || docs.length === 0) {
             setQueryCursorStack(queryCursorStack);
             return false;
         } else {

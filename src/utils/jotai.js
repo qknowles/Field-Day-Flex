@@ -18,6 +18,7 @@ export const allProjectNames = atomWithStorage('allProjectNames', []);
 export const currentBatchSize = atomWithStorage('currentBatchSize', 15);
 
 export const refreshColumnsAtom = atom(0);
+export const appMode = atomWithStorage('appMode', 'test');
 
 export const clearLocalStorage = ({
     setUserEmail,
