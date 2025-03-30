@@ -24,7 +24,7 @@ const DataViewer = forwardRef((props, ref) => {
     const Email = useAtomValue(currentUserEmail);
 
     const [entries, setEntries] = useState([]);
-    const {loadBatch, loadNextBatch, loadPrevBatch} = usePagination(setEntries);
+    const {loadBatch, loadNextBatch, loadPreviousBatch} = usePagination(setEntries);
     const [columns, setColumns] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -575,11 +575,8 @@ const DataViewer = forwardRef((props, ref) => {
                     />
                     
                     <Pagination
-                        currentPage={currentPage}
                         loadNextBatch={loadNextBatch}
-                        loadPrevBatch={loadPrevBatch}
-                        totalPages={Math.ceil(filteredEntries.length / batchSize)}
-                        onPageChange={setCurrentPage}
+                        loadPrevBatch={loadPreviousBatch}
                     />
                 </div>
             </div>

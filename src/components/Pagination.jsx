@@ -4,7 +4,7 @@ import { currentBatchSize } from '../utils/jotai';
 import { notify, Type } from './Notifier';
 import React from 'react';
 
-export const Pagination = ({ loadNextBatch, loadPrevBatch }) => {
+export const Pagination = ({ loadNextBatch, loadPreviousBatch }) => {
     const [batchSize, setBatchSize] = useAtom(currentBatchSize);
 
     return (
@@ -12,7 +12,7 @@ export const Pagination = ({ loadNextBatch, loadPrevBatch }) => {
             <div
                 className="cursor-pointer hover:scale-125 transition active:scale-100 text-xl"
                 onClick={async () => {
-                    if ((await loadPrevBatch()) === false)
+                    if ((await loadPreviousBatch()) === false)
                         notify(Type.error, 'No more data to load');
                 }}
             >
