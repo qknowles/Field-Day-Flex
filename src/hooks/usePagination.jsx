@@ -1,4 +1,4 @@
-import { limit, startAfter, where, endAt, collection } from 'firebase/firestore';
+import { limit, startAfter, where, endAt, collection, orderBy } from 'firebase/firestore';
 import { useAtomValue } from 'jotai';
 import { useEffect, useState } from 'react';
 import { appMode, currentBatchSize, currentProjectName, currentTableName } from '../utils/jotai';
@@ -18,14 +18,9 @@ import { getDocsFromCollection, getCollectionName } from '../utils/firestore';
 
 export const usePagination = (updateEntries) => {
     const batchSize = useAtomValue(currentBatchSize);
-    console.log("[usePagination] batchSize", batchSize);
     const currentProject = useAtomValue(currentProjectName);
-    console.log("[usePagination] currentProject", currentProject);
     const currentTable = useAtomValue(currentTableName);
-    console.log("[usePagination] currentTable", currentTable);
     const environment = useAtomValue(appMode);
-    console.log("[usePagination] environment", environment);
-
     const collectionName = getCollectionName(environment, currentProject, currentTable);
 
     const [lastVisibleDoc, setLastVisibleDoc] = useState();
@@ -43,6 +38,7 @@ export const usePagination = (updateEntries) => {
                 where('taxa', '==', currentTable === 'Arthropod' ? 'N/A' : currentTable)
             );
         }
+        constraints.push(orderBy('entry_date', 'desc'));
         if (Array.isArray(incomingConstraints)) {
             constraints.push(...incomingConstraints);
         } else {

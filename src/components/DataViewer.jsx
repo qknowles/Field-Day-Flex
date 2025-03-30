@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle, useRef } from 'react';
 import { getColumnsCollection, getEntriesForTab, getProjectFields, deleteEntry, getEntryDetails } from '../utils/firestore'; // Import deleteEntry
 import { Pagination } from './Pagination';
-import {usePagination} from '../hooks/usePagination.js';
+import {usePagination} from '../hooks/usePagination.jsx';
 import Button from './Button';
 import WindowWrapper from '../wrappers/WindowWrapper';
 import { Type, notify } from './Notifier';
@@ -216,7 +216,7 @@ const DataViewer = forwardRef((props, ref) => {
         const startIndex = (currentPage - 1) * batchSize;
         return filteredEntries.slice(startIndex, startIndex + batchSize);
       }, [filteredEntries, currentPage, batchSize]);
-      
+
 
     // Handlers
     const handleSort = (columnName) => {
@@ -228,22 +228,22 @@ const DataViewer = forwardRef((props, ref) => {
 
     useEffect(() => {
         let mounted = true;
-    
+
         const loadData = async () => {
             if (!SelectedProject || !SelectedTab) {
                 console.log('Skipping fetch — missing project or tab:', SelectedProject, SelectedTab);
                 return;
             }
-    
+
             setLoading(true);
             setError(null);
-    
+
             try {
                 if (!mounted) return;
-    
+
                 setCurrentProject(SelectedProject);
                 setCurrentTable(SelectedTab);
-    
+
                 await Promise.all([fetchColumns(), fetchEntries()]);
             } catch (err) {
                 if (mounted) {
@@ -256,14 +256,14 @@ const DataViewer = forwardRef((props, ref) => {
                 }
             }
         };
-    
+
         loadData();
-    
+
         return () => {
             mounted = false;
         };
     }, [SelectedProject, SelectedTab, fetchColumns, fetchEntries]);
-    
+
 
 
     useEffect(() => {
@@ -275,17 +275,17 @@ const DataViewer = forwardRef((props, ref) => {
           const searchTermLower = searchTerm.toLowerCase();
           const filtered = sortedEntries.filter(entry => {
             // Search across all fields in entry_data
-            return Object.entries(entry.entry_data || {}).some(([key, value]) => 
+            return Object.entries(entry.entry_data || {}).some(([key, value]) =>
               String(value).toLowerCase().includes(searchTermLower)
             );
           });
           setFilteredEntries(filtered);
         }
-        
+
         // Reset to first page when filters change
         setCurrentPage(1);
       }, [sortedEntries, searchTerm]);
-      
+
 
 
     // New column management handlers
@@ -418,22 +418,22 @@ const DataViewer = forwardRef((props, ref) => {
     if (loading) return <div className="p-4 text-center">Loading...</div>;
     if (error) return <div className="p-4 text-center text-red-600">{error}</div>;
 
-    const filteredColumns = columns.filter((col) => !['actions', 'datetime'].includes(col.id)); 
+    const filteredColumns = columns.filter((col) => !['actions', 'datetime'].includes(col.id));
     const lastColumnIndex = filteredColumns.length - 1;
-    
+
     return (
         <div className="flex-grow bg-white dark:bg-neutral-950">
             <div className="flex flex-col">
                 {/* Top section with entry count display -*/}
                 {/* <div className="px-5 py-3 flex justify-end items-center">
-                    <EntryCountDisplay 
+                    <EntryCountDisplay
                         currentPageCount={paginatedEntries.length}
                         totalFilteredCount={filteredEntries.length}
                         totalCount={allEntries.length}
                         isFiltered={searchQuery && searchQuery.trim() !== ''}
                     />
                 </div> */}
-    
+
                 <div className="overflow-x-auto">
                     <table className="w-full data-table">
                         <thead>
@@ -441,21 +441,21 @@ const DataViewer = forwardRef((props, ref) => {
                                 <th className="p-2 text-left border-b font-semibold w-32 column-border">
                                     Actions
                                 </th>
-                                
+
                                 {columns
-                                    .filter((col) => 
+                                    .filter((col) =>
                                         !['actions', 'datetime'].includes(col.id) &&
                                         (visibleColumns[currentTab]?.[col.id] !== false)
                                     )
                                     .map((column, index) => {
                                         const isLastColumn = index === lastColumnIndex;
                                         return (
-                                        <th 
-                                            key={column.id} 
+                                        <th
+                                            key={column.id}
                                             className="p-2 text-left border-b font-semibold cursor-pointer column-border"
                                             style={{ width: column.width || 150 }} // Store column widths in state
                                         >
-                                            <div 
+                                            <div
                                             className="flex items-center justify-between"
                                             onClick={() => handleSort(column.name)}
                                             >
@@ -476,22 +476,22 @@ const DataViewer = forwardRef((props, ref) => {
                                                 const startX = e.clientX;
                                                 const startWidth = column.width || 150;
                                                 e.stopPropagation(); // Prevent sort trigger
-                                                
+
                                                 const onMouseMove = (moveEvent) => {
                                                     const newWidth = Math.max(50, startWidth + (moveEvent.clientX - startX));
                                                     // Update column width in state
-                                                    setColumns(prev => 
-                                                    prev.map(col => 
+                                                    setColumns(prev =>
+                                                    prev.map(col =>
                                                         col.id === column.id ? {...col, width: newWidth} : col
                                                     )
                                                     );
                                                 };
-                                                
+
                                                 const onMouseUp = () => {
                                                     document.removeEventListener('mousemove', onMouseMove);
                                                     document.removeEventListener('mouseup', onMouseUp);
                                                 };
-                                                
+
                                                 document.addEventListener('mousemove', onMouseMove);
                                                 document.addEventListener('mouseup', onMouseUp);
                                                 }}
@@ -526,7 +526,7 @@ const DataViewer = forwardRef((props, ref) => {
                                                 />
                                             </div>
                                         </td>
-                                        
+
                                         {columns
                                             .filter((col) =>
                                                 !['actions', 'datetime'].includes(col.id) &&
@@ -554,7 +554,7 @@ const DataViewer = forwardRef((props, ref) => {
                         </tbody>
                     </table>
                 </div>
-                
+
                 {showEditWindow && (
                     <WindowWrapper
                         header="Edit Entry"
@@ -564,16 +564,16 @@ const DataViewer = forwardRef((props, ref) => {
                         {showEditWindow}
                     </WindowWrapper>
                 )}
-                
+
                 <div className="px-5 py-3 flex justify-between items-center w-full">
                     {/* Entry count display at the bottom - kept this one */}
-                    <EntryCountDisplay 
+                    <EntryCountDisplay
                         currentPageCount={paginatedEntries.length}
                         totalFilteredCount={filteredEntries.length}
                         totalCount={allEntries.length}
                         isFiltered={searchQuery && searchQuery.trim() !== ''}
                     />
-                    
+
                     <Pagination
                         loadNextBatch={loadNextBatch}
                         loadPrevBatch={loadPreviousBatch}
