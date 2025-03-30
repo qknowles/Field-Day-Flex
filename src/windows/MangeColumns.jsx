@@ -432,46 +432,65 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
                 rightButtonText="Save Changes"
             >
                 <div className="flex flex-col space-y-4 p-4">
-                    {loading ? (
-                        <div className="text-center">Loading columns...</div>
-                    ) : columns.length === 0 ? (
-                        <div className="text-center">No columns found</div>
-                    ) : (
-                        columns.map((column) => (
-                            <div
-                                key={column.id}
-                                className="flex items-center space-x-4 p-2 bg-neutral-100 dark:bg-neutral-800 rounded"
-                            >
-                                <input
-                                 type="text"
-                                 value={editedColumnNames[column.id] || ''} // Ensure empty string instead of undefined
-                                 onChange={(e) => handleColumnNameChange(column.id, e.target.value)}
-                                 className="flex-grow border rounded px-2 py-1 text-white"
-                                />
-                             <select
-                                value={columnOrder[column.id] ?? column.order} // Allow string "DELETE" value
-                                onChange={(e) => handleColumnOrderChange(column.id, e.target.value)}
-                                className="border rounded px-2 py-1"
-                             >
-                        {Array.from({ length: columns.length }, (_, i) => i + 1).map((num) => (
-                          <option key={num} value={num}>
-                        {num}
-                          </option>
-                        ))}
-                       <option key="delete" value="DELETE">DELETE</option>
-                             </select>
+    {loading ? (
+        <div className="text-center">Loading columns...</div>
+    ) : columns.length === 0 ? (
+        <div className="text-center">No columns found</div>
+    ) : (
+        <>
 
-                                <Button
-                                    text="Edit"
-                                    onClick={() => {
-                                        setTempEntryOptions(editedDropdownOptions[column.id] || []);
-                                        setEditingColumn(column);
-                                    }}
-                                />
-                            </div>
-                        ))
-                    )}
+           <div className="flex justify-between items-center px-4 py-1 mb-2 rounded bg-neutral-200 dark:bg-neutral-800">
+              <div>
+                  <label className="text-black dark:text-white text-sm font-semibold tracking-wide">
+                      Column Name
+                  </label>
+              </div>
+              <div className="pr-[50px]">
+                  <label className="text-black dark:text-white text-sm font-semibold tracking-wide">
+                      Column Order
+                  </label>
                 </div>
+           </div>
+
+
+
+            {/* Column Rows */}
+            {columns.map((column) => (
+                <div
+                    key={column.id}
+                    className="flex items-center space-x-4 p-2 bg-neutral-100 dark:bg-neutral-800 rounded"
+                >
+                    <input
+                        type="text"
+                        value={editedColumnNames[column.id] || ''}
+                        onChange={(e) => handleColumnNameChange(column.id, e.target.value)}
+                        className="flex-grow border rounded px-2 py-1 text-white"
+                    />
+                    <select
+                        value={columnOrder[column.id] ?? column.order}
+                        onChange={(e) => handleColumnOrderChange(column.id, e.target.value)}
+                        className="border rounded px-2 py-1"
+                    >
+                        {Array.from({ length: columns.length }, (_, i) => i + 1).map((num) => (
+                            <option key={num} value={num}>
+                                {num}
+                            </option>
+                        ))}
+                        <option key="delete" value="DELETE">DELETE</option>
+                    </select>
+                    <Button
+                        text="Edit"
+                        onClick={() => {
+                            setTempEntryOptions(editedDropdownOptions[column.id] || []);
+                            setEditingColumn(column);
+                        }}
+                    />
+                </div>
+            ))}
+        </>
+    )}
+</div>
+
             </WindowWrapper>
 
             {editingColumn && <ColumnEditModal column={editingColumn} />}
