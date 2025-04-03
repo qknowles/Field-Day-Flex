@@ -324,6 +324,12 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
             notify(Type.error, 'Failed to update column order or names');
         }
     };
+
+    /*
+    The column re-ordering is working for some entries but is not working correctly for others.
+    Same with the delete functionality implementation as well.
+    The screen refreshing/rendering might be affecting this but the results I get are very random so this theory cannot be tested.
+    */
     
     useEffect(() => {
         const fetchColumns = async () => {
