@@ -7,6 +7,7 @@ import { tabExists, createTab, addColumn } from '../utils/firestore';
 import { useAtomValue } from 'jotai';
 import { currentUserEmail, currentProjectName, currentTableName } from '../utils/jotai.js';
 import { entryTypeOptions } from '../utils/globals.js';
+import InfoIcon from '../components/InfoIcon';
 
 export default function ColumnOptions({
     ColumnNames,
@@ -177,32 +178,11 @@ export default function ColumnOptions({
                     }
                 }
             } else {
-
-                const tabCreated = await createTab(
-                    Email,
-                    SelectedProject,
-                    cleanedTabName,
-                    generateIdentifiers,
-                    possibleIdentifiers,
-                    identifierDimension,
-                    unwantedCodesWithoutDuplicates,
-                    utilizeUnwantedCodes,
-                    columnName,
-                    columnDataType,
-                    entryOptions,
-                    columnIdentifierDomain,
-                    columnRequiredField,
-                    columnOrder,
-                );
-                if (tabCreated) {
-                    notify(Type.success, `Tab created.`);
-                    OpenNewTab(cleanedTabName);
-                    return;
-                } else {
-                    notify(Type.error, 'Error creating new tab.');
-                    return;
-                }
+                notify(Type.error, 'Error creating new tab.');
+                return;
             }
+            
+            notify(Type.success, 'Columns added successfully.');
             OpenNewTab(TabName);
         }
     }, [
@@ -217,6 +197,11 @@ export default function ColumnOptions({
         requiredField,
         OpenNewTab,
         validInputs,
+        generateIdentifiers,
+        possibleIdentifiers,
+        identifierDimension,
+        unwantedCodes,
+        utilizeUnwantedCodes
     ]);
 
     const leftButtonClick = useMemo(() => {
@@ -247,17 +232,33 @@ export default function ColumnOptions({
             rightButtonText={rightButtonText}
         >
             <div className="flex flex-col space-y-4">
-                <InputLabel
-                    label="Column Name"
-                    layout="horizontal-single"
-                    input={
-                        <input
-                            value={ColumnNames[columnIndex]}
-                            onChange={(e) => handleColumnNameChange(e.target.value)}
-                        />
-                    }
-                />
-                <span className="text-sm">Data Entry Type:</span>
+                <div className="flex items-center">
+                    <InputLabel
+                        label="Column Name"
+                        layout="horizontal-single"
+                        input={
+                            <input
+                                value={ColumnNames[columnIndex]}
+                                onChange={(e) => handleColumnNameChange(e.target.value)}
+                            />
+                        }
+                    />
+                    <InfoIcon 
+                        text="Enter a descriptive name for this column. This name will be visible in the data table headers."
+                        position="right"
+                        className="ml-2"
+                    />
+                </div>
+
+                <div className="flex items-center">
+                    <span className="text-sm">Data Entry Type:</span>
+                    <InfoIcon 
+                        text="Select the type of data this column will store. This affects validation, formatting, and how users can interact with it."
+                        position="top"
+                        className="ml-2"
+                        size={14}
+                    />
+                </div>
                 <RadioButtons
                     layout="horizontal"
                     options={entryTypeOptionsArray}
@@ -270,37 +271,66 @@ export default function ColumnOptions({
                         });
                     }}
                 />
+
                 {dataType[columnIndex] === entryTypeOptions.MULTIPLE_CHOICE && (
-                    <DropdownFlex
-                        options={tempEntryOptions}
-                        setOptions={setTempEntryOptions}
-                        label="Entry Choices"
-                    />
+                    <div className="mt-2">
+                        <div className="flex items-center mb-2">
+                            <span className="text-sm">Entry Choices:</span>
+                            <InfoIcon 
+                                text="Add the options users can select from. Click 'Add Here' to add a new option. At least two unique options are required."
+                                position="right"
+                                className="ml-2"
+                                size={14}
+                            />
+                        </div>
+                        <DropdownFlex
+                            options={tempEntryOptions}
+                            setOptions={setTempEntryOptions}
+                            label="Entry Choices"
+                        />
+                    </div>
                 )}
-                <YesNoSelector
-                    label="Make column a required field"
-                    layout="horizontal-start"
-                    selection={requiredField[columnIndex]}
-                    setSelection={(selection) =>
-                        setRequiredField((prev) => {
-                            const updated = [...prev];
-                            updated[columnIndex] = selection;
-                            return updated;
-                        })
-                    }
-                />
-                <YesNoSelector
-                    label="Include column in entry ID domain"
-                    layout="horizontal-start"
-                    selection={identifierDomain[columnIndex]}
-                    setSelection={(selection) =>
-                        setIdentifierDomain((prev) => {
-                            const updated = [...prev];
-                            updated[columnIndex] = selection;
-                            return updated;
-                        })
-                    }
-                />
+
+                <div className="flex items-center">
+                    <YesNoSelector
+                        label="Make column a required field"
+                        layout="horizontal-start"
+                        selection={requiredField[columnIndex]}
+                        setSelection={(selection) =>
+                            setRequiredField((prev) => {
+                                const updated = [...prev];
+                                updated[columnIndex] = selection;
+                                return updated;
+                            })
+                        }
+                    />
+                    <InfoIcon 
+                        text="When set to Yes, users must provide a value for this field before saving an entry."
+                        position="right"
+                        className="ml-2"
+                    />
+                </div>
+
+                <div className="flex items-center">
+                    <YesNoSelector
+                        label="Include column in entry ID domain"
+                        layout="horizontal-start"
+                        selection={identifierDomain[columnIndex]}
+                        setSelection={(selection) =>
+                            setIdentifierDomain((prev) => {
+                                const updated = [...prev];
+                                updated[columnIndex] = selection;
+                                return updated;
+                            })
+                        }
+                    />
+                    <InfoIcon 
+                        text="If enabled, this field will be used when generating unique identifiers for entries. Useful for creating structured IDs based on field values."
+                        position="right"
+                        className="ml-2"
+                        width={250}
+                    />
+                </div>
             </div>
         </WindowWrapper>
     );
