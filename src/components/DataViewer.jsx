@@ -583,9 +583,3 @@ const DataViewer = forwardRef((props, ref) => {
 });
 
 export default DataViewer;
-
-
-  
-export default DataViewer;
-
-
