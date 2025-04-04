@@ -14,7 +14,7 @@ import { refreshColumnsAtom } from '../utils/jotai.js';
 import { useAtom } from 'jotai'; 
 
 
-export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
+export default function ManageColumns({ CloseManageColumns }) {
 
     const SelectedProject = useAtomValue(currentProjectName);
     const TabName = useAtomValue(currentTableName);
@@ -24,7 +24,7 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
     const [columns, setColumns] = useState([]);
     const [editingColumn, setEditingColumn] = useState(null);
     const [columnOrder, setColumnOrder] = useState({});
-    const [columnsToDelete, setColumnsToDelete] = useState([]);
+    const [, setColumnsToDelete] = useState([]);
 
     // Column properties state
     const [editedColumnNames, setEditedColumnNames] = useState({});
@@ -35,10 +35,7 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
     const [tempEntryOptions, setTempEntryOptions] = useState([]);
     const [loading, setLoading] = useState(true);
     const entryTypeOptions = ['whole number', 'decimal number', 'text', 'date', 'multiple choice'];
-    const tabRef = collection(db, 'Projects', SelectedProject, 'Tabs', TabName, 'Columns');
-    const columnsRef = collection(db, 'Projects', SelectedProject, 'Tabs', TabName, 'Columns');
-    const setRefreshColumns = useSetAtom(refreshColumnsAtom);
-    const [refreshTrigger, setRefreshTrigger] = useAtom(refreshColumnsAtom);
+    const refreshTrigger = useAtomValue(refreshColumnsAtom);
 
     useEffect(() => {
         console.log('ManageColumns mounted with props:', { SelectedProject, TabName, Email });
@@ -113,46 +110,6 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
             setColumnsToDelete((prev) => prev.filter((id) => id !== columnId)); // Remove from delete list if changed
         }
     };
-    
-    const handleNewEntry = async (entryData) => {
-        try {
-            const projectId = await getDocumentIdByEmailAndProjectName(Email, SelectedProject);
-            if (!projectId) {
-                console.error(`No project found with name: ${SelectedProject}`);
-                return;
-            }
-    
-            const columnsRef = collection(db, 'Projects', projectId, 'Tabs', TabName, 'Columns');
-            const columnsSnapshot = await getDocs(columnsRef);
-            const updatedColumns = {};
-    
-            columnsSnapshot.forEach(doc => {
-                updatedColumns[doc.id] = doc.data().data_type;
-            });
-    
-            
-            const formattedEntry = {};
-            Object.keys(entryData).forEach(columnId => {
-                const columnType = updatedColumns[columnId];
-    
-                if (columnType === 'whole number' || columnType === "decimal number") {
-                    formattedEntry[columnId] = Number(entryData[columnId]) || 0;
-                } else if (columnType === 'date') {
-                    formattedEntry[columnId] = new Date(entryData[columnId]).toISOString();
-                } else {
-                    formattedEntry[columnId] = entryData[columnId]; // Default to text
-                }
-            });
-    
-            const entryRef = collection(db, 'Projects', projectId, 'Tabs', TabName, 'Entries');
-            await addDoc(entryRef, { entry_data: formattedEntry });
-    
-            notify(Type.success, "New entry added successfully!");
-        } catch (error) {
-            notify(Type.error, "Failed to add entry");
-        }
-    };
-    
 
     const handleColumnNameChange = (columnId, newName) => {
         setEditedColumnNames((prev) => ({
@@ -174,7 +131,6 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
         }
     };
 
-    
     const handleRequiredFieldChange = (columnId, isRequired) => {
         setEditedRequiredFields((prev) => ({
             ...prev,

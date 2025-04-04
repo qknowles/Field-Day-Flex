@@ -20,7 +20,7 @@ import DeleteTab from './DeleteTab.jsx';
 export default function ProjectSettings({ CloseProjectSettings }) {
     // State definitions
     const [loading, setLoading] = useState(true);
-    const [isAuthorized, setIsAuthorized] = useState(false);
+    const [, setIsAuthorized] = useState(false);
     const [isOwner, setIsOwner] = useState(false);
     const [canEdit, setCanEdit] = useState(false);
     const [documentId, setDocumentId] = useState(null);
