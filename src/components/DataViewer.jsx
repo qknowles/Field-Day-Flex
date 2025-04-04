@@ -234,7 +234,7 @@ const DataViewer = forwardRef(( ref) => {
       const searchTermLower = searchTerm.toLowerCase();
       const filtered = sortedEntries.filter((entry) => {
         // Search across all fields in entry_data
-        return Object.entries(entry.entry_data || {}).some(([key, value]) =>
+        return Object.entries(entry.entry_data || {}).some(([value]) =>
           String(value).toLowerCase().includes(searchTermLower)
         );
       });

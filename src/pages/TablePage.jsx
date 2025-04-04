@@ -15,7 +15,6 @@ import { CSVLink } from 'react-csv';
 import { getProjectNames, getTabNames, getColumnsCollection } from '../utils/firestore.js';
 import ColumnSelectorButton from '../components/ColumnSelectorButton';
 import SearchBar from '../components/SearchBar'; // Import the SearchBar component
-import { filteredEntriesAtom } from '../components/SearchBar'; // Import the filteredEntriesAtom
 import { visibleColumnsAtom } from '../utils/jotai.js';
 import { notify, Type } from '../components/Notifier';
 import { db } from '../utils/firebase';
@@ -41,7 +40,6 @@ export default function TablePage() {
     const [csvData, setCsvData] = useState([]);
     const [headers, setHeaders] = useState([]);
     const csvDownloadRef = useRef(null);
-    const [, setColumnOrder] = useState([]);
     const [, setVisibleColumns] = useAtom(visibleColumnsAtom);
     const [columns, setColumns] = useState([]);
     const [ready, setReady] = useState(false);

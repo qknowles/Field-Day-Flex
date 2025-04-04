@@ -9,9 +9,7 @@ import { db } from '../utils/firebase';
 import { useAtomValue } from 'jotai';
 import { currentUserEmail, currentProjectName, currentTableName } from '../utils/jotai.js';
 import { getDocumentIdByEmailAndProjectName } from '../utils/firestore';
-import { useSetAtom } from 'jotai';
 import { refreshColumnsAtom } from '../utils/jotai.js';
-import { useAtom } from 'jotai'; 
 
 
 export default function ManageColumns({ CloseManageColumns }) {
