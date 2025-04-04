@@ -14,7 +14,7 @@ import { filterEntriesBySearch } from '../utils/searchUtils';
 import EntryCountDisplay from './EntryCountDisplay';
 import 'react-resizable/css/styles.css';
 
-const DataViewer = forwardRef(( ref) => {
+const DataViewer = forwardRef((props, ref) => {
   const SelectedProject = useAtomValue(currentProjectName);
   const SelectedTab = useAtomValue(currentTableName);
   const Email = useAtomValue(currentUserEmail);
