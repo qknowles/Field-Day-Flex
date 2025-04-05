@@ -385,7 +385,7 @@ export const addColumn = async (
 
         const columnsRef = collection(tabDoc.ref, 'Columns');
         const existingColumns = await getDocs(columnsRef);
-        const columnOrder = existingColumns.size;
+        const columnOrder = existingColumns.size + 1;
 
         await addDoc(columnsRef, {
             name: columnName,

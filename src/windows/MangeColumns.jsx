@@ -55,41 +55,30 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
                 return;
             }
     
-           
-            const orderCounts = new Map(); // Tracks how many times an order is used
-            const assignedOrders = new Set(); // Prevent duplicate orders
-    
-            columnsData.forEach((col) => {
-                let order = col.order;
-    
-                // If order is missing, zero, or duplicated, assign a new one
-                if (!order || order < 1 || orderCounts.get(order) > 0) {
-                    order = assignedOrders.size + 1;
-                }
-    
-                assignedOrders.add(order);
-                orderCounts.set(order, (orderCounts.get(order) || 0) + 1);
-                col.order = order; // Update column order
+            // Sort by existing order, fallback to name if order is undefined
+            columnsData.sort((a, b) => {
+                const aOrder = typeof a.order === 'number' && a.order > 0 ? a.order : Infinity;
+                const bOrder = typeof b.order === 'number' && b.order > 0 ? b.order : Infinity;
+                return aOrder - bOrder;
             });
     
-            
-            columnsData.sort((a, b) => a.order - b.order);
+            // Reassign clean sequential order values (1, 2, 3, ...)
+            columnsData.forEach((col, index) => {
+                col.order = index + 1;
+            });
     
-            setColumns(columnsData);
-    
-           
             const orderObj = {};
             const namesObj = {};
     
             columnsData.forEach((col) => {
                 orderObj[col.id] = col.order;
-                namesObj[col.id] = col.name || ""; 
+                namesObj[col.id] = col.name || '';
             });
     
+            setColumns(columnsData);
             setColumnOrder(orderObj);
             setEditedColumnNames(namesObj);
     
-            
         } catch (error) {
             console.error('Error loading columns:', error);
             notify(Type.error, 'Failed to load columns');
@@ -97,6 +86,9 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
             setLoading(false);
         }
     };
+    
+    
+    
     
     const handleColumnOrderChange = (columnId, newValue) => {
         if (newValue === 'DELETE') {
@@ -335,7 +327,7 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
         const fetchColumns = async () => {
             try {
                 const columnsData = await getColumnsCollection(SelectedProject, TabName, Email);
-                setColumns(columnsData);
+                setColumns(columnsData.sort((a, b) => a.order - b.order));
             } catch (error) {
                 console.error("Error fetching columns:", error);
             }
@@ -473,16 +465,17 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
                         className="flex-grow border rounded px-2 py-1 text-white"
                     />
                     <select
-                        value={columnOrder[column.id] ?? column.order}
+                        value={columnOrder[column.id] ?? (columns.findIndex(col => col.id === column.id) + 1)}
                         onChange={(e) => handleColumnOrderChange(column.id, e.target.value)}
                         className="border rounded px-2 py-1"
                     >
                         {Array.from({ length: columns.length }, (_, i) => i + 1).map((num) => (
-                            <option key={num} value={num}>
-                                {num}
-                            </option>
-                        ))}
-                        <option key="delete" value="DELETE">DELETE</option>
+    <option key={num} value={num}>
+        {num}
+    </option>
+))}
+<option key="delete" value="DELETE">DELETE</option>
+
                     </select>
                     <Button
                         text="Edit"
