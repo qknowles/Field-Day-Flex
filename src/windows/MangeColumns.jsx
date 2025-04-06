@@ -39,6 +39,7 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
     const columnsRef = collection(db, 'Projects', SelectedProject, 'Tabs', TabName, 'Columns');
     const setRefreshColumns = useSetAtom(refreshColumnsAtom);
     const [refreshTrigger, setRefreshTrigger] = useAtom(refreshColumnsAtom);
+    
 
     useEffect(() => {
         console.log('ManageColumns mounted with props:', { SelectedProject, TabName, Email });
@@ -55,28 +56,23 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
                 return;
             }
     
-            // Sort by existing order, fallback to name if order is undefined
+           
             columnsData.sort((a, b) => {
-                const aOrder = typeof a.order === 'number' && a.order > 0 ? a.order : Infinity;
-                const bOrder = typeof b.order === 'number' && b.order > 0 ? b.order : Infinity;
+                const aOrder = typeof a.order === 'number' ? a.order : Infinity;
+                const bOrder = typeof b.order === 'number' ? b.order : Infinity;
                 return aOrder - bOrder;
-            });
-    
-            // Reassign clean sequential order values (1, 2, 3, ...)
-            columnsData.forEach((col, index) => {
-                col.order = index + 1;
             });
     
             const orderObj = {};
             const namesObj = {};
     
-            columnsData.forEach((col) => {
-                orderObj[col.id] = col.order;
+            columnsData.forEach((col, index) => {
+                orderObj[col.id] = index + 1;  
                 namesObj[col.id] = col.name || '';
             });
     
             setColumns(columnsData);
-            setColumnOrder(orderObj);
+            setColumnOrder(orderObj);  
             setEditedColumnNames(namesObj);
     
         } catch (error) {
@@ -89,18 +85,17 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
     
     
     
-    
     const handleColumnOrderChange = (columnId, newValue) => {
         if (newValue === 'DELETE') {
-            setColumnsToDelete((prev) => [...prev, columnId]); // Mark column for deletion
+            setColumnsToDelete((prev) => [...prev, columnId]); 
             setColumnOrder((prev) => ({
                 ...prev,
-                [columnId]: 'DELETE' // Ensure "DELETE" is stored correctly
+                [columnId]: 'DELETE' 
             }));
         } else {
             setColumnOrder((prev) => ({
                 ...prev,
-                [columnId]: parseInt(newValue, 10) || 1, // Ensure numeric value
+                [columnId]: parseInt(newValue, 10) || 1,
             }));
             setColumnsToDelete((prev) => prev.filter((id) => id !== columnId)); // Remove from delete list if changed
         }
@@ -225,6 +220,15 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
             let updatesMade = false;
             let nameChanges = {}; // Track column name changes
             let deletionsMade = false; // Track column deletions
+
+            for (const columnId of Object.keys(columnOrder)) {
+                if (!columnIdMap[columnId]) {
+                    console.error(`Column ID ${columnId} is missing in columnIdMap`, { columnOrder, columnIdMap });
+                    notify(Type.error, `Column ID ${columnId} is not valid for this tab`);
+                    return;
+                }
+            }
+            
     
             for (const columnId in columnOrder) {
                 if (columnIdMap[columnId]) {
