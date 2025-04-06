@@ -3,6 +3,13 @@ import { GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
 import { getFirestore, collection, query, where, getDocs, addDoc } from 'firebase/firestore';
 
 // Initialize Firestore
+
+/*
+DO NOT USE THIS FILE!!! DO NOT USE THIS FILE!!!!! ****
+
+This is a code snippet from the desktop app Field Day application, not Flex.
+This file will not work with Flex components and is used purely as a reference for building out Google OAuth in this app.
+ */
 const db = getFirestore();
 
 export class Authenticator {
