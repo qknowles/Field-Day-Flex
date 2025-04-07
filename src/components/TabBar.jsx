@@ -50,9 +50,12 @@ export default function TabBar() {
                     if (tabs.length > 0) {
                         // Manual switch: reset to first tab
                         if (manualSwitchRef.current) {
-                            setSelectedTab(tabs[0]);
+                            const storedTab = localStorage.getItem('selectedTab');
+                            const matchedTab = storedTab && tabs.includes(storedTab) ? storedTab : tabs[0];
+                            setSelectedTab(matchedTab);
                             manualSwitchRef.current = false;
                         }
+                        
                     } else {
                         
                         setSelectedTab('');

@@ -47,18 +47,21 @@ export default function EditTab({ CloseEditTab }) {
 
     const saveTabNames = async () => {
         let successCount = 0;
-
+        let lastRenamed = null;
+    
         for (const { tab, newName } of tabsToRename) {
             if (!newName.trim()) {
                 notify(Type.error, `New name for "${tab}" cannot be empty.`);
                 return;
             }
-
+    
             try {
                 const success = await updateTabName(projectName, tab, newName, email);
-
+    
                 if (success) {
                     successCount++;
+                    lastRenamed = newName;
+                    localStorage.setItem('selectedTab', newName); 
                 } else {
                     notify(Type.error, `Failed to update "${tab}".`);
                 }
@@ -67,14 +70,16 @@ export default function EditTab({ CloseEditTab }) {
                 notify(Type.error, `Error renaming "${tab}".`);
             }
         }
-
+    
         if (successCount > 0) {
             const updatedTabs = await getTabNames(email, projectName);
-            setTabNames(updatedTabs);
+            setTabNames(updatedTabs); // update Jotai atom
             notify(Type.success, `Renamed ${successCount} tab(s) successfully.`);
             CloseEditTab();
         }
     };
+    
+    
 
     return (
         <WindowWrapper
