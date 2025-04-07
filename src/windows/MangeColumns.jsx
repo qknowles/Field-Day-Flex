@@ -92,14 +92,32 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
                 ...prev,
                 [columnId]: 'DELETE' 
             }));
-        } else {
-            setColumnOrder((prev) => ({
-                ...prev,
-                [columnId]: parseInt(newValue, 10) || 1,
-            }));
-            setColumnsToDelete((prev) => prev.filter((id) => id !== columnId)); // Remove from delete list if changed
+            return;
         }
+    
+        const newOrder = parseInt(newValue, 10);
+    
+        setColumnOrder((prev) => {
+            const updatedOrder = { ...prev };
+    
+            const swappedColumnId = Object.keys(updatedOrder).find(
+                (id) => updatedOrder[id] === newOrder && id !== columnId
+            );
+    
+            if (swappedColumnId) {
+                
+                updatedOrder[swappedColumnId] = updatedOrder[columnId];
+            }
+    
+            updatedOrder[columnId] = newOrder;
+    
+            return updatedOrder;
+        });
+    
+        setColumnsToDelete((prev) => prev.filter((id) => id !== columnId));
     };
+    
+    
     
     const handleNewEntry = async (entryData) => {
         try {
