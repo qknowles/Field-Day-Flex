@@ -4,11 +4,10 @@ import InputLabel from './InputLabel';
 import Button from './Button';
 import React from 'react';
 import { generateId } from '../utils/IdentificationGenerator';
-import { getIdDimension, getUnwantedCodeInfo, getRequiredFields } from '../utils/firestore';
+import { getIdDimension, getUnwantedCodeInfo } from '../utils/firestore';
 import { currentUserEmail, currentProjectName, currentTableName } from '../utils/jotai.js';
 import { useAtomValue } from 'jotai';
 import { Type, notify } from '../components/Notifier';
-import { entryTypeOptions } from '../utils/globals.js';
 
 export const DropdownFlex = ({ options, setOptions, label }) => {
     const [editingIndex, setEditingIndex] = useState(null);

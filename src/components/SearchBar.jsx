@@ -10,7 +10,7 @@ export const filteredEntriesAtom = atom([]);
 
 const SearchBar = ({ onSearch }) => {
   const [searchQuery, setSearchQuery] = useAtom(searchQueryAtom);
-  const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
+  const [, setDebouncedQuery] = useState(searchQuery);
 
   // Debounce search input to prevent excessive filtering
   useEffect(() => {
