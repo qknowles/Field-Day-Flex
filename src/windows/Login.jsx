@@ -26,7 +26,6 @@ export default function Login({ CancelLogin, OpenAccount }) {
                 platform: 'desktop',
                 type: 'manual_login' // To identify manual logins
             });
-            
             console.log(`Login recorded for: ${email}`);
         } catch (error) {
             console.error('Error recording login history:', error);

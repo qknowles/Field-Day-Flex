@@ -6,9 +6,9 @@ import NewAccount from '../windows/NewAccount';
 import Login from '../windows/Login';
 import { useSetAtom } from 'jotai';
 import { isAuthenticated } from '../utils/jotai.js';
+import authService from '../utils/AuthService';
 
 export default function HomePage() {
-
     const setAuthenticated = useSetAtom(isAuthenticated);
 
     const [showNewAccount, setShowNewAccount] = useState(false);
@@ -26,8 +26,20 @@ export default function HomePage() {
         setAuthenticated(true);
     };
 
+    // Handle Google login
+    const handleGoogleLogin = async () => {
+        try {
+            const user = await authService.signInWithGoogle();
+            console.log('Signed in with Google:', user.email);
+            setAuthenticated(true);
+        } catch (error) {
+            console.error('Google sign-in failed:', error);
+            alert('Google login failed. Please try again.');
+        }
+    };
+
     return (
-        <PageWrapper >
+        <PageWrapper>
             {showNewAccount && (
                 <NewAccount
                     CancelAccount={closeNewAccount}
@@ -38,13 +50,17 @@ export default function HomePage() {
                 <Login CancelLogin={closeLogin} OpenAccount={openAccount} />
             )}
             {!showNewAccount && !showLogin && (
-                <HomeScreen OpenLogin={openLogin} OpenNewAccount={openNewAccount} />
+                <HomeScreen
+                    OpenLogin={openLogin}
+                    OpenNewAccount={openNewAccount}
+                    GoogleLogin={handleGoogleLogin}
+                />
             )}
         </PageWrapper>
     );
 }
 
-const HomeScreen = ({ OpenLogin, OpenNewAccount }) => (
+const HomeScreen = ({ OpenLogin, OpenNewAccount, GoogleLogin }) => (
     <>
         <div className="pt-10">
             <h1 className="title">
@@ -72,22 +88,15 @@ const HomeScreen = ({ OpenLogin, OpenNewAccount }) => (
         </div>
         <div
             className="m-5 p-10 rounded-lg shadow-md bg-white dark:bg-neutral-950 mx-auto w-full md:w-96"
-            style={{
-                position: 'relative',
-                top: '-3.0em',
-            }}
+            style={{ position: 'relative', top: '-3.0em' }}
         >
             <div className="flex flex-col space-y-5">
                 <Button onClick={OpenLogin} text="Login" disabled={false} />
+                <Button onClick={GoogleLogin} text="Login with Google" disabled={false} />
                 <Button onClick={OpenNewAccount} text="Create Account" disabled={false} />
             </div>
         </div>
-        <div
-            style={{
-                position: 'relative',
-                top: '-5.0em',
-            }}
-        >
+        <div style={{ position: 'relative', top: '-5.0em' }}>
             <LizardIcon className="text-asu-maroon h-48 mx-auto rotate-45" />
         </div>
     </>
