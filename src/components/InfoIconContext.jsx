@@ -1,17 +1,7 @@
 import React, { createContext, useContext, useState } from 'react';
 
 // Create context
-const InfoIconContext = createContext({
-  globalSettings: {
-    iconColor: 'text-blue-500',
-    tooltipColor: 'bg-neutral-800',
-    textColor: 'text-white',
-    defaultPosition: 'top',
-    defaultSize: 16,
-    defaultWidth: 200,
-    defaultIsClickable: false,
-  },
-  updateGlobalSettings: () => {},
+,
   tooltipContent: {},
   registerTooltip: () => {},
   updateTooltip: () => {},
