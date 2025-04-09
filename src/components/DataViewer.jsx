@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle } from 'react';
 import { getColumnsCollection, getEntriesForTab, getProjectFields, deleteEntry, getEntryDetails } from '../utils/firestore'; // Import deleteEntry
 import { Pagination } from './Pagination';
 import Button from './Button';
@@ -6,14 +6,13 @@ import WindowWrapper from '../wrappers/WindowWrapper';
 import { Type, notify } from './Notifier';
 import NewEntry from '../windows/NewEntry';
 import { AiFillEdit, AiFillDelete } from 'react-icons/ai';
-import { useAtom, useAtomValue } from 'jotai';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { currentUserEmail, currentProjectName, currentTableName, currentBatchSize } from '../utils/jotai';
 import { visibleColumnsAtom } from '../utils/jotai';
 import { searchQueryAtom, filteredEntriesAtom } from './SearchBar';
-import { filterEntriesBySearch, highlightSearchTerms } from '../utils/searchUtils';
+import { filterEntriesBySearch } from '../utils/searchUtils';
 import EntryCountDisplay from './EntryCountDisplay';
 import 'react-resizable/css/styles.css';
-
 
 
 const DataViewer = forwardRef((props, ref) => {
@@ -29,20 +28,20 @@ const DataViewer = forwardRef((props, ref) => {
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
     const [currentPage, setCurrentPage] = useState(1);
     const [batchSize] = useAtom(currentBatchSize);
-    const [currentProject, setCurrentProject] = useAtom(currentProjectName);
-    const [currentTable, setCurrentTable] = useAtom(currentTableName);
-    const [isAdminOrOwner, setIsAdminOrOwner] = useState(false);
+    const setCurrentProject = useSetAtom(currentProjectName);
+    const setCurrentTable = useSetAtom(currentTableName);
+    const [, setIsAdminOrOwner] = useState(false);
     const [currentTab] = useAtom(currentTableName);
     const [allEntries, setAllEntries] = useState([]); // Store all entries for search filtering
     const [searchQuery] = useAtom(searchQueryAtom); // Get the search query from the atom
     const [filteredEntries, setFilteredEntries] = useAtom(filteredEntriesAtom); // Store filtered entries
 
     const [showEditWindow, setEditWindow] = useState(null);
-    const [showManageColumns, setShowManageColumns] = useState(false);
+    const [, setShowManageColumns] = useState(false);
     const [columnOrder, setColumnOrder] = useState({});
     const [columnsToDelete, setColumnsToDelete] = useState([]);
     const [editedColumnNames, setEditedColumnNames] = useState({});
-    const [searchTerm, setSearchTerm] = useState('');
+    const [searchTerm] = useState('');
     const getColumnClass = (columnName) => {
         const classMap = {
             'Date & Time': 'dateTimeColumn',
@@ -67,11 +66,6 @@ const DataViewer = forwardRef((props, ref) => {
             { id: 'datetime', name: 'Date & Time', type: 'datetime', order: -2 },
         ];
     }, []);
-
-    const renderCellContent = (entry, columnName) => {
-        const value = entry.entry_data?.[columnName] || 'N/A';
-        return highlightSearchTerms(value, searchQuery);
-    };
 
     const fetchColumns = useCallback(async () => {
         if (!SelectedProject || !SelectedTab) return;
@@ -583,4 +577,3 @@ const DataViewer = forwardRef((props, ref) => {
 });
 
 export default DataViewer;
-

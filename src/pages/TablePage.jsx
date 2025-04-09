@@ -7,7 +7,7 @@ import NewEntry from '../windows/NewEntry';
 import ColumnOptions from '../windows/ColumnOptions';
 import Button from '../components/Button';
 import ManageColumns from '../windows/MangeColumns';
-import { useAtomValue, useAtom } from 'jotai';
+import { useAtomValue, useAtom, useSetAtom } from 'jotai';
 import { currentProjectName, currentTableName, currentUserEmail, allProjectNames, allTableNames, isAuthenticated } from '../utils/jotai.js';
 import { ExportIcon } from '../assets/icons';
 import { generateCSVData } from '../components/ExportService.jsx';
@@ -15,7 +15,6 @@ import { CSVLink } from 'react-csv';
 import { getProjectNames, getTabNames, getColumnsCollection } from '../utils/firestore.js';
 import ColumnSelectorButton from '../components/ColumnSelectorButton';
 import SearchBar from '../components/SearchBar'; // Import the SearchBar component
-import { filteredEntriesAtom } from '../components/SearchBar'; // Import the filteredEntriesAtom
 import { visibleColumnsAtom } from '../utils/jotai.js';
 import { notify, Type } from '../components/Notifier';
 import { db } from '../utils/firebase';
@@ -27,8 +26,8 @@ const hasRecordedLoginForSession = { value: false };
 export default function TablePage() {
     const [selectedProject, setSelectedProject] = useAtom(currentProjectName);
     const [selectedTab, setSelectedTab] = useAtom(currentTableName);
-    const [tabNames, setTabNames] = useAtom(allTableNames);
-    const [projectNames, setProjectNames] = useAtom(allProjectNames);
+    const setTabNames = useSetAtom(allTableNames);
+    const setProjectNames= useSetAtom(allProjectNames);
     const email = useAtomValue(currentUserEmail);
     const authenticated = useAtomValue(isAuthenticated);
     const dataViewerRef = useRef(null);
@@ -38,20 +37,12 @@ export default function TablePage() {
     const [showManageColumns, setShowManageColumns] = useState(false);
     const [showColumnOptions, setShowColumnOptions] = useState(false);
     const [newColumn, setNewColumn] = useState(['']);
-    const [showExportModal, setShowExportModal] = useState(false);
-    const [triggerExport, setTriggerExport] = useState(false);
     const [csvData, setCsvData] = useState([]);
     const [headers, setHeaders] = useState([]);
     const csvDownloadRef = useRef(null);
-    const [columnOrder, setColumnOrder] = useState([]);
-    const [visibleColumns, setVisibleColumns] = useAtom(visibleColumnsAtom);
+    const [, setVisibleColumns] = useAtom(visibleColumnsAtom);
     const [columns, setColumns] = useState([]);
-    const [filteredEntries] = useAtom(filteredEntriesAtom); // Get filtered entries
     const [ready, setReady] = useState(false);
-
-
-    // Track component mounted status with a ref that persists across re-renders
-    const mountedRef = useRef(false);
 
     // Handle search functionality
     const handleSearch = (query) => {
@@ -296,7 +287,6 @@ export default function TablePage() {
             {/* Column Selector Button */}
             {columns.length > 0 && (
     <ColumnSelectorButton 
-        labels={columns.map(col => col.name)}
         columns={columns}
         toggleColumn={toggleColumn}
     />
@@ -380,7 +370,6 @@ export default function TablePage() {
             {showManageColumns && (
     <ManageColumns
         CloseManageColumns={() => setShowManageColumns(false)}
-        onColumnOrderChange={(newOrder) => setColumnOrder(newOrder)}
     />
 )}
 
