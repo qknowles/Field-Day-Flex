@@ -9,10 +9,12 @@ import { db } from '../utils/firebase';
 import { useAtomValue } from 'jotai';
 import { currentUserEmail, currentProjectName, currentTableName } from '../utils/jotai.js';
 import { getDocumentIdByEmailAndProjectName } from '../utils/firestore';
+import { useSetAtom } from 'jotai';
 import { refreshColumnsAtom } from '../utils/jotai.js';
+import { useAtom } from 'jotai'; 
 
 
-export default function ManageColumns({ CloseManageColumns }) {
+export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
 
     const SelectedProject = useAtomValue(currentProjectName);
     const TabName = useAtomValue(currentTableName);
@@ -22,7 +24,7 @@ export default function ManageColumns({ CloseManageColumns }) {
     const [columns, setColumns] = useState([]);
     const [editingColumn, setEditingColumn] = useState(null);
     const [columnOrder, setColumnOrder] = useState({});
-    const [, setColumnsToDelete] = useState([]);
+    const [columnsToDelete, setColumnsToDelete] = useState([]);
 
     // Column properties state
     const [editedColumnNames, setEditedColumnNames] = useState({});
@@ -34,7 +36,7 @@ export default function ManageColumns({ CloseManageColumns }) {
     const [loading, setLoading] = useState(true);
     const entryTypeOptions = ['whole number', 'decimal number', 'text', 'date', 'multiple choice'];
     const refreshTrigger = useAtomValue(refreshColumnsAtom);
-
+    
 
     useEffect(() => {
         console.log('ManageColumns mounted with props:', { SelectedProject, TabName, Email });
@@ -44,7 +46,9 @@ export default function ManageColumns({ CloseManageColumns }) {
     const loadColumns = async () => {
         try {
             setLoading(true);
-            const columnsData = await getColumnsCollection(SelectedProject, TabName, Email);
+            const columnsData = (await getColumnsCollection(SelectedProject, TabName, Email))
+            .filter((col) => !col.deleted); 
+
     
             if (!columnsData || columnsData.length === 0) {
                 notify(Type.error, 'No columns found');
@@ -132,6 +136,7 @@ export default function ManageColumns({ CloseManageColumns }) {
         }
     };
 
+    
     const handleRequiredFieldChange = (columnId, isRequired) => {
         setEditedRequiredFields((prev) => ({
             ...prev,
@@ -205,8 +210,11 @@ export default function ManageColumns({ CloseManageColumns }) {
                     if (columnOrder[columnId] === 'DELETE') {
                      
                         const columnRef = doc(db, 'Projects', projectId, 'Tabs', TabName, 'Columns', columnId);
-                        batch.delete(columnRef);
+                        batch.update(columnRef, { deleted: true });
+
                         deletionsMade = true;
+                        
+
                         console.log(`Marked column ${columnId} for deletion`);
                     } else {
                         

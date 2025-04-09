@@ -469,7 +469,8 @@ export const getColumnsCollection = async (projectName, tabName, email) => {
             ...doc.data(),
         }));
 
-        return columns;
+        return columns.filter(col => !col.deleted);
+
     } catch (error) {
         console.error('Error in getColumnsCollection:', error);
         return [];
@@ -952,11 +953,12 @@ export const saveColumnChanges = async (projectName, tabName, columns, columnsTo
 
         for (const column of columns) {
             if (columnsToDelete.includes(column.id)) {
-                // Delete column
                 const columnRef = doc(db, 'Projects', projectId, 'Tabs', tabName, 'Columns', column.id);
-                batch.delete(columnRef);
-
-                // Remove column from all entries
+            
+                // Soft delete the column by setting a flag
+                batch.update(columnRef, { deleted: true });
+            
+                // Optional: remove the column from all entries
                 const entriesSnapshot = await getDocs(collection(db, 'Projects', projectId, 'Tabs', tabName, 'Entries'));
                 entriesSnapshot.docs.forEach(entryDoc => {
                     const entryRef = doc(db, 'Projects', projectId, 'Tabs', tabName, 'Entries', entryDoc.id);
@@ -964,7 +966,8 @@ export const saveColumnChanges = async (projectName, tabName, columns, columnsTo
                     delete entryData.entry_data[column.name];
                     batch.update(entryRef, { entry_data: entryData.entry_data });
                 });
-            } else if (!['actions', 'datetime', 'identifier'].includes(column.id)) {
+            }
+             else if (!['actions', 'datetime', 'identifier'].includes(column.id)) {
                 // Update column
                 const columnRef = doc(db, 'Projects', projectId, 'Tabs', tabName, 'Columns', column.id);
                 batch.update(columnRef, {
