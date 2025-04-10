@@ -381,7 +381,7 @@ export const addColumn = async (
 
         const columnsRef = collection(tabDoc.ref, 'Columns');
         const existingColumns = await getDocs(columnsRef);
-        const columnOrder = existingColumns.size;
+        const columnOrder = existingColumns.size + 1;
 
         await addDoc(columnsRef, {
             name: columnName,
@@ -469,7 +469,8 @@ export const getColumnsCollection = async (projectName, tabName, email) => {
             ...doc.data(),
         }));
 
-        return columns;
+        return columns.filter(col => !col.deleted);
+
     } catch (error) {
         console.error('Error in getColumnsCollection:', error);
         return [];
@@ -952,11 +953,12 @@ export const saveColumnChanges = async (projectName, tabName, columns, columnsTo
 
         for (const column of columns) {
             if (columnsToDelete.includes(column.id)) {
-                // Delete column
                 const columnRef = doc(db, 'Projects', projectId, 'Tabs', tabName, 'Columns', column.id);
-                batch.delete(columnRef);
-
-                // Remove column from all entries
+            
+                // Soft delete the column by setting a flag
+                batch.update(columnRef, { deleted: true });
+            
+                // Optional: remove the column from all entries
                 const entriesSnapshot = await getDocs(collection(db, 'Projects', projectId, 'Tabs', tabName, 'Entries'));
                 entriesSnapshot.docs.forEach(entryDoc => {
                     const entryRef = doc(db, 'Projects', projectId, 'Tabs', tabName, 'Entries', entryDoc.id);
@@ -964,7 +966,8 @@ export const saveColumnChanges = async (projectName, tabName, columns, columnsTo
                     delete entryData.entry_data[column.name];
                     batch.update(entryRef, { entry_data: entryData.entry_data });
                 });
-            } else if (!['actions', 'datetime', 'identifier'].includes(column.id)) {
+            }
+             else if (!['actions', 'datetime', 'identifier'].includes(column.id)) {
                 // Update column
                 const columnRef = doc(db, 'Projects', projectId, 'Tabs', tabName, 'Columns', column.id);
                 batch.update(columnRef, {
@@ -1178,25 +1181,44 @@ export const updateTabName = async (projectName, oldTabName, newTabName, email) 
 
         const projectDoc = projectSnapshot.docs[0];
 
-        // Locate the specific tab document
         const tabsRef = collection(projectDoc.ref, 'Tabs');
-        const tabQuery = query(tabsRef, where('tab_name', '==', oldTabName));
-        const tabSnapshot = await getDocs(tabQuery);
+        const oldTabQuery = query(tabsRef, where('tab_name', '==', oldTabName));
+        const oldTabSnapshot = await getDocs(oldTabQuery);
 
-        if (tabSnapshot.empty) {
-            throw new Error('Tab not found.');
+        if (oldTabSnapshot.empty) {
+            throw new Error('Old tab not found.');
         }
 
-        const tabDoc = tabSnapshot.docs[0];
+        const oldTabDoc = oldTabSnapshot.docs[0];
+        const oldTabData = oldTabDoc.data();
 
-        // Update the tab name
-        await updateDoc(tabDoc.ref, { tab_name: newTabName });
+        // Set the new tab_name
+        const newTabRef = doc(tabsRef, newTabName);
+        await setDoc(newTabRef, {
+            ...oldTabData,
+            tab_name: newTabName
+        });
+
+        // Move subcollections (Columns, Entries)
+        const subcollections = ['Columns', 'Entries'];
+        for (const sub of subcollections) {
+            const subRef = collection(oldTabDoc.ref, sub);
+            const subSnap = await getDocs(subRef);
+            for (const docSnap of subSnap.docs) {
+                const newDocRef = doc(newTabRef, sub, docSnap.id);
+                await setDoc(newDocRef, docSnap.data());
+            }
+        }
+
+        await deleteDoc(oldTabDoc.ref);
+
         return true;
     } catch (error) {
         console.error('Error updating tab name:', error);
         return false;
     }
 };
+
 export const deleteTab = async (projectName, tabName, email) => {
     try {
         const projectRef = collection(db, 'Projects');
@@ -1235,3 +1257,19 @@ export const deleteTab = async (projectName, tabName, email) => {
         return false;
     }
 };
+
+export const getProjectIdByName = async (projectName) => {
+    try {
+        const projectRef = collection(db, 'Projects');
+        const projectQuery = query(projectRef, where('project_name', '==', projectName));
+        const snapshot = await getDocs(projectQuery);
+        if (!snapshot.empty) {
+            return snapshot.docs[0].id;
+        }
+        return null;
+    } catch (error) {
+        console.error('Error in getProjectIdByName:', error);
+        return null;
+    }
+};
+
