@@ -1,4 +1,4 @@
-import { BiExport } from 'react-icons/bi';
+import { BiExport, BiImport } from 'react-icons/bi';
 import { GiTurtle, GiFrog, GiSpottedBug, GiSandSnake, GiSquirrel } from 'react-icons/gi';
 import { FaClipboard, FaCheck, FaTimes } from 'react-icons/fa';
 import { TbTable } from 'react-icons/tb';
@@ -17,6 +17,7 @@ const iconMap = {
     SnakeIcon: GiSandSnake,
     MammalIcon: GiSquirrel,
     ExportIcon: BiExport,
+    ImportIcon: BiImport,
     FormBuilderIcon: TbTable,
     SessionIcon: FaClipboard,
     NewSessionIcon: HiFolderPlus,
@@ -47,6 +48,7 @@ export const {
     SnakeIcon,
     MammalIcon,
     ExportIcon,
+    ImportIcon,
     FormBuilderIcon,
     SessionIcon,
     NewSessionIcon,
