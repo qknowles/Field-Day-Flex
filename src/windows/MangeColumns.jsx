@@ -9,10 +9,12 @@ import { db } from '../utils/firebase';
 import { useAtomValue } from 'jotai';
 import { currentUserEmail, currentProjectName, currentTableName } from '../utils/jotai.js';
 import { getDocumentIdByEmailAndProjectName } from '../utils/firestore';
+import { useSetAtom } from 'jotai';
 import { refreshColumnsAtom } from '../utils/jotai.js';
+import { useAtom } from 'jotai'; 
 
 
-export default function ManageColumns({ CloseManageColumns }) {
+export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
 
     const SelectedProject = useAtomValue(currentProjectName);
     const TabName = useAtomValue(currentTableName);
@@ -22,7 +24,7 @@ export default function ManageColumns({ CloseManageColumns }) {
     const [columns, setColumns] = useState([]);
     const [editingColumn, setEditingColumn] = useState(null);
     const [columnOrder, setColumnOrder] = useState({});
-    const [, setColumnsToDelete] = useState([]);
+    const [columnsToDelete, setColumnsToDelete] = useState([]);
 
     // Column properties state
     const [editedColumnNames, setEditedColumnNames] = useState({});
@@ -34,6 +36,7 @@ export default function ManageColumns({ CloseManageColumns }) {
     const [loading, setLoading] = useState(true);
     const entryTypeOptions = ['whole number', 'decimal number', 'text', 'date', 'multiple choice'];
     const refreshTrigger = useAtomValue(refreshColumnsAtom);
+    
 
     useEffect(() => {
         console.log('ManageColumns mounted with props:', { SelectedProject, TabName, Email });
@@ -43,7 +46,9 @@ export default function ManageColumns({ CloseManageColumns }) {
     const loadColumns = async () => {
         try {
             setLoading(true);
-            const columnsData = await getColumnsCollection(SelectedProject, TabName, Email);
+            const columnsData = (await getColumnsCollection(SelectedProject, TabName, Email))
+            .filter((col) => !col.deleted); 
+
     
             if (!columnsData || columnsData.length === 0) {
                 notify(Type.error, 'No columns found');
@@ -51,40 +56,24 @@ export default function ManageColumns({ CloseManageColumns }) {
             }
     
            
-            const orderCounts = new Map(); // Tracks how many times an order is used
-            const assignedOrders = new Set(); // Prevent duplicate orders
-    
-            columnsData.forEach((col) => {
-                let order = col.order;
-    
-                // If order is missing, zero, or duplicated, assign a new one
-                if (!order || order < 1 || orderCounts.get(order) > 0) {
-                    order = assignedOrders.size + 1;
-                }
-    
-                assignedOrders.add(order);
-                orderCounts.set(order, (orderCounts.get(order) || 0) + 1);
-                col.order = order; // Update column order
+            columnsData.sort((a, b) => {
+                const aOrder = typeof a.order === 'number' ? a.order : Infinity;
+                const bOrder = typeof b.order === 'number' ? b.order : Infinity;
+                return aOrder - bOrder;
             });
     
-            
-            columnsData.sort((a, b) => a.order - b.order);
-    
-            setColumns(columnsData);
-    
-           
             const orderObj = {};
             const namesObj = {};
     
-            columnsData.forEach((col) => {
-                orderObj[col.id] = col.order;
-                namesObj[col.id] = col.name || ""; 
+            columnsData.forEach((col, index) => {
+                orderObj[col.id] = index + 1;  
+                namesObj[col.id] = col.name || '';
             });
     
-            setColumnOrder(orderObj);
+            setColumns(columnsData);
+            setColumnOrder(orderObj);  
             setEditedColumnNames(namesObj);
     
-            
         } catch (error) {
             console.error('Error loading columns:', error);
             notify(Type.error, 'Failed to load columns');
@@ -93,20 +82,38 @@ export default function ManageColumns({ CloseManageColumns }) {
         }
     };
     
+    
+    
     const handleColumnOrderChange = (columnId, newValue) => {
         if (newValue === 'DELETE') {
-            setColumnsToDelete((prev) => [...prev, columnId]); // Mark column for deletion
+            setColumnsToDelete((prev) => [...prev, columnId]); 
             setColumnOrder((prev) => ({
                 ...prev,
-                [columnId]: 'DELETE' // Ensure "DELETE" is stored correctly
+                [columnId]: 'DELETE' 
             }));
-        } else {
-            setColumnOrder((prev) => ({
-                ...prev,
-                [columnId]: parseInt(newValue, 10) || 1, // Ensure numeric value
-            }));
-            setColumnsToDelete((prev) => prev.filter((id) => id !== columnId)); // Remove from delete list if changed
+            return;
         }
+    
+        const newOrder = parseInt(newValue, 10);
+    
+        setColumnOrder((prev) => {
+            const updatedOrder = { ...prev };
+    
+            const swappedColumnId = Object.keys(updatedOrder).find(
+                (id) => updatedOrder[id] === newOrder && id !== columnId
+            );
+    
+            if (swappedColumnId) {
+                
+                updatedOrder[swappedColumnId] = updatedOrder[columnId];
+            }
+    
+            updatedOrder[columnId] = newOrder;
+    
+            return updatedOrder;
+        });
+    
+        setColumnsToDelete((prev) => prev.filter((id) => id !== columnId));
     };
 
     const handleColumnNameChange = (columnId, newName) => {
@@ -129,6 +136,7 @@ export default function ManageColumns({ CloseManageColumns }) {
         }
     };
 
+    
     const handleRequiredFieldChange = (columnId, isRequired) => {
         setEditedRequiredFields((prev) => ({
             ...prev,
@@ -187,14 +195,26 @@ export default function ManageColumns({ CloseManageColumns }) {
             let updatesMade = false;
             let nameChanges = {}; // Track column name changes
             let deletionsMade = false; // Track column deletions
+
+            for (const columnId of Object.keys(columnOrder)) {
+                if (!columnIdMap[columnId]) {
+                    console.error(`Column ID ${columnId} is missing in columnIdMap`, { columnOrder, columnIdMap });
+                    notify(Type.error, `Column ID ${columnId} is not valid for this tab`);
+                    return;
+                }
+            }
+            
     
             for (const columnId in columnOrder) {
                 if (columnIdMap[columnId]) {
                     if (columnOrder[columnId] === 'DELETE') {
                      
                         const columnRef = doc(db, 'Projects', projectId, 'Tabs', TabName, 'Columns', columnId);
-                        batch.delete(columnRef);
+                        batch.update(columnRef, { deleted: true });
+
                         deletionsMade = true;
+                        
+
                         console.log(`Marked column ${columnId} for deletion`);
                     } else {
                         
@@ -283,7 +303,7 @@ export default function ManageColumns({ CloseManageColumns }) {
         const fetchColumns = async () => {
             try {
                 const columnsData = await getColumnsCollection(SelectedProject, TabName, Email);
-                setColumns(columnsData);
+                setColumns(columnsData.sort((a, b) => a.order - b.order));
             } catch (error) {
                 console.error("Error fetching columns:", error);
             }
@@ -386,46 +406,66 @@ export default function ManageColumns({ CloseManageColumns }) {
                 rightButtonText="Save Changes"
             >
                 <div className="flex flex-col space-y-4 p-4">
-                    {loading ? (
-                        <div className="text-center">Loading columns...</div>
-                    ) : columns.length === 0 ? (
-                        <div className="text-center">No columns found</div>
-                    ) : (
-                        columns.map((column) => (
-                            <div
-                                key={column.id}
-                                className="flex items-center space-x-4 p-2 bg-neutral-100 dark:bg-neutral-800 rounded"
-                            >
-                                <input
-                                 type="text"
-                                 value={editedColumnNames[column.id] || ''} // Ensure empty string instead of undefined
-                                 onChange={(e) => handleColumnNameChange(column.id, e.target.value)}
-                                 className="flex-grow border rounded px-2 py-1 text-white"
-                                />
-                             <select
-                                value={columnOrder[column.id] ?? column.order} // Allow string "DELETE" value
-                                onChange={(e) => handleColumnOrderChange(column.id, e.target.value)}
-                                className="border rounded px-2 py-1"
-                             >
-                        {Array.from({ length: columns.length }, (_, i) => i + 1).map((num) => (
-                          <option key={num} value={num}>
-                        {num}
-                          </option>
-                        ))}
-                       <option key="delete" value="DELETE">DELETE</option>
-                             </select>
+    {loading ? (
+        <div className="text-center">Loading columns...</div>
+    ) : columns.length === 0 ? (
+        <div className="text-center">No columns found</div>
+    ) : (
+        <>
 
-                                <Button
-                                    text="Edit"
-                                    onClick={() => {
-                                        setTempEntryOptions(editedDropdownOptions[column.id] || []);
-                                        setEditingColumn(column);
-                                    }}
-                                />
-                            </div>
-                        ))
-                    )}
+           <div className="flex justify-between items-center px-4 py-1 mb-2 rounded bg-neutral-200 dark:bg-neutral-800">
+              <div>
+                  <label className="text-black dark:text-white text-sm font-semibold tracking-wide">
+                      Column Name
+                  </label>
+              </div>
+              <div className="pr-[50px]">
+                  <label className="text-black dark:text-white text-sm font-semibold tracking-wide">
+                      Column Order
+                  </label>
                 </div>
+           </div>
+
+
+
+            {/* Column Rows */}
+            {columns.map((column) => (
+                <div
+                    key={column.id}
+                    className="flex items-center space-x-4 p-2 bg-neutral-100 dark:bg-neutral-800 rounded"
+                >
+                    <input
+                        type="text"
+                        value={editedColumnNames[column.id] || ''}
+                        onChange={(e) => handleColumnNameChange(column.id, e.target.value)}
+                        className="flex-grow border rounded px-2 py-1 text-white"
+                    />
+                    <select
+                        value={columnOrder[column.id] ?? (columns.findIndex(col => col.id === column.id) + 1)}
+                        onChange={(e) => handleColumnOrderChange(column.id, e.target.value)}
+                        className="border rounded px-2 py-1"
+                    >
+                        {Array.from({ length: columns.length }, (_, i) => i + 1).map((num) => (
+    <option key={num} value={num}>
+        {num}
+    </option>
+))}
+<option key="delete" value="DELETE">DELETE</option>
+
+                    </select>
+                    <Button
+                        text="Edit"
+                        onClick={() => {
+                            setTempEntryOptions(editedDropdownOptions[column.id] || []);
+                            setEditingColumn(column);
+                        }}
+                    />
+                </div>
+            ))}
+        </>
+    )}
+</div>
+
             </WindowWrapper>
 
             {editingColumn && <ColumnEditModal column={editingColumn} />}
