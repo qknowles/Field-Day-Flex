@@ -1,7 +1,7 @@
-import { auth } from '../firebase';
+import { auth } from './firebase';
 import {
-    CreateUserWithEmailAndPassword,
-    signInWithEmailAndPAssword,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
     signOut,
     onAuthStateChanged,
     GoogleAuthProvider,
@@ -9,9 +9,6 @@ import {
 } from 'firebase/auth';
 
 class AuthService {
-    constructor(authInstance) {
-        this.auth = authInstance;
-    }
 
     async signUp(email, password) {
         // the basic way to set this up:
@@ -53,5 +50,5 @@ class AuthService {
     }
 }
 
-const authService = new AuthService(auth);
+const authService = new AuthService();
 export default authService;
