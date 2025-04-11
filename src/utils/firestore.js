@@ -226,7 +226,7 @@ export const getTabNames = async (email, projectName) => {
         // Filter out deleted tabs
         const tabNames = tabsSnapshot.docs
             .map((tabDoc) => tabDoc.data())
-            .filter((tab) => !tab.deleted)  
+            .filter((tab) => !tab.deleted)
             .map((tab) => tab.tab_name);
 
         return tabNames;
@@ -530,13 +530,79 @@ export const addEntry = async (projectName, tabName, email, newEntry) => {
         const entriesRef = collection(tabDoc.ref, 'Entries');
         await addDoc(entriesRef, {
             entry_data: newEntry,
-            entry_date: Timestamp.now(), 
+            entry_date: Timestamp.now(),
             deleted: false,
         });
 
         return true;
     } catch (error) {
         console.error('Error adding entry:', error);
+        return false;
+    }
+};
+
+export const addEntryBulk = async (projectName, tabName, email, ...newEntries) => {
+    try {
+        const projectRef = collection(db, 'Projects');
+        const projectsQuery = query(
+            projectRef,
+            and(
+                where('project_name', '==', projectName),
+                or(
+                    where('contributors', 'array-contains', email),
+                    where('admins', 'array-contains', email),
+                    where('owners', 'array-contains', email)
+                )
+            )
+        );
+        const projectSnapshot = await getDocs(projectsQuery);
+
+        if (projectSnapshot.empty) {
+            console.error('No matching project found for the given name and email.');
+            return false;
+        }
+        const projectDoc = projectSnapshot.docs[0];
+
+        const tabsRef = collection(projectDoc.ref, 'Tabs');
+        const tabsQuery = query(tabsRef, where('tab_name', '==', tabName));
+        const tabSnapshot = await getDocs(tabsQuery);
+
+        if (tabSnapshot.empty) {
+            console.error('No matching tab found');
+            return false;
+        }
+        const tabDoc = tabSnapshot.docs[0];
+
+        const columnsRef = collection(tabDoc.ref, 'Columns');
+        const columnsSnapshot = await getDocs(columnsRef);
+        let columnTypes = {};
+        columnsSnapshot.docs.forEach(doc => {
+            const { name, data_type } = doc.data();
+            columnTypes[name] = data_type;
+        });
+
+        const entriesRef = collection(tabDoc.ref, 'Entries');
+
+        const addEntryPromises = newEntries.map(async (entry) => {
+            let processedEntry = { ...entry };
+            Object.keys(processedEntry).forEach(key => {
+                if (columnTypes[key] === 'date' && typeof processedEntry[key] === 'string') {
+                    processedEntry[key] = Timestamp.fromDate(new Date(processedEntry[key]));
+                }
+            });
+
+            return addDoc(entriesRef, {
+                entry_data: processedEntry,
+                entry_date: Timestamp.now(),
+                deleted: false,
+            });
+        });
+
+        await Promise.all(addEntryPromises);
+        return true;
+
+    } catch (error) {
+        console.error('Error adding entries in bulk:', error);
         return false;
     }
 };
@@ -646,8 +712,8 @@ export const getEntriesForTab = async (projectName, tabName, email) => {
 
         // Function to format timestamps in 24-hour format
         const formatDate = (timestamp) => {
-            if (!timestamp?.toDate) return timestamp; 
-            
+            if (!timestamp?.toDate) return timestamp;
+
             return new Intl.DateTimeFormat('en-US', {
                 year: 'numeric',
                 month: 'numeric',
@@ -954,10 +1020,10 @@ export const saveColumnChanges = async (projectName, tabName, columns, columnsTo
         for (const column of columns) {
             if (columnsToDelete.includes(column.id)) {
                 const columnRef = doc(db, 'Projects', projectId, 'Tabs', tabName, 'Columns', column.id);
-            
+
                 // Soft delete the column by setting a flag
                 batch.update(columnRef, { deleted: true });
-            
+
                 // Optional: remove the column from all entries
                 const entriesSnapshot = await getDocs(collection(db, 'Projects', projectId, 'Tabs', tabName, 'Entries'));
                 entriesSnapshot.docs.forEach(entryDoc => {
@@ -967,7 +1033,7 @@ export const saveColumnChanges = async (projectName, tabName, columns, columnsTo
                     batch.update(entryRef, { entry_data: entryData.entry_data });
                 });
             }
-             else if (!['actions', 'datetime', 'identifier'].includes(column.id)) {
+            else if (!['actions', 'datetime', 'identifier'].includes(column.id)) {
                 // Update column
                 const columnRef = doc(db, 'Projects', projectId, 'Tabs', tabName, 'Columns', column.id);
                 batch.update(columnRef, {
@@ -1004,7 +1070,7 @@ export const getIdDimension = async (email, projectName, tabName) => {
         }
 
         return docSnap.data().identifier_dimension;
-        
+
     } catch (error) {
         console.error('Error retrieving id dimension:', error);
         return [];
@@ -1026,7 +1092,7 @@ export const getPossibleIdentifiers = async (email, projectName, tabName) => {
         }
 
         return docSnap.data().possible_identifiers;
-        
+
     } catch (error) {
         console.error('Error retrieving possible identifiers:', error);
         return [];
@@ -1136,7 +1202,7 @@ export const getUnwantedCodeInfo = async (email, projectName, tabName) => {
         const utilizeUnwanted = docSnap.data().utilize_unwanted
 
         return { unwantedCodes, utilizeUnwanted };
-        
+
     } catch (error) {
         console.error('Error retrieving unwanted codes:', error);
         return [];

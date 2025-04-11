@@ -4,32 +4,24 @@ import { Type, notify } from '../components/Notifier.jsx';
 import InputLabel from '../components/InputLabel.jsx';
 import Button from '../components/Button';
 
-export default function SelectImportColumn({ CloseColumnSelector, Columns, SetSelectedColumns }) {
-    // Initialize state based directly on the passed in Columns array of strings
-    const [selectedState, setSelectedState] = useState(() => {
-        const initial = {};
-        (Columns || []).forEach(col => {
-            // Skip "actions"
-            if (col && !['actions'].includes(col)) {
-                initial[col] = true;
-            }
-        });
-        return initial;
-    });
+export default function SelectImportColumn({
+    CloseColumnSelector,
+    Columns,
+    SelectedColumns,
+    SetSelectedColumns
+}) {
+    const [selected, setSelected] = useState(SelectedColumns);
 
     const handleToggleColumn = columnId => {
-        setSelectedState(prev => ({
-            ...prev,
-            [columnId]: !prev[columnId],
-        }));
+        setSelected(prev =>
+            prev.includes(columnId)
+                ? prev.filter(col => col !== columnId)
+                : [...prev, columnId]
+        );
     };
 
     const saveColumns = () => {
-        // Filter out columns that are not selected or should be skipped (e.g. "actions" and "datetime")
-        const finalSelected = (Columns || []).filter(col => 
-            selectedState[col] && !['actions'].includes(col)
-        );
-        SetSelectedColumns(finalSelected);
+        SetSelectedColumns(selected);
         CloseColumnSelector();
     };
 
@@ -45,13 +37,12 @@ export default function SelectImportColumn({ CloseColumnSelector, Columns, SetSe
                 <h3 className="font-semibold mb-3">Toggle Columns</h3>
                 <div className="max-h-72 overflow-y-auto">
                     {(Columns || [])
-                        .filter(col => !['actions'].includes(col))
                         .map(col => (
                             <div key={col} className="flex items-center mb-2">
                                 <input
                                     type="checkbox"
                                     id={`column-${col}`}
-                                    checked={selectedState[col] ?? false}
+                                    checked={selected.includes(col)}
                                     onChange={() => handleToggleColumn(col)}
                                     className="mr-2"
                                 />
