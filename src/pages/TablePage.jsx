@@ -393,6 +393,11 @@ export default function TablePage() {
             {showImportWindow && (
                 <ImportCSV
                     CloseImportWindow={() => setShowImportWindow(false)}
+                    onEntryUpdated={() => {
+                        if (dataViewerRef.current && dataViewerRef.current.fetchEntries) {
+                            dataViewerRef.current.fetchEntries();
+                        }
+                    }}
                 />
             )}
 
