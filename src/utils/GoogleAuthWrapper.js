@@ -1,54 +1,64 @@
-import { auth } from './firebase';
-import {
-    createUserWithEmailAndPassword,
-    signInWithEmailAndPassword,
-    signOut,
-    onAuthStateChanged,
-    GoogleAuthProvider,
-    signInWithPopup
-} from 'firebase/auth';
+/*******
+ GoogleAuthWrapper.js
 
-class AuthService {
+ Wrapper to handle Google OAuth and integrate it with the already-existing backend
 
-    async signUp(email, password) {
-        // the basic way to set this up:
-        // 1. get userCredential JWT from firebase
+ This is a hacky implementation that reuses components from Login.jsx.
+ IDEALLY, we need to combine these two classes (or even make the login history its own class)
+ However, to refactor the entire authentication of this app is out of scope right now.
+ that's, realistically, probably a week's work thinking in terms of these capstone projects.
+ To future capstone teams: do that. we are just currently in april and do not have the time
+ */
+
+//import React from 'react';
+import { useSetAtom } from 'jotai';
+import { currentUserEmail, isAuthenticated } from '../utils/jotai';
+import { db } from '../utils/firebase';
+import { collection, addDoc } from 'firebase/firestore';
+import { notify, Type } from '../components/Notifier';
+
+export default function GoogleAuthWrapper({ OpenAccount }) {
+    const setEmail = useSetAtom(currentUserEmail);
+    const setAuthenticated = useSetAtom(isAuthenticated);
+
+    const googleAuth = new GoogleAuthWrapper();
+
+    const recordLoginHistory = async (email) => {
         try {
-            const userCredential = await createUserWithEmailAndPassword(email, password);
-            return userCredential.user; // though we need some sort of error handling here - what if this doesn't resolve?
+            const loginHistoryRef = collection(db, 'loginHistory');
+            const now = new Date();
+            await addDoc(loginHistoryRef, {
+                email: email,
+                loginDate: now.toLocaleDateString(),
+                loginTime: now.toLocaleTimeString(),
+                platform: 'desktop',
+                type: 'google_login'
+            });
+            console.log(`Google login recorded for: ${email}`);
         } catch (error) {
-            throw error; // we also need real error handling.
+            console.error('Error recording Google login:', error);
         }
-    }
+    };
 
-    async login(email, password) {
+    const handleGoogleLogin = async () => {
         try {
-            const userCredential = await signInWithEmailAndPassword(email, password);
-            return userCredential.user;
+            const user = await googleAuth.signInWithGoogle();
+            if (!user?.email) throw new Error('No email returned from Google');
+
+            setEmail(user.email);
+            setAuthenticated(true);
+            await recordLoginHistory(user.email);
+            notify(Type.success, 'Google login successful.');
+            OpenAccount(); // same function used in Login
         } catch (error) {
-            throw error;
+            notify(Type.error, 'Google login failed.');
+            console.error(error);
         }
-    }
+    };
 
-    async logout() {
-        try {
-            await signOut();
-        } catch(error) {
-            throw error;
-        }
-    }
-
-    // get google provider? STILL NEED TO CONFIGURE THIS IN THE BACK END DO NOT USE THIS FUNCTION
-    async signInWithGoogle() {
-        const provider = new GoogleAuthProvider();
-        try {
-            const result = await signInWithPopup(auth, provider);
-            return result.user;
-        } catch(error) {
-            throw error;
-        }
-    }
+    return (
+        <button onClick={handleGoogleLogin} className="your-button-class">
+            Sign in with Google
+        </button>
+    );
 }
-
-const authService = new AuthService();
-export default authService;
