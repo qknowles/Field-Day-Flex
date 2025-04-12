@@ -29,10 +29,12 @@ export default function ColumnOptions({
     const [rightButtonText, setRightButtonText] = useState('Next Column');
     const [columnIndex, setColumnIndex] = useState(0);
     const [tempEntryOptions, setTempEntryOptions] = useState([]);
+    const [yesNoOptions, setYesNoOptions] = useState([]);
     const [dataType, setDataType] = useState(new Array(ColumnNames.length).fill(''));
     const [entryOptions, setEntryOptions] = useState(Array.from({ length: ColumnNames.length }, () => []));
     const [identifierDomain, setIdentifierDomain] = useState(new Array(ColumnNames.length).fill(false));
     const [requiredField, setRequiredField] = useState(new Array(ColumnNames.length).fill(false));
+    const [allowNegative, setAllowNegative] = useState(new Array(ColumnNames.length).fill(false));
 
     // Create an array of options for components that need a list.
     const entryTypeOptionsArray = Object.values(entryTypeOptions).filter(
@@ -70,6 +72,14 @@ export default function ColumnOptions({
                 notify(Type.error, 'Entry choices must include at least two unique values.');
                 return false;
             }
+        }
+
+        if (dataType[columnIndex] === entryTypeOptions.INTEGER) {
+
+        }
+
+        if (dataType[columnIndex] === entryTypeOptions.DECIMAL) {
+
         }
         
         
@@ -170,6 +180,7 @@ export default function ColumnOptions({
                         finalEntryOptions[i],
                         identifierDomain[i],
                         requiredField[i],
+                        allowNegative[i],
                     );
                     if (!columnAdded) {
                         notify(Type.error, 'Error adding columns.');
@@ -277,6 +288,23 @@ export default function ColumnOptions({
                         label="Entry Choices"
                     />
                 )}
+                
+                {(dataType[columnIndex] === entryTypeOptions.INTEGER ||
+                  dataType[columnIndex] === entryTypeOptions.DECIMAL) && (
+                    <YesNoSelector
+                        label="Allow negative values?"
+                        layout="horizontal-start"
+                        selection={allowNegative[columnIndex]}
+                        setSelection={(selection) =>
+                            setAllowNegative((prev) => {
+                               const updated = [...prev];
+                               updated[columnIndex] = selection;
+                               return updated;
+                            })
+                        }
+                    />
+                )}
+
                 <YesNoSelector
                     label="Make column a required field"
                     layout="horizontal-start"
