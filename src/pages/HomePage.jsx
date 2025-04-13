@@ -6,7 +6,6 @@ import NewAccount from '../windows/NewAccount';
 import Login from '../windows/Login';
 import { useSetAtom } from 'jotai';
 import { isAuthenticated } from '../utils/jotai.js';
-import authService from '../utils/AuthService';
 
 export default function HomePage() {
     const setAuthenticated = useSetAtom(isAuthenticated);
