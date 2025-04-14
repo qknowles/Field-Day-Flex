@@ -74,14 +74,6 @@ export default function ColumnOptions({
                 return false;
             }
         }
-
-        if (dataType[columnIndex] === entryTypeOptions.INTEGER) {
-
-        }
-
-        if (dataType[columnIndex] === entryTypeOptions.DECIMAL) {
-
-        }
         
         
         if (ColumnNames[columnIndex] === '' || ColumnNames[columnIndex] === null || ColumnNames[columnIndex] === undefined) {

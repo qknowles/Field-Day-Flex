@@ -95,15 +95,34 @@ export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntry
             const value = userEntries[name];
 
             if (value && data_type !== entryTypeOptions.MULTIPLE_CHOICE) {
-                if (data_type === entryTypeOptions.INTEGER && !/^-?\d+$/.test(value)) {
-                    notify(Type.error, `The field "${name}" must be a valid integer number.`);
-                    return false;
-                }
+                if (data_type === entryTypeOptions.INTEGER) {
+                    if (!/^-?\d+$/.test(value)) {
+                        notify(Type.error, `The field "${name}" must be a valid integer number.`);
+                        return false;
+                    }
+                
+                    console.log(`[${name}] allow_negative:`, column.allow_negative, 'value:', value);
 
-                if (data_type === entryTypeOptions.DECIMAL && !/^-?\d+\.\d+$/.test(value)) {
-                    notify(Type.error, `The field "${name}" must be a valid decimal number.`);
-                    return false;
+                    if (!column.allow_negative && Number(value) < 0) {
+                        notify(Type.error, `Negative values are not allowed for "${name}".`);
+                        return false;
+                    }
                 }
+                
+                if (data_type === entryTypeOptions.DECIMAL) {
+                    if (!/^-?\d+(\.\d+)?$/.test(value)) {
+                        notify(Type.error, `The field "${name}" must be a valid decimal number.`);
+                        return false;
+                    }
+                   
+                    console.log(`[${name}] allow_negative:`, column.allow_negative, 'value:', value);
+
+                    if (!column.allow_negative && Number(value) < 0) {
+                        notify(Type.error, `Negative values are not allowed for "${name}".`);
+                        return false;
+                    }
+                }
+                
 
                 if (data_type === entryTypeOptions.DATE && !/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}$/.test(value)) {
                     notify(
