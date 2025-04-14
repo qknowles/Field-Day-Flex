@@ -84,10 +84,16 @@ export default function AccountSettings({ CloseAccountSettings }) {
             notify(Type.error, 'Please make sure the current password is correct.');
             return;
         }
+        console.log("saveChanges(): password verified");
 
         const fieldsChanged = await detectChanges();
-        if (!fieldsChanged) return;
+        if (!fieldsChanged) {
+            console.log("saveChanges(): no fields changed");
+            return;
+        }
+        console.log("saveChanges(): fieldsChanged", fieldsChanged);
 
+        console.log("saveChanges(): waiting for saveUserAccountChanges");
         const success = await saveUserAccountChanges(fieldsChanged, email);
         if (success) {
             notify(Type.success, 'Successfully updated account.');
@@ -137,7 +143,33 @@ export default function AccountSettings({ CloseAccountSettings }) {
         const currentName = await getUserName(email);
 
         if (name !== currentName) fieldsChanged.name = name;
-        if (changedEmail !== email) fieldsChanged.email = changedEmail;
+        if (changedEmail !== email) {
+            // check email validity
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if(!emailRegex.test(changedEmail)) {
+                notify(
+                    Type.error,
+                    <div>
+                        Please ensure your entered email is correct. A correct email:
+                        <ol>
+                            <li>1. Contains an @ symbol</li>
+                            <li>2. Has no spaces or commas</li>
+                            <li> {/* This was my best attempt at making it not wrap. It still does, but it looks (slightly) better now */}
+                                3. Includes a valid domain (e.g.,{' '}
+                                <span style={{ whiteSpace: 'nowrap' }}>
+                                    <code>.com</code> or <code>.org</code>
+                                </span>
+                                )
+                            </li>
+                        </ol>
+                    </div>,
+                    20000, // ms. 20 second delay
+                );
+                return null;
+            }
+        }
+
+        fieldsChanged.email = changedEmail;
 
         if (newPassword && confirmPassword && newPassword === confirmPassword) {
             const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{8,}$/;
