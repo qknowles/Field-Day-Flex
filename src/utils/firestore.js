@@ -332,6 +332,7 @@ export const createTab = async (
                 ...(columnEntryOptions.length > 0 && { entry_options: columnEntryOptions[i] }),
                 identifier_domain: columnIdentifierDomain,
                 required_field: columnRequiredField,
+                allow_negative: allowNegativeFlag,
                 order: columnOrder,
             });
         }
@@ -352,6 +353,9 @@ export const addColumn = async (
     columnEntryOptions = [],
     columnIdentifierDomain = false,
     columnRequiredField = false,
+    allowNegativeFlag = false,
+    
+
 ) => {
     try {
         const projectRef = collection(db, 'Projects');
@@ -389,6 +393,7 @@ export const addColumn = async (
             ...(columnEntryOptions.length > 0 && { entry_options: columnEntryOptions }),
             identifier_domain: columnIdentifierDomain,
             required_field: columnRequiredField,
+            allow_negative: allowNegativeFlag,
             order: columnOrder,
         });
 

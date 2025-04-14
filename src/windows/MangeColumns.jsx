@@ -36,6 +36,8 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
     const [loading, setLoading] = useState(true);
     const entryTypeOptions = ['whole number', 'decimal number', 'text', 'date', 'multiple choice'];
     const refreshTrigger = useAtomValue(refreshColumnsAtom);
+    const [editedAllowNegative, setEditedAllowNegative] = useState({});
+
     
 
     useEffect(() => {
@@ -68,8 +70,10 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
             columnsData.forEach((col, index) => {
                 orderObj[col.id] = index + 1;  
                 namesObj[col.id] = col.name || '';
+                editedAllowNegative[col.id] = col.allow_negative === true;
             });
     
+            setEditedAllowNegative(editedAllowNegative);
             setColumns(columnsData);
             setColumnOrder(orderObj);  
             setEditedColumnNames(namesObj);
@@ -231,6 +235,10 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
                             order: columnOrder[columnId], // Update order
                             name: newName, // Update name
                             data_type: newType, //update type
+                            required_field: editedRequiredFields[columnId] ?? false,
+                            identifier_domain: editedIdentifierDomains[columnId] ?? false,
+                            allow_negative: editedAllowNegative[columnId] ?? false, 
+                            entry_options: newType === 'multiple choice' ? editedDropdownOptions[columnId] || [] : [],
                         });
     
                         updatesMade = true;
@@ -373,6 +381,22 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
                         label="Entry Choices"
                     />
                 )}
+                
+                {(editedColumnTypes[column.id] === 'whole number' ||
+                  editedColumnTypes[column.id] === 'decimal number') && (
+                   <YesNoSelector
+                        label="Allow Negative Values"
+                        layout="horizontal-start"
+                        selection={editedAllowNegative[column.id]}
+                        setSelection={(value) =>
+                            setEditedAllowNegative((prev) => ({
+                                ...prev,
+                                [column.id]: value,
+                            }))
+                        }
+                   />
+                )}
+
 
                 <YesNoSelector
                     label="Required Field"

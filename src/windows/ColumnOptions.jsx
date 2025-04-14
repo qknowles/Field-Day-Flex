@@ -30,10 +30,12 @@ export default function ColumnOptions({
     const [rightButtonText, setRightButtonText] = useState('Next Column');
     const [columnIndex, setColumnIndex] = useState(0);
     const [tempEntryOptions, setTempEntryOptions] = useState([]);
+    const [yesNoOptions, setYesNoOptions] = useState([]);
     const [dataType, setDataType] = useState(new Array(ColumnNames.length).fill(''));
     const [entryOptions, setEntryOptions] = useState(Array.from({ length: ColumnNames.length }, () => []));
     const [identifierDomain, setIdentifierDomain] = useState(new Array(ColumnNames.length).fill(false));
     const [requiredField, setRequiredField] = useState(new Array(ColumnNames.length).fill(false));
+    const [allowNegative, setAllowNegative] = useState(new Array(ColumnNames.length).fill(false));
 
     // Create an array of options for components that need a list.
     const entryTypeOptionsArray = Object.values(entryTypeOptions).filter(
@@ -171,6 +173,7 @@ export default function ColumnOptions({
                         finalEntryOptions[i],
                         identifierDomain[i],
                         requiredField[i],
+                        allowNegative[i],
                     );
                     if (!columnAdded) {
                         notify(Type.error, 'Error adding columns.');
@@ -291,7 +294,31 @@ export default function ColumnOptions({
                     </div>
                 )}
 
-                <div className="flex items-center">
+                <div className="flex items-center space-x-2">
+                    {(dataType[columnIndex] === entryTypeOptions.INTEGER ||
+                    dataType[columnIndex] === entryTypeOptions.DECIMAL) && (
+                        <YesNoSelector
+                            label="Allow negative values?"
+                            layout="horizontal-start"
+                            selection={allowNegative[columnIndex]}
+                            setSelection={(selection) =>
+                               setAllowNegative((prev) => {
+                                  const updated = [...prev];
+                                  updated[columnIndex] = selection;
+                                  return updated;
+                               })
+                            }
+                       />
+                       
+                    )}
+                    <InfoIcon
+                        text="When set to Yes, users will be allowed to use negative values for their number type entries."
+                        position="right"
+                        className="ml-2"
+                    />
+                </div>
+
+                <div className="flex items-center space-x-2">
                     <YesNoSelector
                         label="Make column a required field"
                         layout="horizontal-start"
@@ -304,33 +331,35 @@ export default function ColumnOptions({
                             })
                         }
                     />
-                    <InfoIcon 
+                    <InfoIcon
                         text="When set to Yes, users must provide a value for this field before saving an entry."
                         position="right"
                         className="ml-2"
                     />
                 </div>
-
-                <div className="flex items-center">
+               
+                <div className="flex items-center space-x-2">
                     <YesNoSelector
                         label="Include column in entry ID domain"
                         layout="horizontal-start"
                         selection={identifierDomain[columnIndex]}
                         setSelection={(selection) =>
-                            setIdentifierDomain((prev) => {
+                             setIdentifierDomain((prev) => {
                                 const updated = [...prev];
                                 updated[columnIndex] = selection;
                                 return updated;
                             })
                         }
-                    />
-                    <InfoIcon 
+                   />
+                   <InfoIcon 
                         text="If enabled, this field will be used when generating unique identifiers for entries. Useful for creating structured IDs based on field values."
                         position="right"
                         className="ml-2"
-                        width={250}
+                        wid
+                        th={250}
                     />
-                </div>
+               </div>
+
             </div>
         </WindowWrapper>
     );
