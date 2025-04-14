@@ -16,16 +16,21 @@ const config = {
     style: style,
 };
 
-const notify = (type, text) => {
+const notify = (type, text, durationOverride = 3000) => {
+    const options = {
+        duration: durationOverride,
+        style: style,
+    };
+
     switch (type) {
         case Type.error:
-            toast.error(text, config);
+            toast.error(text, { ...options });
             return;
         case Type.success:
-            toast.success(text, config);
+            toast.success(text, { ...options });
             return;
         default:
-            toast(text, config);
+            toast(text, { ...options });
             return;
     }
 };
