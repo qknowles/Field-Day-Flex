@@ -85,10 +85,11 @@ const HomeScreen = ({ OpenLogin, OpenNewAccount }) => (
         <div
             style={{
                 position: 'relative',
-                top: '-5.0em',
+                top: '-6.5em',
+                left: '-1.0em',
             }}
         >
-            <LizardIcon className="text-asu-maroon h-48 mx-auto rotate-45" />
+            <LizardIcon className="text-asu-maroon h-72 mx-auto rotate-45" />
         </div>
     </>
 );

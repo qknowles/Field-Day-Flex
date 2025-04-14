@@ -76,12 +76,12 @@ export function LizardIcon({ className }) {
             <defs id="defs1">
                 <linearGradient id="linearGradient570">
                     <stop
-                        style={{ stopColor: "#5e062c", stopOpacity: 1 }}
+                        style={{ stopColor: "#580c25", stopOpacity: 1 }}
                         offset="0"
                         id="stop570"
                     />
                     <stop
-                        style={{ stopColor: "#a70f4f", stopOpacity: 1 }}
+                        style={{ stopColor: "#9f1743", stopOpacity: 1 }}
                         offset="1"
                         id="stop571"
                     />
