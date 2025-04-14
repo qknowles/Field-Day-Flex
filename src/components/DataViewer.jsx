@@ -1,22 +1,21 @@
-import React, { useState, useEffect, useCallback, useMemo} from 'react';
+import React, { useState, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle } from 'react';
 import { getColumnsCollection, getEntriesForTab, getProjectFields, deleteEntry, getEntryDetails } from '../utils/firestore'; // Import deleteEntry
-import TableTools from '../wrappers/TableTools';
 import { Pagination } from './Pagination';
 import Button from './Button';
 import WindowWrapper from '../wrappers/WindowWrapper';
 import { Type, notify } from './Notifier';
-import { db } from '../utils/firebase';
 import NewEntry from '../windows/NewEntry';
 import { AiFillEdit, AiFillDelete } from 'react-icons/ai';
-import { useAtom, useAtomValue } from 'jotai';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai';
 import { currentUserEmail, currentProjectName, currentTableName, currentBatchSize } from '../utils/jotai';
+import { visibleColumnsAtom } from '../utils/jotai';
+import { searchQueryAtom, filteredEntriesAtom } from './SearchBar';
+import { filterEntriesBySearch } from '../utils/searchUtils';
+import EntryCountDisplay from './EntryCountDisplay';
+import 'react-resizable/css/styles.css';
 
-const STATIC_COLUMNS = [
-    { id: 'actions', name: 'Actions', type: 'actions', order: -3 },
-    { id: 'datetime', name: 'Date & Time', type: 'datetime', order: -2 },
-];
 
-const DataViewer = () => {
+const DataViewer = forwardRef((props, ref) => {
 
     const SelectedProject = useAtomValue(currentProjectName);
     const SelectedTab = useAtomValue(currentTableName);
@@ -29,15 +28,20 @@ const DataViewer = () => {
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
     const [currentPage, setCurrentPage] = useState(1);
     const [batchSize] = useAtom(currentBatchSize);
-    const [currentProject, setCurrentProject] = useAtom(currentProjectName);
-    const [currentTable, setCurrentTable] = useAtom(currentTableName);
-    const [isAdminOrOwner, setIsAdminOrOwner] = useState(false);
+    const setCurrentProject = useSetAtom(currentProjectName);
+    const setCurrentTable = useSetAtom(currentTableName);
+    const [, setIsAdminOrOwner] = useState(false);
+    const [currentTab] = useAtom(currentTableName);
+    const [allEntries, setAllEntries] = useState([]); // Store all entries for search filtering
+    const [searchQuery] = useAtom(searchQueryAtom); // Get the search query from the atom
+    const [filteredEntries, setFilteredEntries] = useAtom(filteredEntriesAtom); // Store filtered entries
 
     const [showEditWindow, setEditWindow] = useState(null);
-    const [showManageColumns, setShowManageColumns] = useState(false);
+    const [, setShowManageColumns] = useState(false);
     const [columnOrder, setColumnOrder] = useState({});
     const [columnsToDelete, setColumnsToDelete] = useState([]);
     const [editedColumnNames, setEditedColumnNames] = useState({});
+    const [searchTerm] = useState('');
     const getColumnClass = (columnName) => {
         const classMap = {
             'Date & Time': 'dateTimeColumn',
@@ -50,16 +54,19 @@ const DataViewer = () => {
         return classMap[columnName] || '';
     };
 
+    const [visibleColumns] = useAtom(visibleColumnsAtom);
     const [editedColumnTypes, setEditedColumnTypes] = useState({});
     const [editedRequiredFields, setEditedRequiredFields] = useState({});
     const [editedIdentifierDomains, setEditedIdentifierDomains] = useState({});
     const [editedDropdownOptions, setEditedDropdownOptions] = useState({});
+
     const defaultColumns = useMemo(() => {
         return [
             { id: 'actions', name: 'Actions', type: 'actions', order: -3 },
             { id: 'datetime', name: 'Date & Time', type: 'datetime', order: -2 },
         ];
     }, []);
+
     const fetchColumns = useCallback(async () => {
         if (!SelectedProject || !SelectedTab) return;
 
@@ -70,13 +77,9 @@ const DataViewer = () => {
             );
             setColumns(sortedColumns);
 
-            // Not sure this is needed
             const orderObj = {};
             const namesObj = {};
             const typesObj = {};
-            sortedColumns.forEach((col) => {
-                typesObj[col.id] = col.data_type || 'text'; // Store latest column type
-            });
             const requiredObj = {};
             const identifierObj = {};
             const optionsObj = {};
@@ -102,83 +105,52 @@ const DataViewer = () => {
         }
     }, [SelectedProject, SelectedTab, Email, defaultColumns]);
 
-    const handleColumnTypeChange = (columnId, newType) => {
-        setEditedColumnTypes((prev) => ({
-            ...prev,
-            [columnId]: newType,
-        }));
-    };
-
-    const handleRequiredFieldChange = (columnId, isRequired) => {
-        setEditedRequiredFields((prev) => ({
-            ...prev,
-            [columnId]: isRequired,
-        }));
-    };
-
-    const handleIdentifierDomainChange = (columnId, isIdentifier) => {
-        setEditedIdentifierDomains((prev) => ({
-            ...prev,
-            [columnId]: isIdentifier,
-        }));
-    };
-
-    const handleDropdownOptionsChange = (columnId, options) => {
-        setEditedDropdownOptions((prev) => ({
-            ...prev,
-            [columnId]: options,
-        }));
-    };
-
-    const handleAddDropdownOption = (columnId) => {
-        const option = prompt('Enter new option:');
-        if (option) {
-            setEditedDropdownOptions((prev) => ({
-                ...prev,
-                [columnId]: [...(prev[columnId] || []), option],
-            }));
-        }
-    };
     const fetchEntries = useCallback(async () => {
         if (!SelectedProject || !SelectedTab) return;
-    
+
         try {
             const entriesData = await getEntriesForTab(SelectedProject, SelectedTab, Email);
-            const filteredEntries = entriesData.filter(entry => !entry.deleted); // Filter out deleted entries
-    
+            const filteredEntries = entriesData.filter(entry => !entry.deleted);
+
             const formattedEntries = filteredEntries.map((entry) => {
                 const formattedData = { ...entry.entry_data };
-    
-                Object.keys(formattedData).forEach(columnId => {
-                    const columnType = editedColumnTypes[columnId];
-    
-                    if (columnType === 'number') {
-                        formattedData[columnId] = Number(formattedData[columnId]) || 0;
-                    } else if (columnType === 'date') {
-                        formattedData[columnId] = new Date(formattedData[columnId]).toISOString();
-                    }
-                });
-    
-                return { 
-                    ...entry, 
-                    entry_data: formattedData, 
+                return {
+                    ...entry,
+                    entry_data: formattedData,
                     entry_date: entry.entry_date ? new Date(entry.entry_date) : null
                 };
             });
-    
+
+            // Sort by date (newest first)
             formattedEntries.sort((a, b) => {
                 if (!a.entry_date) return 1;
                 if (!b.entry_date) return -1;
-                return a.entry_date - b.entry_date;
+                return b.entry_date - a.entry_date;
             });
-    
-            setEntries(formattedEntries);
+
+            setAllEntries(formattedEntries); // Store all entries
+            setEntries(formattedEntries); // Set entries (will be filtered by search)
         } catch (err) {
             console.error('Error fetching entries:', err);
             setError('Failed to load entries');
         }
     }, [SelectedProject, SelectedTab, Email]);
-    
+
+    // Apply search filtering when searchQuery changes - ONLY ONCE
+    useEffect(() => {
+        if (allEntries.length > 0) {
+            const filtered = filterEntriesBySearch(allEntries, searchQuery);
+            setFilteredEntries(filtered);
+            setEntries(filtered);
+            // Reset to first page when search changes
+            setCurrentPage(1);
+        }
+    }, [searchQuery, allEntries, setFilteredEntries, setCurrentPage]);
+
+    useImperativeHandle(ref, () => ({
+        fetchEntries,
+        fetchColumns
+    }));
 
     useEffect(() => {
         let mounted = true;
@@ -210,36 +182,103 @@ const DataViewer = () => {
         return () => {
             mounted = false;
         };
-    }, [SelectedProject, SelectedTab, fetchColumns, fetchEntries]);
+    }, [SelectedProject, SelectedTab, fetchColumns, fetchEntries, setCurrentProject, setCurrentTable]);
 
     const sortedEntries = React.useMemo(() => {
         if (!sortConfig.key) return entries;
-    
+
         return [...entries].sort((a, b) => {
             const aValue = a.entry_data[sortConfig.key] || '';
             const bValue = b.entry_data[sortConfig.key] || '';
-    
+
             if (sortConfig.key === 'entry_date') {
-                return sortConfig.direction === 'asc' 
-                    ? new Date(aValue) - new Date(bValue) 
-                    : new Date(bValue) - new Date(aValue);
+                return sortConfig.direction === 'asc'
+                    ? new Date(bValue) - new Date(aValue)
+                    : new Date(aValue) - new Date(bValue);
             }
-    
+
             if (sortConfig.direction === 'asc') {
                 return aValue.toString().localeCompare(bValue.toString());
             }
             return bValue.toString().localeCompare(aValue.toString());
         });
     }, [entries, sortConfig]);
-    
 
-    // Existing sorting logic
+    const paginatedEntries = React.useMemo(() => {
+        const startIndex = (currentPage - 1) * batchSize;
+        return filteredEntries.slice(startIndex, startIndex + batchSize);
+    }, [filteredEntries, currentPage, batchSize]);
+
+
+    // Handlers
     const handleSort = (columnName) => {
         setSortConfig((prev) => ({
             key: columnName,
             direction: prev.key === columnName && prev.direction === 'asc' ? 'desc' : 'asc',
         }));
     };
+
+    useEffect(() => {
+        let mounted = true;
+
+        const loadData = async () => {
+            if (!SelectedProject || !SelectedTab) {
+                console.log('Skipping fetch — missing project or tab:', SelectedProject, SelectedTab);
+                return;
+            }
+
+            setLoading(true);
+            setError(null);
+
+            try {
+                if (!mounted) return;
+
+                setCurrentProject(SelectedProject);
+                setCurrentTable(SelectedTab);
+
+                await Promise.all([fetchColumns(), fetchEntries()]);
+            } catch (err) {
+                if (mounted) {
+                    console.error('Error loading data:', err);
+                    setError('Failed to load data');
+                }
+            } finally {
+                if (mounted) {
+                    setLoading(false);
+                }
+            }
+        };
+
+        loadData();
+
+        return () => {
+            mounted = false;
+        };
+    }, [SelectedProject, SelectedTab, fetchColumns, fetchEntries]);
+
+
+
+    useEffect(() => {
+        if (!searchTerm || searchTerm.trim() === '') {
+            // No search filter applied, use all entries
+            setFilteredEntries(sortedEntries);
+        } else {
+            // Apply search filter
+            const searchTermLower = searchTerm.toLowerCase();
+            const filtered = sortedEntries.filter(entry => {
+                // Search across all fields in entry_data
+                return Object.entries(entry.entry_data || {}).some(([key, value]) =>
+                    String(value).toLowerCase().includes(searchTermLower)
+                );
+            });
+            setFilteredEntries(filtered);
+        }
+
+        // Reset to first page when filters change
+        setCurrentPage(1);
+    }, [sortedEntries, searchTerm]);
+
+
 
     // New column management handlers
     const handleColumnOrderChange = (columnId, newValue) => {
@@ -293,6 +332,7 @@ const DataViewer = () => {
         }
     };
 
+
     const handleEdit = async (entryId) => {
         try {
             const entryDetails = await getEntryDetails(Email, SelectedProject, SelectedTab, entryId);
@@ -328,102 +368,20 @@ const DataViewer = () => {
             notify(Type.error, 'Failed to delete entry');
         }
     };
-    
-    const paginatedEntries = React.useMemo(() => {
-        const startIndex = (currentPage - 1) * batchSize;
-        return sortedEntries.slice(startIndex, startIndex + batchSize);
-    }, [sortedEntries, currentPage, batchSize]);
 
-    const DataViewer = ({ columnOrder }) => {
-
-        const [columns, setColumns] = useState([]);
-    
-        useEffect(() => {
-            if (columns.length > 0) {
-                setColumns([...columns].sort((a, b) => a.order - b.order));
-            }
-        }, [columns]);
-        
-        
-    
-        return (
-            <table>
-                <thead>
-                    <tr>
-                        <th>Actions</th>
-                        <th>Date & Time</th>
-                        {columns.map((column) => (
-                            <th key={column.id}>{column.name}</th>
-                        ))}
-                    </tr>
-                </thead>
-                <tbody>
-                    {entries.map((entry) => (
-                        <tr key={entry.id}>
-                            <td>...</td>
-                            <td>{entry.entry_data?.['Date & Time'] || 'N/A'}</td>
-                            {columns.map((column) => (
-                                <td key={column.id}>{entry.entry_data?.[column.name] || 'N/A'}</td>
-                            ))}
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        );
-    };
-    
-
-    const ManageColumnsModal = () => (
-        <WindowWrapper
-            header="Manage Columns"
-            onLeftButton={() => setShowManageColumns(false)}
-            onRightButton={handleSaveColumnChanges}
-            leftButtonText="Cancel"
-            rightButtonText="Save Changes"
-        >
-            <div className="flex flex-col space-y-4">
-                {columns.map((column) => (
-                    <div key={column.id} className="flex justify-between items-center p-2">
-                        <input
-                            type="text"
-                            value={editedColumnNames[column.id]}
-                            className="border rounded px-2 py-1"
-                            onChange={(e) => handleColumnNameChange(column.id, e.target.value)}
-                        />
-                        <select
-                            value={
-                                columnsToDelete.includes(column.id)
-                                    ? 'DELETE'
-                                    : columnOrder[column.id]
-                            }
-                            onChange={(e) => handleColumnOrderChange(column.id, e.target.value)}
-                            className="border rounded px-2 py-1"
-                        >
-                            {Array.from({ length: columns.length }, (_, i) => i + 1).map((num) => (
-                                <option key={num} value={num}>
-                                    {num}
-                                </option>
-                            ))}
-                            <option value="DELETE">DELETE</option>
-                        </select>
-                    </div>
-                ))}
-            </div>
-        </WindowWrapper>
-    );
     useEffect(() => {
         const refreshColumnsListener = () => {
             console.log("Refreshing columns after update...");
             fetchColumns();
         };
-    
+
         window.addEventListener("refreshColumns", refreshColumnsListener);
-    
+
         return () => {
             window.removeEventListener("refreshColumns", refreshColumnsListener);
         };
     }, []);
-    
+
     useEffect(() => {
         const checkPermissions = async () => {
             if (!SelectedProject || !Email) {
@@ -452,81 +410,142 @@ const DataViewer = () => {
     if (loading) return <div className="p-4 text-center">Loading...</div>;
     if (error) return <div className="p-4 text-center text-red-600">{error}</div>;
 
+    const filteredColumns = columns.filter((col) => !['actions', 'datetime'].includes(col.id));
+    const lastColumnIndex = filteredColumns.length - 1;
+
     return (
         <div className="flex-grow bg-white dark:bg-neutral-950">
             <div className="flex flex-col">
+                {/* Top section with entry count display -*/}
+                {/* <div className="px-5 py-3 flex justify-end items-center">
+                    <EntryCountDisplay 
+                        currentPageCount={paginatedEntries.length}
+                        totalFilteredCount={filteredEntries.length}
+                        totalCount={allEntries.length}
+                        isFiltered={searchQuery && searchQuery.trim() !== ''}
+                    />
+                </div> */}
+
                 <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
+                    <table className="w-full data-table">
                         <thead>
                             <tr className="bg-neutral-100 dark:bg-neutral-800">
-                                <th className="p-2 text-left border-b font-semibold w-32">
+                                <th className="p-2 text-left border-b font-semibold column-border fixed-column">
                                     Actions
                                 </th>
-                                <th className="dateTimeColumn p-2 text-left border-b font-semibold">
-                                    Date & Time
-                                </th>
+
                                 {columns
-                                    .filter((col) => !['actions', 'datetime'].includes(col.id))
-                                    .map((column) => (
-                                        <th
-                                            key={column.id}
-                                            className={`p-2 text-left border-b font-semibold cursor-pointer ${column.type === 'identifier' ? 'min-w-[150px]' : ''
-                                                } ${getColumnClass(column.name)}`}
-                                            onClick={() => handleSort(column.name)}
-                                        >
-                                            {column.name}
-                                            {sortConfig.key === column.name && (
-                                                <span className="ml-1">
-                                                    {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                                                </span>
-                                            )}
-                                        </th>
-                                    ))}
+                                    .filter((col) =>
+                                        !['actions', 'datetime'].includes(col.id) &&
+                                        (visibleColumns[currentTab]?.[col.id] !== false)
+                                    )
+                                    .map((column, index) => {
+                                        const isLastColumn = index === lastColumnIndex;
+                                        return (
+                                            <th
+                                                key={column.id}
+                                                className="p-2 text-left border-b font-semibold cursor-pointer column-border"
+                                                style={{ width: column.width || 150 }}
+                                            >
+                                                <div
+                                                    className="flex items-center justify-between"
+                                                    onClick={() => handleSort(column.name)}
+                                                >
+                                                    <div className={`flex-1 ${column.type === 'identifier' ? 'min-w-[100px]' : ''} ${getColumnClass(column.name)}`}>
+                                                        {column.name}
+                                                        {sortConfig.key === column.name && (
+                                                            <span className="ml-1">
+                                                                {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                {!isLastColumn && (
+                                                    <div
+                                                        className="react-resizable-handle"
+                                                        onMouseDown={(e) => {
+                                                            // Add custom resize handler
+                                                            const startX = e.clientX;
+                                                            const startWidth = column.width || 150;
+                                                            e.stopPropagation(); // Prevent sort trigger
+
+                                                            const onMouseMove = (moveEvent) => {
+                                                                const newWidth = Math.max(50, startWidth + (moveEvent.clientX - startX));
+                                                                // Update column width in state
+                                                                setColumns(prev =>
+                                                                    prev.map(col =>
+                                                                        col.id === column.id ? { ...col, width: newWidth } : col
+                                                                    )
+                                                                );
+                                                            };
+
+                                                            const onMouseUp = () => {
+                                                                document.removeEventListener('mousemove', onMouseMove);
+                                                                document.removeEventListener('mouseup', onMouseUp);
+                                                            };
+
+                                                            document.addEventListener('mousemove', onMouseMove);
+                                                            document.addEventListener('mouseup', onMouseUp);
+                                                        }}
+                                                    />
+                                                )}
+                                            </th>
+                                        );
+                                    })
+                                }
                             </tr>
                         </thead>
                         <tbody>
-                            {paginatedEntries.map((entry) => (
-                                <tr
-                                    key={entry.id}
-                                    className="hover:bg-neutral-100 dark:hover:bg-neutral-800"
-                                >
-                                    <td className="p-2 border-b w-32">
-                                        <div className="flex space-x-2">
-                                            <Button
-                                                onClick={() => handleEdit(entry.id)}
-                                                icon={AiFillEdit}
-                                                flexible={true}
-                                                className={'flex items-center justify-center'}
-                                            />
-                                            <Button
-                                                onClick={() => handleDelete(entry.id)}
-                                                icon={AiFillDelete}
-                                                flexible={true}
-                                                className={'flex items-center justify-center'}
-                                            />
-                                        </div>
+                            {paginatedEntries.length > 0 ? (
+                                paginatedEntries.map((entry) => (
+                                    <tr
+                                        key={entry.id}
+                                        className="hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                                    >
+                                        <td className="p-2 border-b fixed-column">
+                                            <div className="flex space-x-2">
+                                                <Button
+                                                    onClick={() => handleEdit(entry.id)}
+                                                    icon={AiFillEdit}
+                                                    flexible={true}
+                                                    className={'flex items-center justify-center'}
+                                                />
+                                                <Button
+                                                    onClick={() => handleDelete(entry.id)}
+                                                    icon={AiFillDelete}
+                                                    flexible={true}
+                                                    className={'flex items-center justify-center'}
+                                                />
+                                            </div>
+                                        </td>
+
+                                        {columns
+                                            .filter((col) =>
+                                                !['actions', 'datetime'].includes(col.id) &&
+                                                (visibleColumns[currentTab]?.[col.id] !== false)
+                                            )
+                                            .map((column) => (
+                                                <td
+                                                    key={`${entry.id}-${column.id}`}
+                                                    className={`p-2 border-b text-left ${column.type === 'identifier' ? 'min-w-[150px]' : ''
+                                                        } ${getColumnClass(column.name)}`}
+                                                >
+                                                    {entry.entry_data?.[column.name] || 'N/A'}
+                                                </td>
+                                            ))}
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan={columns.length + 1} className="p-4 text-center text-neutral-500">
+                                        {searchQuery ? 'No entries match your search criteria.' : 'No entries found.'}
                                     </td>
-                                    <td className="dateTimeColumn text-left p-2 border-b">
-                                        {entry.entry_data?.['Date & Time'] || 'N/A'}
-                                    </td>
-                                    {columns
-                                        .filter((col) => !['actions', 'datetime'].includes(col.id))
-                                        .map((column) => (
-                                            <td
-                                                key={`${entry.id}-${column.id}`}
-                                                className={`p-2 border-b text-left ${column.type === 'identifier'
-                                                        ? 'min-w-[150px]'
-                                                        : ''
-                                                    } ${getColumnClass(column.name)}`}
-                                            >
-                                                {entry.entry_data?.[column.name] || 'N/A'}
-                                            </td>
-                                        ))}
                                 </tr>
-                            ))}
+                            )}
                         </tbody>
                     </table>
                 </div>
+
                 {showEditWindow && (
                     <WindowWrapper
                         header="Edit Entry"
@@ -536,15 +555,25 @@ const DataViewer = () => {
                         {showEditWindow}
                     </WindowWrapper>
                 )}
-                <div className="px-5 py-3 flex items-center w-full">
+
+                <div className="px-5 py-3 flex justify-between items-center w-full">
+                    {/* Entry count display at the bottom - kept this one */}
+                    <EntryCountDisplay
+                        currentPageCount={paginatedEntries.length}
+                        totalFilteredCount={filteredEntries.length}
+                        totalCount={allEntries.length}
+                        isFiltered={searchQuery && searchQuery.trim() !== ''}
+                    />
+
                     <Pagination
                         currentPage={currentPage}
-                        totalPages={Math.ceil(entries.length / batchSize)}
+                        totalPages={Math.ceil(filteredEntries.length / batchSize)}
                         onPageChange={setCurrentPage}
                     />
                 </div>
             </div>
         </div>
     );
-};
+});
+
 export default DataViewer;

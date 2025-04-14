@@ -34,16 +34,20 @@ export default function ManageMembership({ CancelMemberships, setCurrentWindow }
             onLeftButton={CancelMemberships}
             leftButtonText="Close"
         >
-            <div className="flex flex-col space-y-4 p-4">
+            <div className="flex flex-col space-y-4 p-6">
                 {projectNames.length === 0 ? (
-                    <p className="text-center">You are not a member of any projects</p>
+                    <p className="text-center text-neutral-500 dark:text-neutral-400">
+                        You are not a member of any projects
+                    </p>
                 ) : (
                     projectNames.map((project) => (
                         <div
                             key={project}
-                            className="flex justify-between items-center p-4 bg-white dark:bg-neutral-800 rounded-lg shadow"
+                            className="flex justify-between items-center gap-x-8 p-4 bg-white dark:bg-neutral-800 rounded-xl shadow-sm border border-neutral-200 dark:border-neutral-700"
                         >
-                            <span className="text-lg">{project}</span>
+                        <span className="text-lg font-medium text-neutral-800 dark:text-neutral-100">
+                            {project}
+                        </span>
                             <Button
                                 text="Leave Project"
                                 onClick={() => handleLeaveProject(project)}

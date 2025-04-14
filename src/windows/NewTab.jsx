@@ -7,6 +7,7 @@ import { tabExists, createTab } from '../utils/firestore';
 import ColumnOptions from './ColumnOptions.jsx';
 import { useAtomValue } from 'jotai';
 import { currentUserEmail, currentProjectName } from '../utils/jotai.js';
+import { entryTypeOptions } from '../utils/globals.js';
 
 export default function NewTab({ CancelTab, OpenNewTab }) {
 
@@ -20,8 +21,8 @@ export default function NewTab({ CancelTab, OpenNewTab }) {
     const [unwantedCodes, setUnwantedCodes] = useState([]);
     const [utilizeUnwantedCodes, setUtilizeUnwantedCodes] = useState(false);
 
-    const [firstIdentifierDimension, setFirstIdentifierDimension] = useState('');
-    const [secondIdentifierDimension, setSecondIdentifierDimension] = useState('');
+    const [firstIdentifierDimension, setFirstIdentifierDimension] = useState('A');
+    const [secondIdentifierDimension, setSecondIdentifierDimension] = useState(1);
     const [columnNames, setColumnNames] = useState([]);
 
     const dimensionsChar = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
@@ -62,7 +63,6 @@ export default function NewTab({ CancelTab, OpenNewTab }) {
                 if (numEntries > 22000) {
                     throw new Error('Max entries reached.');
                 }
-
                 const appendedIdentifiers = pAppendedIdentifiers.slice(highestNumber);
                 const newBaseIdentifiers = [];
                 if (appendedIdentifiers.length === 0) {
@@ -84,9 +84,7 @@ export default function NewTab({ CancelTab, OpenNewTab }) {
             }
 
             identifiers.push(...recursiveGeneration(identifiers, identifiers, identifiers.length));
-
             const filteredIdentifiers = identifiers.filter(identifier => !unwanted.some(item => identifier.includes(item)));
-
             return filteredIdentifiers;
 
         } catch (error) {
@@ -121,7 +119,7 @@ export default function NewTab({ CancelTab, OpenNewTab }) {
         }
 
         const cleanedTabName = tabName.trim();
-        if (!tabName) {
+        if (!cleanedTabName) {
             notify(Type.error, 'Tab name cannot be empty.');
             return;
         }
@@ -134,17 +132,19 @@ export default function NewTab({ CancelTab, OpenNewTab }) {
                 unwantedCodesWithoutDuplicates,
             );
             if (finalPossibleIdentifiers.length === 0) {
+                notify(Type.error, "Couldn't generate identifiers.");
                 return;
             }
         }
 
-        setColumnNames(filteredColumnNames);
         setTabName(cleanedTabName);
         setPossibleIdentifiers(finalPossibleIdentifiers);
         setUnwantedCodes(unwantedCodesWithoutDuplicates);
+        setColumnNames(uniqueColumnNames);
 
-        const tabAlreadyExists = await tabExists(Email, SelectedProject, tabName);
-            if (!tabAlreadyExists) {
+        const tabAlreadyExists = await tabExists(Email, SelectedProject, cleanedTabName);
+        if (!tabAlreadyExists) {
+            if (uniqueColumnNames && uniqueColumnNames.length === 0) {
                 let columnName = '';
                 let columnDataType = '';
                 let entryOptions = [];
@@ -153,7 +153,7 @@ export default function NewTab({ CancelTab, OpenNewTab }) {
                 let columnOrder = '';
                 if (generateIdentifiers) {
                     columnName = 'Entry ID';
-                    columnDataType = 'auto_id';
+                    columnDataType = entryTypeOptions.AUTO_ID;
                     columnIdentifierDomain = true;
                     columnRequiredField = true;
                     columnOrder = 0;
@@ -176,20 +176,19 @@ export default function NewTab({ CancelTab, OpenNewTab }) {
                 );
                 if (tabCreated) {
                     notify(Type.success, `Tab created.`);
+                    OpenNewTab(cleanedTabName);
+                    return;
                 } else {
                     notify(Type.error, 'Error creating new tab.');
+                    return;
                 }
-            } else {
-                notify(Type.error, 'Tab already exists.');
-                return;
             }
-
-        if (filteredColumnNames.length > 0) {
-            setShowColumnOptions(true);
         } else {
-            OpenNewTab(tabName);
+            notify(Type.error, 'Tab already exists.');
             return;
         }
+        
+        setShowColumnOptions(true);
     };
 
     const closeColumnOptions = () => {
@@ -205,11 +204,11 @@ export default function NewTab({ CancelTab, OpenNewTab }) {
                     CancelColumnOptions={closeColumnOptions}
                     OpenNewTab={OpenNewTab}
                     tabName={tabName}
-                    GenerateIdentifiers={generateIdentifiers}
-                    PossibleIdentifiers={possibleIdentifiers}
-                    IdentifierDimension={identifierDimension}
-                    UnwantedCodes={unwantedCodes}
-                    UtilizeUnwantedCodes={utilizeUnwantedCodes}
+                    generateIdentifiers={generateIdentifiers}
+                    possibleIdentifiers={possibleIdentifiers}
+                    identifierDimension={identifierDimension}
+                    unwantedCodes={unwantedCodes}
+                    utilizeUnwantedCodes={utilizeUnwantedCodes}
                 />
             ) : (
                 <WindowWrapper

@@ -5,12 +5,33 @@ import { Type, notify } from '../components/Notifier';
 import { accountExists, verifyPassword } from '../utils/firestore';
 import CryptoJS from 'crypto-js';
 import { useSetAtom } from 'jotai';
-import { currentUserEmail } from '../utils/jotai.js';
+import { currentUserEmail, isAuthenticated } from '../utils/jotai.js';
+import { db } from '../utils/firebase';
+import { collection, addDoc } from 'firebase/firestore';
 
 export default function Login({ CancelLogin, OpenAccount }) {
     const [thisEmail, setThisEmail] = useState('');
     const [password, setPassword] = useState('');
     const setEmail = useSetAtom(currentUserEmail);
+    const setAuthenticated = useSetAtom(isAuthenticated);
+
+    const recordLoginHistory = async (email) => {
+        try {
+            const loginHistoryRef = collection(db, 'loginHistory');
+            const now = new Date();
+            await addDoc(loginHistoryRef, {
+                email: email,
+                loginDate: now.toLocaleDateString(),
+                loginTime: now.toLocaleTimeString(),
+                platform: 'desktop',
+                type: 'manual_login' // To identify manual logins
+            });
+            
+            console.log(`Login recorded for: ${email}`);
+        } catch (error) {
+            console.error('Error recording login history:', error);
+        }
+    };
 
     const attemptLogin = async () => {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -29,6 +50,8 @@ export default function Login({ CancelLogin, OpenAccount }) {
             const passwordIsCorrect = await verifyPassword(thisEmail, hashedPassword);
             if (passwordIsCorrect) {
                 setEmail(thisEmail);
+                setAuthenticated(true); // Set authenticated state
+                await recordLoginHistory(thisEmail);
                 notify(Type.success, 'Login successful.');
                 OpenAccount();
             } else {

@@ -6,6 +6,8 @@ import { Type, notify } from '../components/Notifier';
 import { tabExists, createTab, addColumn } from '../utils/firestore';
 import { useAtomValue } from 'jotai';
 import { currentUserEmail, currentProjectName, currentTableName } from '../utils/jotai.js';
+import { entryTypeOptions } from '../utils/globals.js';
+import InfoIcon from '../components/InfoIcon';
 
 export default function ColumnOptions({
     ColumnNames,
@@ -13,17 +15,16 @@ export default function ColumnOptions({
     CancelColumnOptions,
     OpenNewTab,
     tabName = '',
-    GenerateIdentifiers,
-    PossibleIdentifiers,
-    IdentifierDimension,
-    UnwantedCodes,
-    UtilizeUnwantedCodes,
     header = 'Column Options',
+    generateIdentifiers,
+    possibleIdentifiers,
+    identifierDimension,
+    unwantedCodes,
+    utilizeUnwantedCodes,
 }) {
 
     const SelectedProject = useAtomValue(currentProjectName);
-    const storedTabName = useAtomValue(currentTableName);
-    const TabName = tabName || storedTabName;
+    const TabName = tabName || useAtomValue(currentTableName);
     const Email = useAtomValue(currentUserEmail);
 
     const [rightButtonText, setRightButtonText] = useState('Next Column');
@@ -33,58 +34,132 @@ export default function ColumnOptions({
     const [entryOptions, setEntryOptions] = useState(Array.from({ length: ColumnNames.length }, () => []));
     const [identifierDomain, setIdentifierDomain] = useState(new Array(ColumnNames.length).fill(false));
     const [requiredField, setRequiredField] = useState(new Array(ColumnNames.length).fill(false));
-    const [order, setOrder] = useState(Array.from({ length: ColumnNames.length }, (_, i) => i));
 
-    const entryTypeOptions = ['number', 'text', 'date', 'multiple choice'];
+    // Create an array of options for components that need a list.
+    const entryTypeOptionsArray = Object.values(entryTypeOptions).filter(
+        (option) => option !== entryTypeOptions.AUTO_ID
+    );
 
-    const validInputs = useCallback(() => {
-        if (!entryTypeOptions.includes(dataType[columnIndex])) {
+    /**
+     * This validation function now accepts an override for the entryOptions
+     * so that we can pass in an updated copy that includes tempEntryOptions.
+     */
+    const validInputs = useCallback((direction, overrideEntryOptions = entryOptions) => {
+        // Validate that a proper entry type was selected unless going backward.
+        if (!entryTypeOptionsArray.includes(dataType[columnIndex]) && direction !== 'goBackward') {
             notify(Type.error, 'Must first select an entry type.');
             return false;
         }
 
-        if (dataType[columnIndex] === entryTypeOptions[3]) {
-            if (!entryOptions[columnIndex]) {
-                notify(Type.error, 'Must include entry options for multiple choice entry.');
+        // If it's a multiple choice, ensure we have entry options.
+        if (dataType[columnIndex] === entryTypeOptions.MULTIPLE_CHOICE) {
+            let currentOptions = overrideEntryOptions[columnIndex] || [];
+        
+            // Filter out placeholder or empty string values
+            currentOptions = currentOptions.filter(
+                (opt) => opt.trim() !== '' && opt.trim().toLowerCase() !== 'add here'
+            );
+        
+            const uniqueOptions = new Set(currentOptions);
+        
+            if (currentOptions.length < 2) {
+                notify(Type.error, 'Must include at least two valid entry options for multiple choice entry.');
                 return false;
             }
-            if (entryOptions[columnIndex].length !== new Set(entryOptions[columnIndex]).size) {
-                notify(Type.error, 'Entry choices must not contain duplicates.');
+        
+            if (uniqueOptions.size < 2) {
+                notify(Type.error, 'Entry choices must include at least two unique values.');
                 return false;
             }
         }
-        return true;
-    }, [columnIndex, dataType, entryOptions, entryTypeOptions]);
+        
+        
+        if (ColumnNames[columnIndex] === '' || ColumnNames[columnIndex] === null || ColumnNames[columnIndex] === undefined) {
+            notify(Type.error, "Column name can't be empty.");
+            return false;
+        }
 
-    const storeEntryOptions = useCallback(() => {
-        setEntryOptions((prevOptions) =>
-            prevOptions.map((option, i) =>
+        return true;
+    }, [columnIndex, dataType, entryOptions, entryTypeOptions, entryTypeOptionsArray, ColumnNames]);
+
+    /**
+     * Helper to compute updated entry options for the current column,
+     * replacing its value with tempEntryOptions.
+     */
+    const getUpdatedEntryOptions = () => {
+        if (dataType[columnIndex] === entryTypeOptions.MULTIPLE_CHOICE) {
+            return entryOptions.map((option, i) =>
                 i === columnIndex ? [...tempEntryOptions] : option
-            )
-        );
-    }, [tempEntryOptions, columnIndex]);
+            );
+        } else {
+            return entryOptions.map((option, i) =>
+                i === columnIndex ? [] : option
+            );
+        }
+    };    
 
     const goBackward = useCallback(() => {
-        if (validInputs()) {
-            storeEntryOptions();
+        const updatedEntryOptions = getUpdatedEntryOptions();
+        if (validInputs('goBackward', updatedEntryOptions)) {
+            setEntryOptions(updatedEntryOptions);
             setColumnIndex((prevIndex) => prevIndex - 1);
         }
-    }, [validInputs]);
+    }, [columnIndex, tempEntryOptions, entryOptions, validInputs]);
 
     const goForward = useCallback(() => {
-        if (validInputs()) {
-            storeEntryOptions();
+        const updatedEntryOptions = getUpdatedEntryOptions();
+    
+        if (validInputs(undefined, updatedEntryOptions)) {
+            setEntryOptions(updatedEntryOptions);
             setColumnIndex((prevIndex) => prevIndex + 1);
         }
-    }, [validInputs]);
+    }, [columnIndex, tempEntryOptions, entryOptions, validInputs]);
+    
 
     const storeNewTab = useCallback(async () => {
-        if (validInputs()) {
-            const finalEntryOptions = Array.from({ length: ColumnNames.length }, (_, i) =>
-                entryOptions[i].filter((name) => name !== 'Add Here'),
+        const updatedEntryOptions = getUpdatedEntryOptions();
+        if (validInputs(undefined, updatedEntryOptions)) {
+            let finalEntryOptions = updatedEntryOptions.map((options) =>
+                options.filter((name) => name !== 'Add Here')
             );
 
-            const tabAlreadyExists = await tabExists(Email, SelectedProject, TabName);
+            let tabAlreadyExists = await tabExists(Email, SelectedProject, TabName);
+
+            if (!tabAlreadyExists) {
+                let columnName = '';
+                let columnDataType = '';
+                let entryOptions = [];
+                let columnIdentifierDomain = '';
+                let columnRequiredField = '';
+                let columnOrder = '';
+                if (generateIdentifiers) {
+                    columnName = 'Entry ID';
+                    columnDataType = entryTypeOptions.AUTO_ID;
+                    columnIdentifierDomain = true;
+                    columnRequiredField = true;
+                    columnOrder = 0;
+                }
+
+                const tabCreated = await createTab(
+                    Email,
+                    SelectedProject,
+                    TabName,
+                    generateIdentifiers,
+                    possibleIdentifiers,
+                    identifierDimension,
+                    unwantedCodes,
+                    utilizeUnwantedCodes,
+                    columnName,
+                    columnDataType,
+                    entryOptions,
+                    columnIdentifierDomain,
+                    columnRequiredField,
+                    columnOrder,
+                );
+
+                tabAlreadyExists = tabCreated;
+            }
+
             if (tabAlreadyExists) {
                 for (let i = 0; i < ColumnNames.length; i++) {
                     const columnAdded = await addColumn(
@@ -102,26 +177,31 @@ export default function ColumnOptions({
                         return;
                     }
                 }
+            } else {
+                notify(Type.error, 'Error creating new tab.');
+                return;
             }
+            
+            notify(Type.success, 'Columns added successfully.');
             OpenNewTab(TabName);
         }
     }, [
-        validInputs,
         ColumnNames,
         Email,
         SelectedProject,
         TabName,
-        GenerateIdentifiers,
-        PossibleIdentifiers,
-        IdentifierDimension,
-        UnwantedCodes,
-        UtilizeUnwantedCodes,
-        entryOptions,
         dataType,
+        entryOptions,
+        tempEntryOptions,
         identifierDomain,
         requiredField,
-        order,
         OpenNewTab,
+        validInputs,
+        generateIdentifiers,
+        possibleIdentifiers,
+        identifierDimension,
+        unwantedCodes,
+        utilizeUnwantedCodes
     ]);
 
     const leftButtonClick = useMemo(() => {
@@ -130,7 +210,7 @@ export default function ColumnOptions({
 
     const rightButtonClick = useMemo(() => {
         return columnIndex === ColumnNames.length - 1 ? storeNewTab : goForward;
-    }, [columnIndex, storeNewTab, goForward]);
+    }, [columnIndex, storeNewTab, goForward, ColumnNames]);
 
     const handleColumnNameChange = (newName) => {
         const updatedColumnNames = [...ColumnNames];
@@ -141,7 +221,7 @@ export default function ColumnOptions({
     useEffect(() => {
         setTempEntryOptions(entryOptions[columnIndex]);
         setRightButtonText(columnIndex === ColumnNames.length - 1 ? 'Finish' : 'Next Column');
-    }, [columnIndex, ColumnNames.length]);
+    }, [columnIndex, ColumnNames.length, entryOptions]);
 
     return (
         <WindowWrapper
@@ -152,20 +232,36 @@ export default function ColumnOptions({
             rightButtonText={rightButtonText}
         >
             <div className="flex flex-col space-y-4">
-                <InputLabel
-                    label="Column Name"
-                    layout="horizontal-single"
-                    input={
-                        <input
-                            value={ColumnNames[columnIndex]}
-                            onChange={(e) => handleColumnNameChange(e.target.value)}
-                        />
-                    }
-                />
-                <span className="text-sm">Data Entry Type:</span>
+                <div className="flex items-center">
+                    <InputLabel
+                        label="Column Name"
+                        layout="horizontal-single"
+                        input={
+                            <input
+                                value={ColumnNames[columnIndex]}
+                                onChange={(e) => handleColumnNameChange(e.target.value)}
+                            />
+                        }
+                    />
+                    <InfoIcon 
+                        text="Enter a descriptive name for this column. This name will be visible in the data table headers."
+                        position="right"
+                        className="ml-2"
+                    />
+                </div>
+
+                <div className="flex items-center">
+                    <span className="text-sm">Data Entry Type:</span>
+                    <InfoIcon 
+                        text="Select the type of data this column will store. This affects validation, formatting, and how users can interact with it."
+                        position="top"
+                        className="ml-2"
+                        size={14}
+                    />
+                </div>
                 <RadioButtons
                     layout="horizontal"
-                    options={entryTypeOptions}
+                    options={entryTypeOptionsArray}
                     selectedOption={dataType[columnIndex]}
                     setSelectedOption={(type) => {
                         setDataType((prev) => {
@@ -175,37 +271,66 @@ export default function ColumnOptions({
                         });
                     }}
                 />
-                {dataType[columnIndex] === entryTypeOptions[3] && (
-                    <DropdownFlex
-                        options={tempEntryOptions}
-                        setOptions={setTempEntryOptions}
-                        label="Entry Choices"
-                    />
+
+                {dataType[columnIndex] === entryTypeOptions.MULTIPLE_CHOICE && (
+                    <div className="mt-2">
+                        <div className="flex items-center mb-2">
+                            <span className="text-sm">Entry Choices:</span>
+                            <InfoIcon 
+                                text="Add the options users can select from. Click 'Add Here' to add a new option. At least two unique options are required."
+                                position="right"
+                                className="ml-2"
+                                size={14}
+                            />
+                        </div>
+                        <DropdownFlex
+                            options={tempEntryOptions}
+                            setOptions={setTempEntryOptions}
+                            label="Entry Choices"
+                        />
+                    </div>
                 )}
-                <YesNoSelector
-                    label="Make column a required field"
-                    layout="horizontal-start"
-                    selection={requiredField[columnIndex]}
-                    setSelection={(selection) =>
-                        setRequiredField((prev) => {
-                            const updated = [...prev];
-                            updated[columnIndex] = selection;
-                            return updated;
-                        })
-                    }
-                />
-                <YesNoSelector
-                    label="Include column in entry ID domain"
-                    layout="horizontal-start"
-                    selection={identifierDomain[columnIndex]}
-                    setSelection={(selection) =>
-                        setIdentifierDomain((prev) => {
-                            const updated = [...prev];
-                            updated[columnIndex] = selection;
-                            return updated;
-                        })
-                    }
-                />
+
+                <div className="flex items-center">
+                    <YesNoSelector
+                        label="Make column a required field"
+                        layout="horizontal-start"
+                        selection={requiredField[columnIndex]}
+                        setSelection={(selection) =>
+                            setRequiredField((prev) => {
+                                const updated = [...prev];
+                                updated[columnIndex] = selection;
+                                return updated;
+                            })
+                        }
+                    />
+                    <InfoIcon 
+                        text="When set to Yes, users must provide a value for this field before saving an entry."
+                        position="right"
+                        className="ml-2"
+                    />
+                </div>
+
+                <div className="flex items-center">
+                    <YesNoSelector
+                        label="Include column in entry ID domain"
+                        layout="horizontal-start"
+                        selection={identifierDomain[columnIndex]}
+                        setSelection={(selection) =>
+                            setIdentifierDomain((prev) => {
+                                const updated = [...prev];
+                                updated[columnIndex] = selection;
+                                return updated;
+                            })
+                        }
+                    />
+                    <InfoIcon 
+                        text="If enabled, this field will be used when generating unique identifiers for entries. Useful for creating structured IDs based on field values."
+                        position="right"
+                        className="ml-2"
+                        width={250}
+                    />
+                </div>
             </div>
         </WindowWrapper>
     );

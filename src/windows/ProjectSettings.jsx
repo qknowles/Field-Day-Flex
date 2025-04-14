@@ -14,11 +14,14 @@ import Button from '../components/Button.jsx';
 import { notify, Type } from '../components/Notifier.jsx';
 import { useAtomValue, useAtom } from 'jotai';
 import { currentUserEmail, currentProjectName, allProjectNames } from '../utils/jotai.js';
+import EditTab from './EditTab.jsx';
+import DeleteTab from './DeleteTab.jsx';
+import InfoIcon from '../components/InfoIcon';
 
 export default function ProjectSettings({ CloseProjectSettings }) {
     // State definitions
     const [loading, setLoading] = useState(true);
-    const [isAuthorized, setIsAuthorized] = useState(false);
+    const [, setIsAuthorized] = useState(false);
     const [isOwner, setIsOwner] = useState(false);
     const [canEdit, setCanEdit] = useState(false);
     const [documentId, setDocumentId] = useState(null);
@@ -30,6 +33,9 @@ export default function ProjectSettings({ CloseProjectSettings }) {
     const [isInitialLoad, setIsInitialLoad] = useState(true);
     const [projectNames, setProjectNames] = useAtom(allProjectNames);
     const userEmail = useAtomValue(currentUserEmail);
+    const [showEditTab, setShowEditTab] = useState(false);
+    const [showDeleteTab, setShowDeleteTab] = useState(false);
+
 
     // Fetch document ID when project name is available
     useEffect(() => {
@@ -257,6 +263,65 @@ export default function ProjectSettings({ CloseProjectSettings }) {
         }
     }
 
+    const renderMembersList = () => {
+        console.log('Rendering members list with:', members);
+        if (!members || members.length === 0) {
+            return <div>No members found</div>;
+        }
+
+        return (
+            <div>
+                <div className="flex items-center justify-between mb-2 px-2">
+                    <span className="font-medium">Email</span>
+                    <div className="flex items-center">
+                        <span className="font-medium">Role</span>
+                        <InfoIcon 
+                            text="Contributor: Can add and edit data. Admin: Can manage columns and users. Owner: Has full control of the project."
+                            position="left"
+                            className="ml-1"
+                            size={14}
+                            width={250}
+                        />
+                    </div>
+                </div>
+                {members.map((member, index) => (
+                    <div key={index} className="flex items-center space-x-4 p-2">
+                        {canEdit && (
+                            <button
+                                className="text-red-500 font-bold"
+                                onClick={() => removeMember(member.email, member.role)}
+                            >
+                                <AiFillDelete />
+                            </button>
+                        )}
+                        <span className="flex-grow">{member.email}</span>
+                        {canEdit ? (
+                            <DropdownSelector
+                                options={['Owner', 'Admin', 'Contributor']}
+                                selection={member.role}
+                                setSelection={(newRole) => {
+                                    if (member.role === 'Owner' && !isOwner) {
+                                        notify(Type.error, 'Only project owners can modify owner roles');
+                                        return;
+                                    }
+                                    const updatedMembers = members.map((m) => {
+                                        if (m.email === member.email) {
+                                            return { ...m, role: newRole };
+                                        }
+                                        return m;
+                                    });
+                                    setMembers(updatedMembers);
+                                }}
+                            />
+                        ) : (
+                            <span className="px-3 py-1 bg-neutral-200 dark:bg-neutral-700 rounded">{member.role}</span>
+                        )}
+                    </div>
+                ))}
+            </div>
+        );
+    };
+
     // Confirmation dialog for project deletion
     if (showDeleteConfirm) {
         return (
@@ -268,7 +333,14 @@ export default function ProjectSettings({ CloseProjectSettings }) {
                 rightButtonText="Delete Project"
             >
                 <div className="p-5 space-y-4">
-                    <p className="text-red-500 font-bold">Are you sure you want to delete this project?</p>
+                    <div className="flex items-center">
+                        <p className="text-red-500 font-bold">Are you sure you want to delete this project?</p>
+                        <InfoIcon 
+                            text="This action will permanently remove the project and all its data. All members will lose access to the project."
+                            position="right"
+                            className="ml-2"
+                        />
+                    </div>
                     <p>This will permanently delete:</p>
                     <ul className="list-disc pl-5 space-y-2">
                         <li>All project data</li>
@@ -282,48 +354,6 @@ export default function ProjectSettings({ CloseProjectSettings }) {
         );
     }
 
-    const renderMembersList = () => {
-        console.log('Rendering members list with:', members);
-        if (!members || members.length === 0) {
-            return <div>No members found</div>;
-        }
-
-        return members.map((member, index) => (
-            <div key={index} className="flex items-center space-x-4 p-2">
-                {canEdit && (
-                    <button
-                        className="text-red-500 font-bold"
-                        onClick={() => removeMember(member.email, member.role)}
-                    >
-                        <AiFillDelete />
-                    </button>
-                )}
-                <span className="flex-grow">{member.email}</span>
-                {canEdit ? (
-                    <DropdownSelector
-                        options={['Owner', 'Admin', 'Contributor']}
-                        selection={member.role}
-                        setSelection={(newRole) => {
-                            if (member.role === 'Owner' && !isOwner) {
-                                notify(Type.error, 'Only project owners can modify owner roles');
-                                return;
-                            }
-                            const updatedMembers = members.map((m) => {
-                                if (m.email === member.email) {
-                                    return { ...m, role: newRole };
-                                }
-                                return m;
-                            });
-                            setMembers(updatedMembers);
-                        }}
-                    />
-                ) : (
-                    <span className="px-3 py-1 bg-neutral-200 dark:bg-neutral-700 rounded">{member.role}</span>
-                )}
-            </div>
-        ));
-    };
-
     return (
         <WindowWrapper
             header={`Manage ${projectName} Project`}
@@ -334,23 +364,38 @@ export default function ProjectSettings({ CloseProjectSettings }) {
         >
             <div className="flex flex-col space-y-4 p-5 text-neutral-900 dark:text-white">
                 {/* Project Name Input */}
-                <InputLabel
-                    label="Project Name"
-                    layout="horizontal-single"
-                    input={
-                        <input
-                            type="text"
-                            className="border rounded px-2 py-1 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
-                            value={projectName}
-                            onChange={(e) => setProjectName(e.target.value)}
-                            disabled={!canEdit}
-                        />
-                    }
-                />
+                <div className="flex items-center">
+                    <InputLabel
+                        label="Project Name"
+                        layout="horizontal-single"
+                        input={
+                            <input
+                                type="text"
+                                className="border rounded px-2 py-1 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
+                                value={projectName}
+                                onChange={(e) => setProjectName(e.target.value)}
+                                disabled={!canEdit}
+                            />
+                        }
+                    />
+                    <InfoIcon 
+                        text="The name of your project. This is displayed in the project selection dropdown and used to organize your data."
+                        position="right"
+                        className="ml-2"
+                    />
+                </div>
 
                 {/* Members List */}
                 <div>
-                    <h3 className="font-semibold">Members</h3>
+                    <div className="flex items-center">
+                        <h3 className="font-semibold">Members</h3>
+                        <InfoIcon 
+                            text="Project members can access and contribute to this project based on their assigned roles."
+                            position="right"
+                            className="ml-2"
+                            size={14}
+                        />
+                    </div>
                     <div className="space-y-2">
                         {renderMembersList()}
                     </div>
@@ -359,7 +404,16 @@ export default function ProjectSettings({ CloseProjectSettings }) {
                 {/* Add new member section - only visible to admins/owners */}
                 {canEdit && (
                     <div>
-                        <h3 className="font-semibold">Add a new Member:</h3>
+                        <div className="flex items-center">
+                            <h3 className="font-semibold">Add a new Member:</h3>
+                            <InfoIcon 
+                                text="Add collaborators to your project. Different roles have different permissions: Contributors can add and edit data, Admins can manage columns and users, and Owners have full control of the project."
+                                position="right"
+                                className="ml-2"
+                                size={14}
+                                width={300}
+                            />
+                        </div>
                         <InputLabel
                             label="Member Email"
                             layout="horizontal-single"
@@ -391,18 +445,60 @@ export default function ProjectSettings({ CloseProjectSettings }) {
                         />
                         <br />
                         <div className="flex justify-end mt-4">
-                            <Button text="Add member" onClick={addMember} />
+                            <Button text="Add member" onClick={addMember} className="w-full" />
                         </div>
                     </div>
                 )}
 
+                {/* Edit Tabs Button */}
+                {canEdit && (
+                    <div className="flex items-center justify-end mt-4">
+                        <Button
+                           text="Edit Tab Name"
+                           onClick={() => setShowEditTab(true)}
+                           className="w-full mr-2"
+                        />
+                        <InfoIcon 
+                            text="Rename tabs in this project. This will update the tab names throughout your data."
+                            position="left"
+                            size={14}
+                        />
+                    </div>
+                )}
+                {showEditTab && <EditTab CloseEditTab={() => setShowEditTab(false)} />}
+
+
+                {/* Delete Tabs Button */}
+                {canEdit && (
+                    <div className="flex items-center justify-end mt-4">
+                        <Button
+                           text="Delete Tab"
+                           onClick={() => setShowDeleteTab(true)}
+                           className="w-full mr-2"
+                        />
+                        <InfoIcon 
+                            text="Permanently delete a tab and all its data. This action cannot be undone."
+                            position="left"
+                            size={14}
+                        />
+                    </div>
+                )}
+                 {showDeleteTab && <DeleteTab CloseDeleteTab={() => setShowDeleteTab(false)} />}
+
+
                 {/* Delete Project Button (Only shown to owners) */}
                 {isOwner && (
-                    <div className="flex justify-end mt-4">
+                    <div className="flex items-center justify-end mt-4">
                         <Button
                             text="Delete Project"
                             onClick={() => setShowDeleteConfirm(true)}
-                            className="bg-red-600 hover:bg-red-700"
+                            className="bg-red-600 hover:bg-red-700 w-full mr-2"
+                        />
+                        <InfoIcon 
+                            text="Permanently delete this project and all its data. This action cannot be undone and will remove access for all members."
+                            position="left"
+                            size={14}
+                            width={300}
                         />
                     </div>
                 )}

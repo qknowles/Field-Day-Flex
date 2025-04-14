@@ -17,17 +17,57 @@ export const generateCSVData = async (selectedProject, selectedTab, email) => {
             key: col.name ? String(col.name) : "Unknown_Column"
         }));
 
-        const headers = [{ label: "Date & Time", key: "entry_date" }, ...columnHeaders];
+        // Add separate Date and Time headers
+        const headers = [
+            { label: "Date", key: "entry_date_only" }, 
+            { label: "Time", key: "entry_time_only" },
+            ...columnHeaders
+        ];
 
         // Fetch entries dynamically
         let entries = await getEntriesForTab(selectedProject, selectedTab, email);
 
-        //**Filter out deleted entries**
+        // **Filter out deleted entries**
         entries = entries.filter(entry => !entry.deleted || entry.deleted === false);
 
+        // **Sort entries in descending order (newest first)**
+        entries.sort((a, b) => {
+            const dateA = new Date(a.entry_date);
+            const dateB = new Date(b.entry_date);
+            return dateB - dateA; // Newest to oldest
+        });
+
+        // Function to properly extract Firebase date & time with correct timezone
+        const extractDateTime = (entry_date) => {
+            if (!entry_date) return { date: "N/A", time: "N/A" };
+
+            let dateObj;
+            if (typeof entry_date === "string") {
+                dateObj = new Date(entry_date);
+            } else if (entry_date.toDate) {
+                dateObj = entry_date.toDate(); // Handle Firestore Timestamp
+            } else {
+                dateObj = new Date(entry_date);
+            }
+
+            if (isNaN(dateObj)) return { date: "N/A", time: "N/A" };
+
+            // Convert to local time (same as Firebase stored format)
+            const localDate = dateObj.toLocaleDateString("en-US"); // Format: MM/DD/YYYY
+            const localTime = dateObj.toLocaleTimeString("en-US", { hour12: false }); // Format: HH:MM:SS
+
+            return {
+                date: localDate, // Ensure the date is correct
+                time: localTime  // Ensure time is correct
+            };
+        };
+
         const formattedData = entries.map(entry => {
+            const { date, time } = extractDateTime(entry.entry_date);
+
             let formattedEntry = {
-                entry_date: entry.entry_date?.toISOString?.() || "N/A"  
+                entry_date_only: date,
+                entry_time_only: time
             };
 
             columns.forEach(col => {
