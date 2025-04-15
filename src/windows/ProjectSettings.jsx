@@ -458,6 +458,7 @@ export default function ProjectSettings({ CloseProjectSettings }) {
                             text="Edit Tab Name"
                             onClick={() => setShowEditTab(true)}
                             className="w-full mr-2"
+                            disabled={tabNames.length < 1}
                         />
                         <InfoIcon
                             text="Rename tabs in this project. This will update the tab names throughout your data."
