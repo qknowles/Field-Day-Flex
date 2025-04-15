@@ -13,7 +13,7 @@ import {
 import Button from '../components/Button.jsx';
 import { notify, Type } from '../components/Notifier.jsx';
 import { useAtomValue, useAtom } from 'jotai';
-import { currentUserEmail, currentProjectName, allProjectNames } from '../utils/jotai.js';
+import { currentUserEmail, currentProjectName, allProjectNames, allTableNames } from '../utils/jotai.js';
 import EditTab from './EditTab.jsx';
 import DeleteTab from './DeleteTab.jsx';
 import InfoIcon from '../components/InfoIcon';
@@ -32,6 +32,7 @@ export default function ProjectSettings({ CloseProjectSettings }) {
     const [projectName, setProjectName] = useAtom(currentProjectName);
     const [isInitialLoad, setIsInitialLoad] = useState(true);
     const [projectNames, setProjectNames] = useAtom(allProjectNames);
+    const tabNames = useAtomValue(allTableNames);
     const userEmail = useAtomValue(currentUserEmail);
     const [showEditTab, setShowEditTab] = useState(false);
     const [showDeleteTab, setShowDeleteTab] = useState(false);
@@ -275,7 +276,7 @@ export default function ProjectSettings({ CloseProjectSettings }) {
                     <span className="font-medium">Email</span>
                     <div className="flex items-center">
                         <span className="font-medium">Role</span>
-                        <InfoIcon 
+                        <InfoIcon
                             text="Contributor: Can add and edit data. Admin: Can manage columns and users. Owner: Has full control of the project."
                             position="left"
                             className="ml-1"
@@ -335,7 +336,7 @@ export default function ProjectSettings({ CloseProjectSettings }) {
                 <div className="p-5 space-y-4">
                     <div className="flex items-center">
                         <p className="text-red-500 font-bold">Are you sure you want to delete this project?</p>
-                        <InfoIcon 
+                        <InfoIcon
                             text="This action will permanently remove the project and all its data. All members will lose access to the project."
                             position="right"
                             className="ml-2"
@@ -378,7 +379,7 @@ export default function ProjectSettings({ CloseProjectSettings }) {
                             />
                         }
                     />
-                    <InfoIcon 
+                    <InfoIcon
                         text="The name of your project. This is displayed in the project selection dropdown and used to organize your data."
                         position="right"
                         className="ml-2"
@@ -389,7 +390,7 @@ export default function ProjectSettings({ CloseProjectSettings }) {
                 <div>
                     <div className="flex items-center">
                         <h3 className="font-semibold">Members</h3>
-                        <InfoIcon 
+                        <InfoIcon
                             text="Project members can access and contribute to this project based on their assigned roles."
                             position="right"
                             className="ml-2"
@@ -406,7 +407,7 @@ export default function ProjectSettings({ CloseProjectSettings }) {
                     <div>
                         <div className="flex items-center">
                             <h3 className="font-semibold">Add a new Member:</h3>
-                            <InfoIcon 
+                            <InfoIcon
                                 text="Add collaborators to your project. Different roles have different permissions: Contributors can add and edit data, Admins can manage columns and users, and Owners have full control of the project."
                                 position="right"
                                 className="ml-2"
@@ -454,11 +455,11 @@ export default function ProjectSettings({ CloseProjectSettings }) {
                 {canEdit && (
                     <div className="flex items-center justify-end mt-4">
                         <Button
-                           text="Edit Tab Name"
-                           onClick={() => setShowEditTab(true)}
-                           className="w-full mr-2"
+                            text="Edit Tab Name"
+                            onClick={() => setShowEditTab(true)}
+                            className="w-full mr-2"
                         />
-                        <InfoIcon 
+                        <InfoIcon
                             text="Rename tabs in this project. This will update the tab names throughout your data."
                             position="left"
                             size={14}
@@ -472,18 +473,19 @@ export default function ProjectSettings({ CloseProjectSettings }) {
                 {canEdit && (
                     <div className="flex items-center justify-end mt-4">
                         <Button
-                           text="Delete Tab"
-                           onClick={() => setShowDeleteTab(true)}
-                           className="w-full mr-2"
+                            text="Delete Tab"
+                            onClick={() => setShowDeleteTab(true)}
+                            className="w-full mr-2"
+                            disabled={tabNames.length < 1}
                         />
-                        <InfoIcon 
+                        <InfoIcon
                             text="Permanently delete a tab and all its data. This action cannot be undone."
                             position="left"
                             size={14}
                         />
                     </div>
                 )}
-                 {showDeleteTab && <DeleteTab CloseDeleteTab={() => setShowDeleteTab(false)} />}
+                {showDeleteTab && <DeleteTab CloseDeleteTab={() => setShowDeleteTab(false)} />}
 
 
                 {/* Delete Project Button (Only shown to owners) */}
@@ -494,7 +496,7 @@ export default function ProjectSettings({ CloseProjectSettings }) {
                             onClick={() => setShowDeleteConfirm(true)}
                             className="bg-red-600 hover:bg-red-700 w-full mr-2"
                         />
-                        <InfoIcon 
+                        <InfoIcon
                             text="Permanently delete this project and all its data. This action cannot be undone and will remove access for all members."
                             position="left"
                             size={14}
