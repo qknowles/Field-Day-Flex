@@ -37,6 +37,7 @@ export default function AccountSettings({ CloseAccountSettings }) {
     const [email, setEmail] = useAtom(currentUserEmail);
     const [password, setPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
+    const [passwordsMatch, setPasswordsMatch] = useState(true);
     const [confirmPassword, setConfirmPassword] = useState('');
     const [name, setName] = useState('');
     const [changedEmail, setChangedEmail] = useState(email);
@@ -222,7 +223,10 @@ export default function AccountSettings({ CloseAccountSettings }) {
                     input={
                         <input
                             type="password"
-                            onChange={(e) => setNewPassword(e.target.value)}
+                            onChange={(e) => {
+                                setNewPassword(e.target.value);
+                                setPasswordsMatch(e.target.value === confirmPassword);
+                            }}
                         />
                     }
                 />
@@ -232,10 +236,24 @@ export default function AccountSettings({ CloseAccountSettings }) {
                     input={
                         <input
                             type="password"
-                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            onChange={(e) => {
+                                setConfirmPassword(e.target.value);
+                                setPasswordsMatch(newPassword === e.target.value);
+                            }}
                         />
                     }
                 />
+                {newPassword && confirmPassword && !passwordsMatch && (
+                    <div className="text-red-500 text-sm ml-2 mt-[-12px]">
+                        Passwords do not match. A password must:
+                        <ol>
+                            <li>1. Be at least 8 characters long</li>
+                            <li>2. Include at least one number</li>
+                            <li>3. Include one special character</li>
+                        </ol>
+                    </div>
+                )}
+
             </div>
         </WindowWrapper>
     );
