@@ -255,7 +255,7 @@ export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntry
                             value={
                                 data_type === entryTypeOptions.DATE
                                     ? parseDateTimeInput(userEntries[name])
-                                    : userEntries[name] || ''
+                                    : userEntries[name] ?? ''
                             }
                             onChange={(e) => {
                                 const value = e.target.value;
