@@ -72,13 +72,8 @@ export default function TablePage() {
             if (selectedProject && selectedTab && email) {
                 try {
                     const columnsData = await getColumnsCollection(selectedProject, selectedTab, email);
-                    console.log(columnsData.length);
                     if (columnsData.length > 0) {
-                        const defaultColumns = [
-                            { id: 'actions', name: 'Actions', type: 'actions', order: -3 },
-                        ];
-
-                        const sortedColumns = [...defaultColumns, ...columnsData].sort(
+                        const sortedColumns = [...columnsData].sort(
                             (a, b) => a.order - b.order
                         );
 
@@ -95,15 +90,9 @@ export default function TablePage() {
 
 
     const toggleColumn = (columnId) => {
-        console.log('TablePage - Toggling column:', columnId, 'Tab:', selectedTab);
-
         setVisibleColumns(prev => {
             // Get the current visibility settings for the tab or initialize with empty object
             const currentTabSettings = prev[selectedTab] || {};
-
-            // Log the current state for debugging
-            console.log('Current visibility:', currentTabSettings[columnId]);
-            console.log('Changing to:', !currentTabSettings[columnId]);
 
             // Create a new state object with the updated visibility
             const newState = {
@@ -113,8 +102,6 @@ export default function TablePage() {
                     [columnId]: !currentTabSettings[columnId]
                 }
             };
-
-            console.log('New visibility state:', newState[selectedTab]);
             return newState;
         });
     };
@@ -223,7 +210,6 @@ export default function TablePage() {
     const recordAutoLogin = async () => {
         // Check both the module variable and the ref to be extra safe
         if (!email || hasRecordedLoginForSession.value || autoLoginRecordedRef.current) {
-            console.log('Auto login already recorded this session, skipping');
             return;
         }
 
@@ -243,7 +229,6 @@ export default function TablePage() {
             autoLoginRecordedRef.current = true;
             hasRecordedLoginForSession.value = true;
 
-            console.log('Auto login recorded for:', email);
         } catch (error) {
             console.error('Error recording login history:', error);
         }
@@ -278,7 +263,7 @@ export default function TablePage() {
                             text="New Entry"
                             onClick={() => setShowNewEntry(true)}
                             className="mr-6"
-                            disabled={columns.length < 2}
+                            disabled={columns.length < 1}
                         />
                         <Button text="New Column" onClick={() => setShowColumnOptions(true)} className="mr-6" />
                         <Button text="Manage Columns" onClick={() => setShowManageColumns(true)} />
