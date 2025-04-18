@@ -530,7 +530,7 @@ const DataViewer = forwardRef((props, ref) => {
                                                     className={`p-2 border-b text-left ${column.type === 'identifier' ? 'min-w-[150px]' : ''
                                                         } ${getColumnClass(column.name)}`}
                                                 >
-                                                    {entry.entry_data?.[column.name] || 'N/A'}
+                                                    {entry.entry_data?.[column.name] ?? 'N/A'}
                                                 </td>
                                             ))}
                                     </tr>
