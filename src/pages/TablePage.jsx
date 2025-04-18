@@ -68,19 +68,22 @@ export default function TablePage() {
 
     useEffect(() => {
         const fetchColumns = async () => {
+            setColumns([]);
             if (selectedProject && selectedTab && email) {
                 try {
                     const columnsData = await getColumnsCollection(selectedProject, selectedTab, email);
-                    const defaultColumns = [
-                        { id: 'actions', name: 'Actions', type: 'actions', order: -3 },
-                        { id: 'datetime', name: 'Date & Time', type: 'datetime', order: -2 },
-                    ];
+                    console.log(columnsData.length);
+                    if (columnsData.length > 0) {
+                        const defaultColumns = [
+                            { id: 'actions', name: 'Actions', type: 'actions', order: -3 },
+                        ];
 
-                    const sortedColumns = [...defaultColumns, ...columnsData].sort(
-                        (a, b) => a.order - b.order
-                    );
+                        const sortedColumns = [...defaultColumns, ...columnsData].sort(
+                            (a, b) => a.order - b.order
+                        );
 
-                    setColumns(sortedColumns);
+                        setColumns(sortedColumns);
+                    }
                 } catch (error) {
                     console.error('Error fetching columns:', error);
                 }
@@ -271,7 +274,12 @@ export default function TablePage() {
                 <div className="flex items-center justify-between pt-3 px-5 pb-3 dark:bg-neutral-950 w-full">
                     <div className="flex items-center">
                         <p className="text-2xl mr-6">{selectedTab} - Entries</p>
-                        <Button text="New Entry" onClick={() => setShowNewEntry(true)} className="mr-6" />
+                        <Button
+                            text="New Entry"
+                            onClick={() => setShowNewEntry(true)}
+                            className="mr-6"
+                            disabled={columns.length < 2}
+                        />
                         <Button text="New Column" onClick={() => setShowColumnOptions(true)} className="mr-6" />
                         <Button text="Manage Columns" onClick={() => setShowManageColumns(true)} />
                     </div>
