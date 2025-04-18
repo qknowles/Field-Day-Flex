@@ -90,6 +90,23 @@ export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntry
     };
 
     const validEntries = async () => {
+
+        const isEmpty = (value) =>
+            value === '' ||
+            value === null ||
+            value === undefined ||
+            value === 'Select' ||
+            (Array.isArray(value) && value.length === 0);
+
+        const allEmpty = columnsCollection.every(
+            ({ name }) => isEmpty(userEntries[name])
+        );
+
+        if (allEmpty) {
+            notify(Type.error, 'Form cannot be empty.');
+            return false;
+        }
+
         for (const column of columnsCollection.sort((a, b) => a.order - b.order)) {
             const { name, data_type, required_field, identifier_domain } = column;
             const value = userEntries[name];
@@ -100,44 +117,43 @@ export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntry
                         notify(Type.error, `The field "${name}" must be a valid integer number.`);
                         return false;
                     }
-                
-                    console.log(`[${name}] allow_negative:`, column.allow_negative, 'value:', value);
-
                     if (!column.allow_negative && Number(value) < 0) {
                         notify(Type.error, `Negative values are not allowed for "${name}".`);
                         return false;
                     }
                 }
-                
+
                 if (data_type === entryTypeOptions.DECIMAL) {
                     if (!/^-?\d+(\.\d+)?$/.test(value)) {
                         notify(Type.error, `The field "${name}" must be a valid decimal number.`);
                         return false;
                     }
-                   
-                    console.log(`[${name}] allow_negative:`, column.allow_negative, 'value:', value);
-
                     if (!column.allow_negative && Number(value) < 0) {
                         notify(Type.error, `Negative values are not allowed for "${name}".`);
                         return false;
                     }
                 }
-                
 
-                if (data_type === entryTypeOptions.DATE && !/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}$/.test(value)) {
+                if (
+                    data_type === entryTypeOptions.DATE &&
+                    !/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}$/.test(value)
+                ) {
                     notify(
                         Type.error,
-                        `The field "${name}" must be in the format YYYY/MM/DD HH:MM:SS.`,
+                        `The field "${name}" must be in the format YYYY/MM/DD HH:MM:SS.`
                     );
                     return false;
                 }
 
-                if (data_type === entryTypeOptions.AUTO_ID && !/^(?:[A-Z]+[0-9]+)(?:-[A-Z]+[0-9]+)*$/i.test(value)) {
+                if (
+                    data_type === entryTypeOptions.AUTO_ID &&
+                    !/^(?:[A-Z]+[0-9]+)(?:-[A-Z]+[0-9]+)*$/i.test(value)
+                ) {
                     notify(Type.error, `Please enter a valid code for "${name}".`);
                     return false;
                 }
 
-                if (value && data_type === entryTypeOptions.AUTO_ID) {
+                if (data_type === entryTypeOptions.AUTO_ID) {
                     const idIsAlreadyUsed = await idAlreadyUsed(email, projectName, tabName, value, userEntries);
                     if (idIsAlreadyUsed) {
                         notify(Type.error, idIsAlreadyUsed);
@@ -146,7 +162,7 @@ export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntry
                 }
             }
 
-            if ((required_field || identifier_domain) && (value === '' || value === null || value === undefined || value === 'Select')) {
+            if ((required_field || identifier_domain) && isEmpty(value)) {
                 notify(Type.error, `"${name}" is a ${required_field ? 'required' : 'ID domain'} ${data_type} field that must be entered.`);
                 return false;
             }
