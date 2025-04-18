@@ -47,8 +47,6 @@ export default function TablePage() {
 
     // Handle search functionality
     const handleSearch = (query) => {
-        console.log("Searching for:", query);
-        // The actual filtering is handled in the DataViewer component
     };
 
     // Reset column visibility
