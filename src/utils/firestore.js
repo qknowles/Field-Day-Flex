@@ -1239,15 +1239,23 @@ export const getRequiredFields = async (email, projectName, tabName) => {
 
 export const updateTabName = async (projectName, oldTabName, newTabName, email) => {
     try {
+        // First, check if user has admin or owner permissions
         const projectRef = collection(db, 'Projects');
         const projectQuery = query(
             projectRef,
-            where('project_name', '==', projectName)
+            and(
+                where('project_name', '==', projectName),
+                or(
+                    where('admins', 'array-contains', email),
+                    where('owners', 'array-contains', email)
+                )
+            )
         );
         const projectSnapshot = await getDocs(projectQuery);
 
         if (projectSnapshot.empty) {
-            throw new Error('Project not found.');
+            console.error('Project not found or user does not have permission');
+            return false;
         }
 
         const projectDoc = projectSnapshot.docs[0];
@@ -1292,15 +1300,22 @@ export const updateTabName = async (projectName, oldTabName, newTabName, email) 
 
 export const deleteTab = async (projectName, tabName, email) => {
     try {
+        // First, check if user has admin or owner permissions
         const projectRef = collection(db, 'Projects');
         const projectQuery = query(
             projectRef,
-            where('project_name', '==', projectName)
+            and(
+                where('project_name', '==', projectName),
+                or(
+                    where('admins', 'array-contains', email),
+                    where('owners', 'array-contains', email)
+                )
+            )
         );
         const projectSnapshot = await getDocs(projectQuery);
 
         if (projectSnapshot.empty) {
-            console.error('Project not found:', projectName);
+            console.error('Project not found or user does not have permission');
             return false;
         }
 
