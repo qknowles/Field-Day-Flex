@@ -174,16 +174,15 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
         }
     
         try {
-            
-            console.log(" Saving column changes:", columnOrder, editedColumnNames);
+            console.log("Saving column changes:", columnOrder, editedColumnNames);
     
             const projectId = await getDocumentIdByEmailAndProjectName(Email, SelectedProject);
             if (!projectId) {
-                console.error(` No project found with name: ${SelectedProject}`);
+                console.error(`No project found with name: ${SelectedProject}`);
                 return;
             }
     
-            console.log(` Using Project ID: ${projectId}`);
+            console.log(`Using Project ID: ${projectId}`);
     
             const batch = writeBatch(db);
             const columnsData = await getColumnsCollection(SelectedProject, TabName, Email);
@@ -194,12 +193,10 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
                 return map;
             }, {});
     
-            
-    
             let updatesMade = false;
             let nameChanges = {}; // Track column name changes
             let deletionsMade = false; // Track column deletions
-
+    
             for (const columnId of Object.keys(columnOrder)) {
                 if (!columnIdMap[columnId]) {
                     console.error(`Column ID ${columnId} is missing in columnIdMap`, { columnOrder, columnIdMap });
@@ -208,20 +205,14 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
                 }
             }
             
-    
             for (const columnId in columnOrder) {
                 if (columnIdMap[columnId]) {
                     if (columnOrder[columnId] === 'DELETE') {
-                     
                         const columnRef = doc(db, 'Projects', projectId, 'Tabs', TabName, 'Columns', columnId);
                         batch.update(columnRef, { deleted: true });
-
                         deletionsMade = true;
-                        
-
                         console.log(`Marked column ${columnId} for deletion`);
                     } else {
-                        
                         const oldName = columnIdMap[columnId].name;
                         const newName = editedColumnNames[columnId] || oldName;
                         const newType = editedColumnTypes[columnId] || columnIdMap[columnId].data_type;
@@ -244,19 +235,15 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
                         updatesMade = true;
                     }
                 } else {
-                    console.error(` Firestore document with ID "${columnId}" does not exist`);
+                    console.error(`Firestore document with ID "${columnId}" does not exist`);
                 }
             }
     
             if (updatesMade || deletionsMade) {
                 await batch.commit();
                 
-                notify(Type.success, 'Column updates saved successfully.');
-    
-                
+                // Handle entry updates if column names changed
                 if (Object.keys(nameChanges).length > 0) {
-                    
-            
                     const entriesRef = collection(db, 'Projects', projectId, 'Tabs', TabName, 'Entries');
                     const entriesSnapshot = await getDocs(entriesRef);
             
@@ -283,26 +270,31 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
                     });
             
                     await entriesBatch.commit();
-                    
-                    
-                    notify(Type.success, "Entries updated with new column names.");
                 }
     
-               
+                // Update columns state if deletions were made
                 if (deletionsMade) {
                     setColumns((prev) => prev.filter((col) => columnOrder[col.id] !== 'DELETE'));
-                    notify(Type.success, "Selected columns deleted successfully.");
                 }
-              
-    
+                
+                // Show a single combined success message based on what changed
+                let successMessage = "";
+                if (deletionsMade && Object.keys(nameChanges).length > 0) {
+                    successMessage = "Columns updated: some columns renamed and some deleted.";
+                } else if (deletionsMade) {
+                    successMessage = "Selected columns deleted successfully.";
+                } else if (Object.keys(nameChanges).length > 0) {
+                    successMessage = "Column names updated successfully.";
+                } else {
+                    successMessage = "Column settings updated successfully.";
+                }
+                
+                notify(Type.success, successMessage);
                 CloseManageColumns();
                 window.location.reload();
             }
-           
-    
-    
         } catch (error) {
-            console.error(" Error updating columns:", error);
+            console.error("Error updating columns:", error);
             notify(Type.error, 'Failed to update column order or names');
         }
     };
