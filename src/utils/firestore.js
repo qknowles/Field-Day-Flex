@@ -168,9 +168,7 @@ export const getDocumentIdByEmailAndProjectName = async (email, projectName) => 
 };
 
 export async function addMemberToProject(projectId, field, newMemberEmail) {
-    const isValid = ['contributors', 'admins', 'owners'].some(
-        (validField) => validField.toLowerCase() === field.toLowerCase(),
-    );
+ 
 
     if (!['contributors', 'admins', 'owners'].includes(field)) {
         console.error(`Invalid field: ${field}. Must be 'contributors', 'admins', or 'owners'.`);
