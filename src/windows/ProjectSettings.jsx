@@ -264,6 +264,34 @@ export default function ProjectSettings({ CloseProjectSettings }) {
         }
     }
 
+    async function deleteMember(email) {
+        if (!isOwner) {
+            notify(Type.error, 'You do not have permission to remove members.');
+            return;
+        }
+    
+        const memberToRemove = members.find((member) => member.email === email);
+        if (!memberToRemove) {
+            notify(Type.error, 'Member not found.');
+            return;
+        }
+    
+        // Prevent removing the last owner
+        if (memberToRemove.role === 'Owner' && members.filter((m) => m.role === 'Owner').length === 1) {
+            notify(Type.error, 'Project must have at least one owner.');
+            return;
+        }
+    
+        try {
+            const updatedMembers = members.filter((member) => member.email !== email);
+            setMembers(updatedMembers);
+            notify(Type.success, `Removed ${email} from the project.`);
+        } catch (error) {
+            console.error('Error removing member:', error);
+            notify(Type.error, 'Failed to remove member.');
+        }
+    }
+
     const renderMembersList = () => {
         console.log('Rendering members list with:', members);
         if (!members || members.length === 0) {
