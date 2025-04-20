@@ -371,7 +371,7 @@ export const addColumn = async (
         );
         const projectSnapshot = await getDocs(projectsQuery);
         if (projectSnapshot.empty) {
-            return false;
+            return { success: false, error: `A system error occurred.` };
         }
         const projectDoc = projectSnapshot.docs[0];
 
@@ -379,13 +379,21 @@ export const addColumn = async (
         const tabQuery = query(tabsRef, where('tab_name', '==', tabName));
         const tabSnapshot = await getDocs(tabQuery);
         if (tabSnapshot.empty) {
-            return false;
+            return { success: false, error: `A system error occurred.` };
         }
         const tabDoc = tabSnapshot.docs[0];
 
         const columnsRef = collection(tabDoc.ref, 'Columns');
         const existingColumns = await getDocs(columnsRef);
         const columnOrder = existingColumns.size + 1;
+
+        const columnNameExists = existingColumns.docs.some(
+            (doc) => doc.data()?.name?.toLowerCase().trim() === columnName.toLowerCase().trim()
+        );
+
+        if (columnNameExists) {
+            return { success: false, error: `A column with the name "${columnName}" already exists.` };
+        }
 
         await addDoc(columnsRef, {
             name: columnName,
@@ -399,7 +407,7 @@ export const addColumn = async (
 
         await addColumnToEntries(tabDoc, columnName);
 
-        return true;
+        return {success: true, error: 'No error occurred!'};
     } catch (error) {
         console.error('Error adding column:', error);
         return false;
