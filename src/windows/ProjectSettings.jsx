@@ -318,7 +318,7 @@ export default function ProjectSettings({ CloseProjectSettings }) {
                         {canEdit && (
                             <button
                                 className="text-red-500 font-bold"
-                                onClick={() => removeMember(member.email, member.role)}
+                                onClick={() => deleteMember(member.email)}
                             >
                                 <AiFillDelete />
                             </button>
