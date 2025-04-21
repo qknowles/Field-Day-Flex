@@ -19,6 +19,9 @@ export const currentBatchSize = atomWithStorage('currentBatchSize', 15);
 
 export const refreshColumnsAtom = atom(0);
 
+export const projectNeedsUpdate = atom(false);
+
+
 export const clearLocalStorage = ({
     setUserEmail,
     setIsAuthenticated,

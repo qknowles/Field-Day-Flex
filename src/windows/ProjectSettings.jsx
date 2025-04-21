@@ -12,7 +12,8 @@ import {
 } from '../utils/firestore.js';
 import Button from '../components/Button.jsx';
 import { notify, Type } from '../components/Notifier.jsx';
-import { useAtomValue, useAtom } from 'jotai';
+import { useAtomValue, useAtom, useSetAtom } from 'jotai';
+import { projectNeedsUpdate } from '../utils/jotai';
 import { currentUserEmail, currentProjectName, allProjectNames, allTableNames } from '../utils/jotai.js';
 import EditTab from './EditTab.jsx';
 import DeleteTab from './DeleteTab.jsx';
@@ -36,6 +37,11 @@ export default function ProjectSettings({ CloseProjectSettings }) {
     const userEmail = useAtomValue(currentUserEmail);
     const [showEditTab, setShowEditTab] = useState(false);
     const [showDeleteTab, setShowDeleteTab] = useState(false);
+    const [initialProjectName, setInitialProjectName] = useState('');
+    const [initialMembers, setInitialMembers] = useState([]);
+    const [needsUpdate, setProjectNeedsUpdate] = useAtom(projectNeedsUpdate);
+
+
 
 
     // Fetch document ID when project name is available
@@ -106,6 +112,8 @@ export default function ProjectSettings({ CloseProjectSettings }) {
 
                 console.log('Setting members:', updatedMembers);
                 setMembers(updatedMembers);
+                setInitialMembers(updatedMembers); 
+                setInitialProjectName(projectName);
 
                 const currUser = updatedMembers.find((member) => member.email === userEmail);
                 const isUserOwner = owners.includes(userEmail);
@@ -214,22 +222,48 @@ export default function ProjectSettings({ CloseProjectSettings }) {
             // Reset fields only on success
             setNewMemberEmail('');
             setNewMemberSelectedRole('Select Role');
+            setProjectNeedsUpdate(true);
+
             notify(Type.success, `Added ${newMemberEmail} as ${newMemberSelectedRole}`);
         } catch (error) {
             notify(Type.error, 'Failed to add member');
         }
     }
 
+    const hasChanges = () => {
+        if (projectName !== initialProjectName) return true;
+        if (members.length !== initialMembers.length) return true;
+    
+        for (let i = 0; i < members.length; i++) {
+            const current = members[i];
+            const initial = initialMembers.find(m => m.email === current.email);
+            if (!initial || initial.role !== current.role) return true;
+        }
+    
+        if (needsUpdate) return true; 
+    
+        return false;
+    };
+    
+    
+
     async function saveChanges() {
+        if (!hasChanges()) {
+            notify(Type.info, 'Nothing to update.');
+            return; 
+        }
+    
         try {
             await updateDocInCollection('Projects', documentId, { project_name: projectName });
             setProjectName(projectName);
+            setProjectNeedsUpdate(false); 
             notify(Type.success, 'Project updated successfully');
             CloseProjectSettings();
         } catch (error) {
             notify(Type.error, 'Failed to update project');
         }
     }
+    
 
 
     async function deleteProject() {
