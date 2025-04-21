@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { DropdownFlex, RadioButtons, YesNoSelector } from '../components/FormFields';
 import WindowWrapper from '../wrappers/WindowWrapper';
 import InputLabel from '../components/InputLabel';
@@ -117,8 +117,13 @@ export default function ColumnOptions({
         }
     }, [columnIndex, tempEntryOptions, entryOptions, validInputs]);
     
+    const isTabBeingCreated = useRef(false);
 
     const storeNewTab = useCallback(async () => {
+        if (isTabBeingCreated.current) return; // Prevent multiple executions
+        isTabBeingCreated.current = true;
+
+        try{
         const updatedEntryOptions = getUpdatedEntryOptions();
         if (validInputs(undefined, updatedEntryOptions)) {
             let finalEntryOptions = updatedEntryOptions.map((options) =>
@@ -188,6 +193,12 @@ export default function ColumnOptions({
             notify(Type.success, 'Columns added successfully.');
             OpenNewTab(TabName);
         }
+    }
+        finally {
+            // Reset the flag
+            isTabBeingCreated.current = false;
+        }
+        
     }, [
         ColumnNames,
         Email,
