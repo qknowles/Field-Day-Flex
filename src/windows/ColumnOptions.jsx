@@ -10,18 +10,18 @@ import { entryTypeOptions } from '../utils/globals.js';
 import InfoIcon from '../components/InfoIcon';
 
 export default function ColumnOptions({
-                                          ColumnNames,
-                                          SetColumnNames,
-                                          CancelColumnOptions,
-                                          OpenNewTab,
-                                          tabName = '',
-                                          header = 'Column Options',
-                                          generateIdentifiers,
-                                          possibleIdentifiers,
-                                          identifierDimension,
-                                          unwantedCodes,
-                                          utilizeUnwantedCodes,
-                                      }) {
+    ColumnNames,
+    SetColumnNames,
+    CancelColumnOptions,
+    OpenNewTab,
+    tabName = '',
+    header = 'Column Options',
+    generateIdentifiers,
+    possibleIdentifiers,
+    identifierDimension,
+    unwantedCodes,
+    utilizeUnwantedCodes,
+}) {
     const SelectedProject = useAtomValue(currentProjectName);
     const TabName = tabName || useAtomValue(currentTableName);
     const Email = useAtomValue(currentUserEmail);
@@ -131,6 +131,19 @@ export default function ColumnOptions({
 
             let tabAlreadyExists = await tabExists(Email, SelectedProject, TabName);
             if (!tabAlreadyExists) {
+                let columnName = '';
+                let columnDataType = '';
+                let entryOptions = [];
+                let columnIdentifierDomain = '';
+                let columnRequiredField = '';
+                let columnOrder = '';
+                if (generateIdentifiers) {
+                    columnName = 'Entry ID';
+                    columnDataType = entryTypeOptions.AUTO_ID;
+                    columnIdentifierDomain = true;
+                    columnRequiredField = true;
+                    columnOrder = 0;
+                }
                 const tabCreated = await createTab(
                     Email,
                     SelectedProject,
@@ -140,12 +153,12 @@ export default function ColumnOptions({
                     identifierDimension,
                     unwantedCodes,
                     utilizeUnwantedCodes,
-                    'Entry ID',
-                    entryTypeOptions.AUTO_ID,
-                    [],
-                    true,
-                    true,
-                    0
+                    columnName,
+                    columnDataType,
+                    entryOptions,
+                    columnIdentifierDomain,
+                    columnRequiredField,
+                    columnOrder,
                 );
                 tabAlreadyExists = tabCreated;
             }
@@ -164,7 +177,7 @@ export default function ColumnOptions({
                         allowNegative[i],
                     );
                     if (columnAdded.success === false) {
-                        notify(Type.error, columnAdded.error ||'Error adding columns.');
+                        notify(Type.error, columnAdded.error || 'Error adding columns.');
                         return;
                     }
                 }
@@ -179,12 +192,12 @@ export default function ColumnOptions({
     }, [ColumnNames, Email, SelectedProject, TabName, dataType, entryOptions, tempEntryOptions, identifierDomain, requiredField, allowNegative, OpenNewTab, validInputs, generateIdentifiers, possibleIdentifiers, identifierDimension, unwantedCodes, utilizeUnwantedCodes]);
 
     const leftButtonClick = useMemo(() =>
-            columnIndex === 0 ? CancelColumnOptions : goBackward,
+        columnIndex === 0 ? CancelColumnOptions : goBackward,
         [columnIndex, CancelColumnOptions, goBackward]
     );
 
     const rightButtonClick = useMemo(() =>
-            columnIndex === ColumnNames.length - 1 ? storeNewTab : goForward,
+        columnIndex === ColumnNames.length - 1 ? storeNewTab : goForward,
         [columnIndex, storeNewTab, goForward, ColumnNames]
     );
 
@@ -218,9 +231,8 @@ export default function ColumnOptions({
                                 <input
                                     value={ColumnNames[columnIndex]}
                                     onChange={(e) => handleColumnNameChange(e.target.value)}
-                                    className={`border rounded px-2 py-1 w-full ${
-                                        duplicateColumns.includes(columnIndex) ? 'border-red-500' : ''
-                                    }`}
+                                    className={`border rounded px-2 py-1 w-full ${duplicateColumns.includes(columnIndex) ? 'border-red-500' : ''
+                                        }`}
                                 />
                                 {duplicateColumns.includes(columnIndex) && (
                                     <div className="text-red-500 text-sm ml-1 mt-1">

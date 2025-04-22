@@ -333,7 +333,6 @@ export const createTab = async (
                 ...(columnEntryOptions.length > 0 && { entry_options: columnEntryOptions[i] }),
                 identifier_domain: columnIdentifierDomain,
                 required_field: columnRequiredField,
-                allow_negative: allowNegativeFlag,
                 order: columnOrder,
             });
         }
@@ -355,7 +354,7 @@ export const addColumn = async (
     columnIdentifierDomain = false,
     columnRequiredField = false,
     allowNegativeFlag = false,
-    
+
 
 ) => {
     try {
@@ -408,7 +407,7 @@ export const addColumn = async (
 
         await addColumnToEntries(tabDoc, columnName);
 
-        return {success: true, error: 'No error occurred!'};
+        return { success: true, error: 'No error occurred!' };
     } catch (error) {
         console.error('Error adding column:', error);
         return false;
