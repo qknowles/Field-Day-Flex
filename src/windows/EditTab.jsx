@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import WindowWrapper from '../wrappers/WindowWrapper';
 import { updateTabName, getTabNames } from '../utils/firestore';
-import { useAtom, useAtomValue } from 'jotai';
+import { useAtom, useAtomValue, useSetAtom } from 'jotai';
+import { projectNeedsUpdate } from '../utils/jotai';
 import { currentProjectName, allTableNames, currentUserEmail } from '../utils/jotai';
 import { notify, Type } from '../components/Notifier';
 import Button from '../components/Button';
@@ -10,6 +11,7 @@ export default function EditTab({ CloseEditTab }) {
     const projectName = useAtomValue(currentProjectName);
     const email = useAtomValue(currentUserEmail);
     const [tabNames, setTabNames] = useAtom(allTableNames);
+    const setProjectNeedsUpdate = useSetAtom(projectNeedsUpdate);
 
     const [tabsToRename, setTabsToRename] = useState([{ tab: tabNames[0] || '', newName: '' }]); 
     useEffect(() => {
@@ -73,7 +75,8 @@ export default function EditTab({ CloseEditTab }) {
     
         if (successCount > 0) {
             const updatedTabs = await getTabNames(email, projectName);
-            setTabNames(updatedTabs); // update Jotai atom
+            setTabNames(updatedTabs); 
+            setProjectNeedsUpdate(true);
             notify(Type.success, `Renamed ${successCount} tab(s) successfully.`);
             CloseEditTab();
         }
