@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import WindowWrapper from '../wrappers/WindowWrapper';
 import { deleteTab, getTabNames } from '../utils/firestore';
 import { useAtom, useAtomValue } from 'jotai';
+import { useSetAtom } from 'jotai';
+import { projectNeedsUpdate } from '../utils/jotai';
 import { currentProjectName, allTableNames, currentUserEmail } from '../utils/jotai';
 import { notify, Type } from '../components/Notifier';
 import Button from '../components/Button';
@@ -11,6 +13,7 @@ export default function DeleteTab({ CloseDeleteTab }) {
     const email = useAtomValue(currentUserEmail);
     const [tabNames, setTabNames] = useAtom(allTableNames);
     const [selectedTab, setSelectedTab] = useState('');
+    const setProjectNeedsUpdate = useSetAtom(projectNeedsUpdate);
 
     useEffect(() => {
         if (!tabNames.length) {
@@ -31,7 +34,8 @@ export default function DeleteTab({ CloseDeleteTab }) {
             const success = await deleteTab(projectName, selectedTab, email);
             if (success) {
                 const updatedTabs = await getTabNames(email, projectName);
-                setTabNames(updatedTabs); // Update UI to remove deleted tab from view
+                setTabNames(updatedTabs); 
+                setProjectNeedsUpdate(true);
                 notify(Type.success, `Tab "${selectedTab}" deleted successfully.`);
                 CloseDeleteTab();
             } else {

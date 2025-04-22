@@ -12,11 +12,15 @@ import {
 } from '../utils/firestore.js';
 import Button from '../components/Button.jsx';
 import { notify, Type } from '../components/Notifier.jsx';
-import { useAtomValue, useAtom } from 'jotai';
+import { useAtomValue, useAtom, useSetAtom } from 'jotai';
+import { projectNeedsUpdate } from '../utils/jotai';
 import { currentUserEmail, currentProjectName, allProjectNames, allTableNames } from '../utils/jotai.js';
 import EditTab from './EditTab.jsx';
 import DeleteTab from './DeleteTab.jsx';
 import InfoIcon from '../components/InfoIcon';
+import { getProjectNames, getTabNames } from '../utils/firestore';
+import { refreshColumnsAtom, currentTableName } from '../utils/jotai';
+
 
 export default function ProjectSettings({ CloseProjectSettings }) {
     // State definitions
@@ -36,10 +40,19 @@ export default function ProjectSettings({ CloseProjectSettings }) {
     const userEmail = useAtomValue(currentUserEmail);
     const [showEditTab, setShowEditTab] = useState(false);
     const [showDeleteTab, setShowDeleteTab] = useState(false);
+    const [initialProjectName, setInitialProjectName] = useState('');
+    const [initialMembers, setInitialMembers] = useState([]);
+    const [needsUpdate, setProjectNeedsUpdate] = useAtom(projectNeedsUpdate);
+    const [pendingRename, setPendingRename] = useState(false);
+    const [isEditingName, setIsEditingName] = useState(false);
+    const setTabNames = useSetAtom(allTableNames);
+    const triggerColumnRefresh = useSetAtom(refreshColumnsAtom);
+    const setCurrentTab = useSetAtom(currentTableName);
 
 
     // Fetch document ID when project name is available
     useEffect(() => {
+        if (!projectName || isEditingName || pendingRename) return;
         let isMounted = true;
         console.log('fetching doc ID for project:', projectName);
 
@@ -51,7 +64,7 @@ export default function ProjectSettings({ CloseProjectSettings }) {
                     setDocumentId(docId);
                 } else if (isMounted) {
                     console.error('No document ID found for project:', projectName);
-                    notify(Type.error, 'Project not found');
+                    //notify(Type.error, 'Project not found');
                 }
             } catch (err) {
                 if (isMounted) {
@@ -75,7 +88,7 @@ export default function ProjectSettings({ CloseProjectSettings }) {
             fetchProjectData();
         }
     }, [documentId]);
-
+    
     const fetchProjectData = async () => {
         try {
             setLoading(true);
@@ -106,6 +119,8 @@ export default function ProjectSettings({ CloseProjectSettings }) {
 
                 console.log('Setting members:', updatedMembers);
                 setMembers(updatedMembers);
+                setInitialMembers(updatedMembers); 
+                setInitialProjectName(projectName);
 
                 const currUser = updatedMembers.find((member) => member.email === userEmail);
                 const isUserOwner = owners.includes(userEmail);
@@ -214,22 +229,67 @@ export default function ProjectSettings({ CloseProjectSettings }) {
             // Reset fields only on success
             setNewMemberEmail('');
             setNewMemberSelectedRole('Select Role');
+            setProjectNeedsUpdate(true);
+
             notify(Type.success, `Added ${newMemberEmail} as ${newMemberSelectedRole}`);
         } catch (error) {
             notify(Type.error, 'Failed to add member');
         }
     }
 
+    const hasChanges = () => {
+        if (projectName !== initialProjectName) return true;
+        if (members.length !== initialMembers.length) return true;
+    
+        for (let i = 0; i < members.length; i++) {
+            const current = members[i];
+            const initial = initialMembers.find(m => m.email === current.email);
+            if (!initial || initial.role !== current.role) return true;
+        }
+    
+        if (needsUpdate) return true; 
+    
+        return false;
+    };
+    
+    
+
     async function saveChanges() {
+        if (!hasChanges()) {
+            notify(Type.info, 'Nothing to update.');
+            return;
+        }
+    
         try {
+            const renamed = projectName !== initialProjectName;
+    
             await updateDocInCollection('Projects', documentId, { project_name: projectName });
-            setProjectName(projectName);
+    
+            
+            if (renamed) {
+                const updatedProjectNames = await getProjectNames(userEmail);
+                setProjectNames(updatedProjectNames);
+                setProjectName(projectName);
+            }
+    
+            
+            const updatedTabs = await getTabNames(userEmail, projectName);
+            setTabNames(updatedTabs);
+    
+        
+            triggerColumnRefresh((v) => v + 1);
+            
+            setCurrentTab(updatedTabs[0] || '');
+    
             notify(Type.success, 'Project updated successfully');
             CloseProjectSettings();
         } catch (error) {
+            console.error('Save failed:', error);
             notify(Type.error, 'Failed to update project');
         }
     }
+    
+    
 
 
     async function deleteProject() {
@@ -264,6 +324,34 @@ export default function ProjectSettings({ CloseProjectSettings }) {
         }
     }
 
+    async function deleteMember(email) {
+        if (!isOwner) {
+            notify(Type.error, 'You do not have permission to remove members.');
+            return;
+        }
+    
+        const memberToRemove = members.find((member) => member.email === email);
+        if (!memberToRemove) {
+            notify(Type.error, 'Member not found.');
+            return;
+        }
+    
+        // Prevent removing the last owner
+        if (memberToRemove.role === 'Owner' && members.filter((m) => m.role === 'Owner').length === 1) {
+            notify(Type.error, 'Project must have at least one owner.');
+            return;
+        }
+    
+        try {
+            const updatedMembers = members.filter((member) => member.email !== email);
+            setMembers(updatedMembers);
+            notify(Type.success, `Removed ${email} from the project.`);
+        } catch (error) {
+            console.error('Error removing member:', error);
+            notify(Type.error, 'Failed to remove member.');
+        }
+    }
+
     const renderMembersList = () => {
         console.log('Rendering members list with:', members);
         if (!members || members.length === 0) {
@@ -290,7 +378,7 @@ export default function ProjectSettings({ CloseProjectSettings }) {
                         {canEdit && (
                             <button
                                 className="text-red-500 font-bold"
-                                onClick={() => removeMember(member.email, member.role)}
+                                onClick={() => deleteMember(member.email)}
                             >
                                 <AiFillDelete />
                             </button>
@@ -374,9 +462,13 @@ export default function ProjectSettings({ CloseProjectSettings }) {
                                 type="text"
                                 className="border rounded px-2 py-1 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white"
                                 value={projectName}
-                                onChange={(e) => setProjectName(e.target.value)}
-                                disabled={!canEdit}
-                            />
+                                onChange={(e) => {
+                                   setProjectName(e.target.value);
+                                   setIsEditingName(true); 
+                               }}
+                               disabled={!canEdit}
+                           />
+
                         }
                     />
                     <InfoIcon
