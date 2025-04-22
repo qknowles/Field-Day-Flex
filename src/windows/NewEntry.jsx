@@ -112,8 +112,14 @@ export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntry
             const allEntries = await getEntriesForTab(projectName, tabName, email);
             if (!allEntries || allEntries.length === 0) return;
 
+            // Filter out deleted entries and entries that match the current entry being edited
+            const validEntries = allEntries.filter(entry => 
+                !entry.deleted && 
+                (!existingEntry || entry.id !== existingEntry.id)
+            );
+            
             // Filter for entries that match all ID domain field values
-            const matchingEntries = allEntries.filter(entry => {
+            const matchingEntries = validEntries.filter(entry => {
                 if (!entry.entry_data) return false;
                 
                 return idDomainFields.every(field => {
@@ -121,7 +127,13 @@ export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntry
                     const entryValue = entry.entry_data[field];
                     
                     // Make sure we're comparing the same types (string to string)
-                    return String(entryValue) === String(currentValue);
+                    // Trim strings to handle any whitespace issues
+                    const currentValueStr = currentValue !== undefined && currentValue !== null ? 
+                        String(currentValue).trim() : '';
+                    const entryValueStr = entryValue !== undefined && entryValue !== null ? 
+                        String(entryValue).trim() : '';
+                    
+                    return currentValueStr === entryValueStr;
                 });
             });
 
@@ -129,7 +141,12 @@ export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntry
             matchingEntries.sort((a, b) => {
                 if (!a.entry_date) return 1;
                 if (!b.entry_date) return -1;
-                return new Date(b.entry_date) - new Date(a.entry_date);
+                
+                // Handle different date formats
+                const dateA = typeof a.entry_date === 'string' ? new Date(a.entry_date) : a.entry_date;
+                const dateB = typeof b.entry_date === 'string' ? new Date(b.entry_date) : b.entry_date;
+                
+                return dateB - dateA;
             });
 
             setHistoricalEntries(matchingEntries);
@@ -216,8 +233,6 @@ export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntry
                         notify(Type.error, `The field "${name}" must be a valid integer number.`);
                         return false;
                     }
-                
-                    console.log(`[${name}] allow_negative:`, column.allow_negative, 'value:', value);
 
                     if (!column.allow_negative && Number(value) < 0) {
                         notify(Type.error, `Negative values are not allowed for "${name}".`);
@@ -230,15 +245,12 @@ export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntry
                         notify(Type.error, `The field "${name}" must be a valid decimal number.`);
                         return false;
                     }
-                   
-                    console.log(`[${name}] allow_negative:`, column.allow_negative, 'value:', value);
 
                     if (!column.allow_negative && Number(value) < 0) {
                         notify(Type.error, `Negative values are not allowed for "${name}".`);
                         return false;
                     }
                 }
-                
 
                 if (data_type === entryTypeOptions.DATE && !/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}$/.test(value)) {
                     notify(
