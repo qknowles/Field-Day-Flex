@@ -173,6 +173,13 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
             return; // Stop execution and prevent saving
         }
 
+        // check for duplicate column names (if the name already exists)
+        const nameValues = Object.values(editedColumnNames).map(name => name.trim().toLowerCase());
+        const uniqueNames = new Set(nameValues);
+        if(nameValues.length !== uniqueNames.size) {
+            notify(Type.error, 'Each column must have a unique name!');
+        }
+
         try {
             console.log("Saving column changes:", columnOrder, editedColumnNames);
 
@@ -218,6 +225,7 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
                         const newType = editedColumnTypes[columnId] || columnIdMap[columnId].data_type;
 
                         if (oldName !== newName) {
+                            // check for dup, notify if.
                             nameChanges[oldName] = newName; // Store for entry updates
                         }
 
