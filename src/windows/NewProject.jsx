@@ -7,9 +7,9 @@ import { Type, notify } from '../components/Notifier';
 import { useAtomValue } from 'jotai';
 import { currentUserEmail } from '../utils/jotai.js';
 import InfoIcon from '../components/InfoIcon';
+import { PROJECT_CONSTRAINTS, validateMinLength, validateMaxLength, getValidationError } from '../utils/fieldConstraints';
 
 export default function NewProject({ CancelProject, OpenNewProject }) {
-
     const Email = useAtomValue(currentUserEmail);
 
     const [projectName, setProjectName] = useState('');
@@ -17,6 +17,19 @@ export default function NewProject({ CancelProject, OpenNewProject }) {
     const [administrators, setAdministrators] = useState([]);
 
     const createClick = async () => {
+        // Validate project name length
+        const validationError = getValidationError(
+            'Project name', 
+            projectName.trim(), 
+            PROJECT_CONSTRAINTS.NAME_MIN_LENGTH, 
+            PROJECT_CONSTRAINTS.NAME_MAX_LENGTH
+        );
+        
+        if (validationError) {
+            notify(Type.error, validationError);
+            return;
+        }
+
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
         const validContributors = contributors.filter((contrib) => contrib !== 'Add Here');
@@ -62,6 +75,12 @@ export default function NewProject({ CancelProject, OpenNewProject }) {
         }
     };
 
+    // Display character count and limit under project name input
+    const projectNameCharCount = projectName.length;
+    const isProjectNameValid = 
+        validateMinLength(projectName, PROJECT_CONSTRAINTS.NAME_MIN_LENGTH) && 
+        validateMaxLength(projectName, PROJECT_CONSTRAINTS.NAME_MAX_LENGTH);
+
     return (
         <WindowWrapper
             header="Create Project"
@@ -87,17 +106,28 @@ export default function NewProject({ CancelProject, OpenNewProject }) {
                         label="Project Name"
                         layout="horizontal-single"
                         input={
-                            <input
-                                type="text"
-                                value={projectName}
-                                onChange={(e) => {
-                                    setProjectName(e.target.value);
-                                }}
-                            />
+                            <div className="flex flex-col w-full">
+                                <input
+                                    type="text"
+                                    value={projectName}
+                                    onChange={(e) => {
+                                        setProjectName(e.target.value);
+                                    }}
+                                    maxLength={PROJECT_CONSTRAINTS.NAME_MAX_LENGTH}
+                                    className={!isProjectNameValid && projectName ? "border-red-500" : ""}
+                                />
+                                <div className={`text-xs mt-1 ${
+                                    !isProjectNameValid && projectName ? "text-red-500" : "text-neutral-500"
+                                }`}>
+                                    {projectNameCharCount}/{PROJECT_CONSTRAINTS.NAME_MAX_LENGTH} characters
+                                    {projectName && !validateMinLength(projectName, PROJECT_CONSTRAINTS.NAME_MIN_LENGTH) && 
+                                        ` (min: ${PROJECT_CONSTRAINTS.NAME_MIN_LENGTH})`}
+                                </div>
+                            </div>
                         }
                     />
                     <InfoIcon 
-                        text="Enter a unique name for your project. This name will be used to identify your project in the system."
+                        text={`Enter a unique name for your project (${PROJECT_CONSTRAINTS.NAME_MIN_LENGTH}-${PROJECT_CONSTRAINTS.NAME_MAX_LENGTH} characters). This name will be used to identify your project in the system.`}
                         position="right"
                         className="ml-2"
                     />
