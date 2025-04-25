@@ -323,7 +323,7 @@ const DataViewer = forwardRef((props, ref) => {
                                                     className={`p-2 border-b text-left ${col.type === 'identifier' ? 'min-w-[150px]' : ''
                                                         }`}
                                                 >
-                                                    {entry.entry_data[col.name] ?? 'N/A'}
+                                                    {(!entry.entry_data[col.name] || entry.entry_data[col.name] == "") ? 'N/A' : entry.entry_data[col.name]}
                                                 </td>
                                             ))}
                                         </>

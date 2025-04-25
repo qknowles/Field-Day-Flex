@@ -86,6 +86,12 @@ export default function TablePage() {
         };
 
         fetchColumns();
+
+        const handleRefresh = () => fetchColumns();
+        window.addEventListener("refreshColumns", handleRefresh);
+
+        return () => window.removeEventListener("refreshColumns", handleRefresh);
+
     }, [selectedProject, selectedTab, email]);
 
 
@@ -356,6 +362,7 @@ export default function TablePage() {
                     CancelColumnOptions={() => setShowColumnOptions(false)}
                     OpenNewTab={() => {
                         setShowColumnOptions(false);
+                        window.dispatchEvent(new Event('refreshColumns'));
                         // Refresh DataViewer after adding a column
                         if (dataViewerRef.current) {
                             if (dataViewerRef.current.fetchColumns) {
