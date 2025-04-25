@@ -8,6 +8,8 @@ import ColumnOptions from './ColumnOptions.jsx';
 import { useAtomValue } from 'jotai';
 import { currentUserEmail, currentProjectName } from '../utils/jotai.js';
 import { entryTypeOptions } from '../utils/globals.js';
+import { TAB_CONSTRAINTS, validateMaxLength, validateMinLength, getValidationError } from '../utils/fieldConstraints';
+import InfoIcon from '../components/InfoIcon';
 
 export default function NewTab({ CancelTab, OpenNewTab }) {
 
@@ -94,6 +96,19 @@ export default function NewTab({ CancelTab, OpenNewTab }) {
     };
 
     const continueTab = async () => {
+        // Validate tab name length
+        const validationError = getValidationError(
+            'Subject name', 
+            tabName.trim(), 
+            TAB_CONSTRAINTS.NAME_MIN_LENGTH, 
+            TAB_CONSTRAINTS.NAME_MAX_LENGTH
+        );
+        
+        if (validationError) {
+            notify(Type.error, validationError);
+            return;
+        }
+        
         const codeRegex = /^[A-J](?:10|[1-9])$/;
 
         const filteredColumnNames = columnNames.filter((name) => name !== 'Add Here');
@@ -195,6 +210,12 @@ export default function NewTab({ CancelTab, OpenNewTab }) {
         setShowColumnOptions(false);
     };
 
+    // Calculate character count for tab name
+    const tabNameCharCount = tabName.length;
+    const isTabNameValid = 
+        validateMinLength(tabName, TAB_CONSTRAINTS.NAME_MIN_LENGTH) && 
+        validateMaxLength(tabName, TAB_CONSTRAINTS.NAME_MAX_LENGTH);
+
     return (
         <>
             {showColumnOptions ? (
@@ -219,19 +240,37 @@ export default function NewTab({ CancelTab, OpenNewTab }) {
                     rightButtonText={rightButtonText}
                 >
                     <div className="flex flex-col space-y-4">
-                        <InputLabel
-                            label="Subject Name"
-                            layout="horizontal-single"
-                            input={
-                                <input
-                                    type="text"
-                                    value={tabName}
-                                    onChange={(e) => {
-                                        setTabName(e.target.value);
-                                    }}
-                                />
-                            }
-                        />
+                        <div className="flex items-center">
+                            <InputLabel
+                                label="Subject Name"
+                                layout="horizontal-single"
+                                input={
+                                    <div className="flex flex-col w-full">
+                                        <input
+                                            type="text"
+                                            value={tabName}
+                                            onChange={(e) => {
+                                                setTabName(e.target.value);
+                                            }}
+                                            maxLength={TAB_CONSTRAINTS.NAME_MAX_LENGTH}
+                                            className={!isTabNameValid && tabName ? "border-red-500" : ""}
+                                        />
+                                        <div className={`text-xs mt-1 ${
+                                            !isTabNameValid && tabName ? "text-red-500" : "text-neutral-500"
+                                        }`}>
+                                            {tabNameCharCount}/{TAB_CONSTRAINTS.NAME_MAX_LENGTH} characters
+                                            {tabName && !validateMinLength(tabName, TAB_CONSTRAINTS.NAME_MIN_LENGTH) && 
+                                                ` (min: ${TAB_CONSTRAINTS.NAME_MIN_LENGTH})`}
+                                        </div>
+                                    </div>
+                                }
+                            />
+                            <InfoIcon 
+                                text={`Enter a name for your subject (${TAB_CONSTRAINTS.NAME_MIN_LENGTH}-${TAB_CONSTRAINTS.NAME_MAX_LENGTH} characters). This will appear as a tab in the interface.`}
+                                position="right"
+                                className="ml-2"
+                            />
+                        </div>
                         <DropdownFlex
                             options={columnNames}
                             setOptions={setColumnNames}
