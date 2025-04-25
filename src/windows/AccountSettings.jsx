@@ -139,26 +139,32 @@ export default function AccountSettings({ CloseAccountSettings }) {
         if (name !== currentName) fieldsChanged.name = name;
         if (changedEmail !== email) fieldsChanged.email = changedEmail;
 
-        if (newPassword && confirmPassword && newPassword === confirmPassword) {
-            const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{8,}$/;
-            if (!passwordRegex.test(newPassword)) {
-                notify(
-                    Type.error,
-                    (
-                        <div>
-                            Password must:
-                            <ol>
-                                <li>1. Be at least 8 characters long</li>
-                                <li>2. Include at least one number</li>
-                                <li>3. Include one special character</li>
-                            </ol>
-                        </div>
-                    ),
-                    10000 // ms, 10 seconds
-                );
+        if (newPassword || confirmPassword) {
+            if (newPassword !== confirmPassword) {
+                notify(Type.error, 'New password and confirmation do not match.');
                 return null;
             }
-            fieldsChanged.password = CryptoJS.SHA256(newPassword).toString();
+            if (newPassword && confirmPassword && newPassword === confirmPassword) {
+                const passwordRegex = /^(?=.*[0-9])(?=.*[!@#$%^&*])[a-zA-Z0-9!@#$%^&*]{8,}$/;
+                if (!passwordRegex.test(newPassword)) {
+                    notify(
+                        Type.error,
+                        (
+                            <div>
+                                Password must:
+                                <ol>
+                                    <li>1. Be at least 8 characters long</li>
+                                    <li>2. Include at least one number</li>
+                                    <li>3. Include one special character</li>
+                                </ol>
+                            </div>
+                        ),
+                        10000 // ms, 10 seconds
+                    );
+                    return null;
+                }
+                fieldsChanged.password = CryptoJS.SHA256(newPassword).toString();
+            }
         }
 
         if (Object.keys(fieldsChanged).length === 0) {
