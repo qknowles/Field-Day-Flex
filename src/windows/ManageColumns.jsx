@@ -11,11 +11,10 @@ import { currentUserEmail, currentProjectName, currentTableName } from '../utils
 import { getDocumentIdByEmailAndProjectName } from '../utils/firestore';
 import { useSetAtom } from 'jotai';
 import { refreshColumnsAtom } from '../utils/jotai.js';
-import { useAtom } from 'jotai';
-
+import { entryTypeOptions } from '../utils/globals.js';
+import InfoIcon from '../components/InfoIcon';
 
 export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
-
     const SelectedProject = useAtomValue(currentProjectName);
     const TabName = useAtomValue(currentTableName);
     const Email = useAtomValue(currentUserEmail);
@@ -25,6 +24,7 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
     const [editingColumn, setEditingColumn] = useState(null);
     const [columnOrder, setColumnOrder] = useState({});
     const [columnsToDelete, setColumnsToDelete] = useState([]);
+    const [initialColumnState, setInitialColumnState] = useState({});
 
     // Column properties state
     const [editedColumnNames, setEditedColumnNames] = useState({});
@@ -32,13 +32,10 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
     const [editedRequiredFields, setEditedRequiredFields] = useState({});
     const [editedIdentifierDomains, setEditedIdentifierDomains] = useState({});
     const [editedDropdownOptions, setEditedDropdownOptions] = useState({});
-    const [tempEntryOptions, setTempEntryOptions] = useState([]);
     const [loading, setLoading] = useState(true);
-    const entryTypeOptions = ['whole number', 'decimal number', 'text', 'date', 'multiple choice'];
-    const refreshTrigger = useAtomValue(refreshColumnsAtom);
+    const [error, setError] = useState(null);
+    const refreshTrigger = useSetAtom(refreshColumnsAtom);
     const [editedAllowNegative, setEditedAllowNegative] = useState({});
-
-
 
     useEffect(() => {
         console.log('ManageColumns mounted with props:', { SelectedProject, TabName, Email });
@@ -48,17 +45,25 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
     const loadColumns = async () => {
         try {
             setLoading(true);
-            const columnsData = (await getColumnsCollection(SelectedProject, TabName, Email))
-                .filter((col) => !col.deleted);
-
-
+            setError(null);
+            
+            const columnsData = await getColumnsCollection(SelectedProject, TabName, Email);
+            
             if (!columnsData || columnsData.length === 0) {
-                notify(Type.error, 'No columns found');
+                setError('No columns found');
+                setColumns([]);
                 return;
             }
 
+            const filteredColumns = columnsData.filter((col) => !col.deleted);
+            
+            if (filteredColumns.length === 0) {
+                setError('No columns found');
+                setColumns([]);
+                return;
+            }
 
-            columnsData.sort((a, b) => {
+            filteredColumns.sort((a, b) => {
                 const aOrder = typeof a.order === 'number' ? a.order : Infinity;
                 const bOrder = typeof b.order === 'number' ? b.order : Infinity;
                 return aOrder - bOrder;
@@ -66,27 +71,50 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
 
             const orderObj = {};
             const namesObj = {};
+            const typesObj = {};
+            const requiredObj = {};
+            const identifierObj = {};
+            const allowNegativeObj = {};
+            const optionsObj = {};
 
-            columnsData.forEach((col, index) => {
-                orderObj[col.id] = index + 1;
+            filteredColumns.forEach((col, index) => {
+                orderObj[col.id] = typeof col.order === 'number' ? col.order : index + 1;
                 namesObj[col.id] = col.name || '';
-                editedAllowNegative[col.id] = col.allow_negative === true;
+                typesObj[col.id] = col.data_type || '';
+                requiredObj[col.id] = col.required_field === true;
+                identifierObj[col.id] = col.identifier_domain === true;
+                allowNegativeObj[col.id] = col.allow_negative === true;
+                optionsObj[col.id] = col.entry_options || [];
             });
 
-            setEditedAllowNegative(editedAllowNegative);
-            setColumns(columnsData);
+            setColumns(filteredColumns);
             setColumnOrder(orderObj);
             setEditedColumnNames(namesObj);
+            setEditedColumnTypes(typesObj);
+            setEditedRequiredFields(requiredObj);
+            setEditedIdentifierDomains(identifierObj);
+            setEditedAllowNegative(allowNegativeObj);
+            setEditedDropdownOptions(optionsObj);
+
+            // Store initial state for change detection
+            setInitialColumnState({
+                names: {...namesObj},
+                types: {...typesObj},
+                required: {...requiredObj},
+                identifier: {...identifierObj},
+                allowNegative: {...allowNegativeObj},
+                options: JSON.parse(JSON.stringify(optionsObj)),
+                order: {...orderObj}
+            });
 
         } catch (error) {
             console.error('Error loading columns:', error);
-            notify(Type.error, 'Failed to load columns');
+            setError('Failed to load columns');
+            setColumns([]);
         } finally {
             setLoading(false);
         }
     };
-
-
 
     const handleColumnOrderChange = (columnId, newValue) => {
         if (newValue === 'DELETE') {
@@ -108,7 +136,6 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
             );
 
             if (swappedColumnId) {
-
                 updatedOrder[swappedColumnId] = updatedOrder[columnId];
             }
 
@@ -140,7 +167,6 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
         }
     };
 
-
     const handleRequiredFieldChange = (columnId, isRequired) => {
         setEditedRequiredFields((prev) => ({
             ...prev,
@@ -155,17 +181,79 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
         }));
     };
 
-    const handleDropdownOptionsChange = (columnId) => {
-        const filteredOptions = tempEntryOptions.filter((option) => option !== 'Add Here');
-        setEditedDropdownOptions((prev) => ({
-            ...prev,
-            [columnId]: filteredOptions,
-        }));
+    // Check if any changes have been made
+    const hasChanges = () => {
+        // Check for columns to delete
+        if (columnsToDelete.length > 0) return true;
+        
+        // Check for order changes
+        for (const id in columnOrder) {
+            if (columnOrder[id] !== initialColumnState.order[id]) return true;
+        }
+        
+        // Check for name changes
+        for (const id in editedColumnNames) {
+            if (editedColumnNames[id] !== initialColumnState.names[id]) return true;
+        }
+        
+        // Check for type changes
+        for (const id in editedColumnTypes) {
+            if (editedColumnTypes[id] !== initialColumnState.types[id]) return true;
+        }
+        
+        // Check for required field changes
+        for (const id in editedRequiredFields) {
+            if (editedRequiredFields[id] !== initialColumnState.required[id]) return true;
+        }
+        
+        // Check for identifier domain changes
+        for (const id in editedIdentifierDomains) {
+            if (editedIdentifierDomains[id] !== initialColumnState.identifier[id]) return true;
+        }
+        
+        // Check for allow negative changes
+        for (const id in editedAllowNegative) {
+            if (editedAllowNegative[id] !== initialColumnState.allowNegative[id]) return true;
+        }
+        
+        // Check for dropdown option changes
+        for (const id in editedDropdownOptions) {
+            const initialOptions = initialColumnState.options[id] || [];
+            const currentOptions = editedDropdownOptions[id] || [];
+            
+            if (initialOptions.length !== currentOptions.length) return true;
+            
+            for (let i = 0; i < initialOptions.length; i++) {
+                if (initialOptions[i] !== currentOptions[i]) return true;
+            }
+        }
+        
+        return false;
+    };
+
+    const validateEntryOptions = (columnId) => {
+        if (editedColumnTypes[columnId] !== 'multiple choice') return true;
+        
+        const options = editedDropdownOptions[columnId] || [];
+        const filteredOptions = options.filter(opt => opt && opt.trim() !== '');
+        
+        if (filteredOptions.length < 2) {
+            notify(Type.error, 'Multiple choice columns must have at least 2 options');
+            return false;
+        }
+        
+        return true;
     };
 
     const handleSaveChanges = async () => {
+        // Check if any changes have been made
+        if (!hasChanges()) {
+            notify(Type.error, 'Nothing to update.');
+            return;
+        }
+
         // Check for duplicate order numbers
-        const orderValues = Object.values(columnOrder);
+        const orderValues = Object.values(columnOrder).filter(val => val !== 'DELETE');
         const uniqueValues = new Set(orderValues);
 
         if (orderValues.length !== uniqueValues.size) {
@@ -173,11 +261,21 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
             return; // Stop execution and prevent saving
         }
 
-        // check for duplicate column names (if the name already exists)
+        // Check for duplicate column names
         const nameValues = Object.values(editedColumnNames).map(name => name.trim().toLowerCase());
-        const uniqueNames = new Set(nameValues);
-        if(nameValues.length !== uniqueNames.size) {
+        const nameSet = new Set(nameValues);
+        if(nameValues.length !== nameSet.size) {
             notify(Type.error, 'Each column must have a unique name!');
+            return;
+        }
+
+        // Validate multiple choice options
+        for (const columnId in editedColumnTypes) {
+            if (editedColumnTypes[columnId] === 'multiple choice') {
+                if (!validateEntryOptions(columnId)) {
+                    return;
+                }
+            }
         }
 
         try {
@@ -186,6 +284,7 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
             const projectId = await getDocumentIdByEmailAndProjectName(Email, SelectedProject);
             if (!projectId) {
                 console.error(`No project found with name: ${SelectedProject}`);
+                notify(Type.error, 'Project not found');
                 return;
             }
 
@@ -225,7 +324,6 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
                         const newType = editedColumnTypes[columnId] || columnIdMap[columnId].data_type;
 
                         if (oldName !== newName) {
-                            // check for dup, notify if.
                             nameChanges[oldName] = newName; // Store for entry updates
                         }
 
@@ -299,7 +397,12 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
 
                 notify(Type.success, successMessage);
                 CloseManageColumns();
-                window.location.reload();
+                
+                // Refresh columns data without full page reload
+                refreshTrigger((prev) => prev + 1);
+                if (typeof triggerRefresh === 'function') {
+                    triggerRefresh();
+                }
             }
         } catch (error) {
             console.error("Error updating columns:", error);
@@ -307,119 +410,168 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
         }
     };
 
-    useEffect(() => {
-        const fetchColumns = async () => {
-            try {
-                const columnsData = await getColumnsCollection(SelectedProject, TabName, Email);
-                setColumns(columnsData.sort((a, b) => a.order - b.order));
-            } catch (error) {
-                console.error("Error fetching columns:", error);
+    // Column editing modal with self-contained dropdown options state
+    const ColumnEditModal = ({ column }) => {
+        // Track initial state for the column being edited
+        const [initialState, setInitialState] = useState({
+            type: editedColumnTypes[column.id],
+            required: editedRequiredFields[column.id],
+            identifier: editedIdentifierDomains[column.id],
+            allowNegative: editedAllowNegative[column.id],
+            options: [...(editedDropdownOptions[column.id] || [])]
+        });
+        
+        // Create local state for entry options to avoid the infinite loop
+        const [localOptions, setLocalOptions] = useState(() => {
+            const options = [...(editedDropdownOptions[column.id] || [])];
+            if (!options.includes("Add Here")) {
+                options.unshift("Add Here");
             }
-        };
-
-        fetchColumns();
-
-        const handleRefresh = () => fetchColumns();
-        window.addEventListener("refreshColumns", handleRefresh);
-
-        return () => window.removeEventListener("refreshColumns", handleRefresh);
-    }, [SelectedProject, TabName, Email]);
-
-    useEffect(() => {
-        const fetchEntries = async () => {
-            try {
-                const entriesRef = collection(db, 'Projects', SelectedProject, 'Tabs', TabName, 'Entries');
-                const entriesSnapshot = await getDocs(entriesRef);
-
-                const entriesList = entriesSnapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
-
-                setEntries(entriesList);
-            } catch (error) {
-                console.error("Error fetching entries:", error);
-            }
-        };
-
-        fetchEntries();
-
-        const handleRefresh = () => fetchEntries();
-        window.addEventListener("refreshEntries", handleRefresh);
-
-        return () => window.removeEventListener("refreshEntries", handleRefresh);
-    }, [SelectedProject, TabName]);
-
-
-    // Column editing modal reusing ColumnOptions functionality
-    const ColumnEditModal = ({ column }) => (
-        <WindowWrapper
-            header={`Edit Column: ${editedColumnNames[column.id]}`}
-            onLeftButton={() => setEditingColumn(null)}
-            onRightButton={() => {
-                if (editedColumnTypes[column.id] === 'multiple choice') {
-                    handleDropdownOptionsChange(column.id);
+            return options;
+        });
+        
+        // This will be called when the modal is closed with "Done"
+        const handleDoneEditing = () => {
+            let filteredOptions = [];
+            
+            // Handle multiple choice options
+            if (editedColumnTypes[column.id] === 'multiple choice') {
+                filteredOptions = localOptions.filter(opt => opt !== "Add Here");
+                
+                // Validate options
+                if (filteredOptions.length < 2) {
+                    notify(Type.error, 'Multiple choice columns must have at least 2 options');
+                    return;
                 }
-                setEditingColumn(null);
-            }}
-            leftButtonText="Cancel"
-            rightButtonText="Done"
-        >
-            <div className="flex flex-col space-y-4 p-4">
-                <RadioButtons
-                    label="Data Entry Type"
-                    options={entryTypeOptions}
-                    selectedOption={editedColumnTypes[column.id]}
-                    setSelectedOption={(type) => handleColumnTypeChange(column.id, type)}
-                    layout="horizontal"
-                />
-
-                {editedColumnTypes[column.id] === 'multiple choice' && (
-                    <DropdownFlex
-                        options={tempEntryOptions}
-                        setOptions={setTempEntryOptions}
-                        label="Entry Choices"
-                    />
-                )}
-
-                {(editedColumnTypes[column.id] === 'whole number' ||
-                    editedColumnTypes[column.id] === 'decimal number') && (
-                        <YesNoSelector
-                            label="Allow Negative Values"
-                            layout="horizontal-start"
-                            selection={editedAllowNegative[column.id]}
-                            setSelection={(value) =>
-                                setEditedAllowNegative((prev) => ({
-                                    ...prev,
-                                    [column.id]: value,
-                                }))
-                            }
+                
+                // Update parent state with options
+                setEditedDropdownOptions(prev => ({
+                    ...prev,
+                    [column.id]: filteredOptions
+                }));
+            }
+            
+            // Check if any changes were made in the edit modal
+            const hasChangesInEdit = 
+                initialState.type !== editedColumnTypes[column.id] || 
+                initialState.required !== editedRequiredFields[column.id] || 
+                initialState.identifier !== editedIdentifierDomains[column.id] || 
+                initialState.allowNegative !== editedAllowNegative[column.id] || 
+                JSON.stringify(initialState.options) !== JSON.stringify(
+                    editedColumnTypes[column.id] === 'multiple choice' ? filteredOptions : []
+                );
+            
+            if (!hasChangesInEdit) {
+                notify(Type.error, 'No changes were made to the column.');
+            } else {
+                notify(Type.success, 'Column settings saved. Remember to save all changes when done.');
+            }
+            
+            setEditingColumn(null);
+        };
+        
+        return (
+            <WindowWrapper
+                header={`Edit Column: ${editedColumnNames[column.id]}`}
+                onLeftButton={() => setEditingColumn(null)}
+                onRightButton={handleDoneEditing}
+                leftButtonText="Cancel"
+                rightButtonText="Done"
+            >
+                <div className="flex flex-col space-y-4 p-4">
+                    <div className="flex items-center mb-2">
+                        <h3 className="text-sm font-semibold">Column Type:</h3>
+                        <InfoIcon 
+                            text="The data type determines what kind of information can be stored in this column."
+                            position="right"
+                            className="ml-2"
+                            size={14}
                         />
+                    </div>
+                    
+                    <RadioButtons
+                        layout="horizontal"
+                        options={Object.values(entryTypeOptions).filter(type => type !== entryTypeOptions.AUTO_ID)}
+                        selectedOption={editedColumnTypes[column.id]}
+                        setSelectedOption={(type) => handleColumnTypeChange(column.id, type)}
+                    />
+
+                    {editedColumnTypes[column.id] === 'multiple choice' && (
+                        <div className="mt-2">
+                            <div className="flex items-center mb-2">
+                                <h3 className="text-sm font-semibold">Entry Choices:</h3>
+                                <InfoIcon 
+                                    text="Add at least two options for users to select from. Click 'Add Here' to add a new option."
+                                    position="right"
+                                    className="ml-2"
+                                    size={14}
+                                />
+                            </div>
+                            <DropdownFlex
+                                options={localOptions}
+                                setOptions={setLocalOptions}
+                                label="Entry Choices"
+                            />
+                        </div>
                     )}
 
+                    {(editedColumnTypes[column.id] === 'integer' ||
+                        editedColumnTypes[column.id] === 'decimal') && (
+                            <div className="flex items-center space-x-2">
+                                <YesNoSelector
+                                    label="Allow Negative Values"
+                                    layout="horizontal-start"
+                                    selection={editedAllowNegative[column.id]}
+                                    setSelection={(value) =>
+                                        setEditedAllowNegative((prev) => ({
+                                            ...prev,
+                                            [column.id]: value,
+                                        }))
+                                    }
+                                />
+                                <InfoIcon
+                                    text="When set to Yes, users will be allowed to enter negative numbers in this field."
+                                    position="right"
+                                    className="ml-2"
+                                    size={14}
+                                />
+                            </div>
+                        )}
 
-                <YesNoSelector
-                    label="Required Field"
-                    layout="horizontal-start"
-                    selection={editedRequiredFields[column.id]}
-                    setSelection={(value) => handleRequiredFieldChange(column.id, value)}
-                />
+                    <div className="flex items-center space-x-2">
+                        <YesNoSelector
+                            label="Required Field"
+                            layout="horizontal-start"
+                            selection={editedRequiredFields[column.id]}
+                            setSelection={(value) => handleRequiredFieldChange(column.id, value)}
+                        />
+                        <InfoIcon
+                            text="When set to Yes, users must provide a value for this field to save an entry."
+                            position="right"
+                            className="ml-2"
+                            size={14}
+                        />
+                    </div>
 
-                <YesNoSelector
-                    label="Include in Entry ID Domain"
-                    layout="horizontal-start"
-                    selection={editedIdentifierDomains[column.id]}
-                    setSelection={(value) => handleIdentifierDomainChange(column.id, value)}
-                />
-            </div>
-        </WindowWrapper>
-    );
-    console.log('Current columns state:', {
-        columns,
-        editedColumnNames,
-        editingColumn,
-        columnOrder,
-    });
+                    <div className="flex items-center space-x-2">
+                        <YesNoSelector
+                            label="Include in Entry ID Domain"
+                            layout="horizontal-start"
+                            selection={editedIdentifierDomains[column.id]}
+                            setSelection={(value) => handleIdentifierDomainChange(column.id, value)}
+                        />
+                        <InfoIcon
+                            text="If enabled, this field will be used when generating unique identifiers for entries."
+                            position="right"
+                            className="ml-2"
+                            size={14}
+                        />
+                    </div>
+                </div>
+            </WindowWrapper>
+        );
+    };
+    
     return (
         <>
             <WindowWrapper
@@ -432,11 +584,12 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
                 <div className="flex flex-col space-y-4 p-4">
                     {loading ? (
                         <div className="text-center">Loading columns...</div>
+                    ) : error ? (
+                        <div className="text-center text-red-500">{error}</div>
                     ) : columns.length === 0 ? (
-                        <div className="text-center">No columns found</div>
+                        <div className="text-center">No columns found for this tab</div>
                     ) : (
                         <>
-
                             <div className="flex justify-between items-center px-4 py-1 mb-2 rounded bg-neutral-200 dark:bg-neutral-800">
                                 <div>
                                     <label className="text-black dark:text-white text-sm font-semibold tracking-wide">
@@ -450,8 +603,6 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
                                 </div>
                             </div>
 
-
-
                             {/* Column Rows */}
                             {columns.map((column) => (
                                 <div
@@ -462,7 +613,7 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
                                         type="text"
                                         value={editedColumnNames[column.id] || ''}
                                         onChange={(e) => handleColumnNameChange(column.id, e.target.value)}
-                                        className="flex-grow border rounded px-2 py-1 text-white"
+                                        className="flex-grow border rounded px-2 py-1"
                                     />
                                     <select
                                         value={columnOrder[column.id] ?? (columns.findIndex(col => col.id === column.id) + 1)}
@@ -475,12 +626,10 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
                                             </option>
                                         ))}
                                         <option key="delete" value="DELETE">DELETE</option>
-
                                     </select>
                                     <Button
                                         text="Edit"
                                         onClick={() => {
-                                            setTempEntryOptions(editedDropdownOptions[column.id] || []);
                                             setEditingColumn(column);
                                         }}
                                     />
@@ -489,7 +638,6 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
                         </>
                     )}
                 </div>
-
             </WindowWrapper>
 
             {editingColumn && <ColumnEditModal column={editingColumn} />}

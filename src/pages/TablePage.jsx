@@ -7,7 +7,7 @@ import NewEntry from '../windows/NewEntry';
 import ImportCSV from '../windows/ImportCSV';
 import ColumnOptions from '../windows/ColumnOptions';
 import Button from '../components/Button';
-import ManageColumns from '../windows/MangeColumns';
+import ManageColumns from '../windows/ManageColumns.jsx';
 import { useAtomValue, useAtom, useSetAtom } from 'jotai';
 import { currentProjectName, currentTableName, currentUserEmail, allProjectNames, allTableNames, isAuthenticated } from '../utils/jotai.js';
 import { generateCSVData } from '../components/ExportService.jsx';
@@ -19,7 +19,7 @@ import { visibleColumnsAtom } from '../utils/jotai.js';
 import { notify, Type } from '../components/Notifier';
 import { db } from '../utils/firebase';
 import { collection, addDoc } from 'firebase/firestore';
-
+import ManageColumns from '../windows/ManageColumns';
 // variable to track if login was recorded across all renders, tablepage renders like 20 times :(
 const hasRecordedLoginForSession = { value: false };
 
@@ -255,6 +255,15 @@ export default function TablePage() {
         }
     }, [email, authenticated]);
 
+    // Handle Manage Columns click with proper validation
+    const handleManageColumnsClick = () => {
+        if (columns.length === 0) {
+            notify(Type.error, 'No columns found for this tab');
+            return;
+        }
+        setShowManageColumns(true);
+    };
+
     return (
         <PageWrapper>
             {/* Tab Navigation */}
@@ -272,7 +281,10 @@ export default function TablePage() {
                             disabled={columns.length < 1}
                         />
                         <Button text="New Column" onClick={() => setShowColumnOptions(true)} className="mr-6" />
-                        <Button text="Manage Columns" onClick={() => setShowManageColumns(true)} />
+                        <Button 
+                            text="Manage Columns" 
+                            onClick={handleManageColumnsClick} 
+                        />
                     </div>
 
                     <div className="flex items-center space-x-2">
@@ -382,6 +394,7 @@ export default function TablePage() {
                 />
             )}
 
+            {/* Only show Manage Columns when there are columns */}
             {showManageColumns && (
                 <ManageColumns
                     CloseManageColumns={() => setShowManageColumns(false)}
