@@ -19,7 +19,7 @@ import { visibleColumnsAtom } from '../utils/jotai.js';
 import { notify, Type } from '../components/Notifier';
 import { db } from '../utils/firebase';
 import { collection, addDoc } from 'firebase/firestore';
-import ManageColumns from '../windows/ManageColumns';
+
 // variable to track if login was recorded across all renders, tablepage renders like 20 times :(
 const hasRecordedLoginForSession = { value: false };
 

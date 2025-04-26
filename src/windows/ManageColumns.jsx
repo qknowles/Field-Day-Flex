@@ -4,6 +4,12 @@ import WindowWrapper from '../wrappers/WindowWrapper';
 import { Type, notify } from '../components/Notifier';
 import { getColumnsCollection } from '../utils/firestore';
 import Button from '../components/Button';
+import React, { useEffect, useState } from 'react';
+import { RadioButtons, YesNoSelector, DropdownFlex } from '../components/FormFields';
+import WindowWrapper from '../wrappers/WindowWrapper';
+import { Type, notify } from '../components/Notifier';
+import { getColumnsCollection } from '../utils/firestore';
+import Button from '../components/Button';
 import { collection, doc, getDocs, writeBatch } from 'firebase/firestore';
 import { db } from '../utils/firebase';
 import { useAtomValue } from 'jotai';
@@ -159,12 +165,7 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
             ...prev,
             [columnId]: newType,
         }));
-        if (newType !== 'multiple choice') {
-            setEditedDropdownOptions((prev) => ({
-                ...prev,
-                [columnId]: [],
-            }));
-        }
+        // Don't clear dropdown options to avoid validation errors when switching to multiple choice
     };
 
     const handleRequiredFieldChange = (columnId, isRequired) => {
@@ -232,13 +233,16 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
     };
 
     const validateEntryOptions = (columnId) => {
+        // Only validate if the column is of type multiple choice
         if (editedColumnTypes[columnId] !== 'multiple choice') return true;
         
         const options = editedDropdownOptions[columnId] || [];
-        const filteredOptions = options.filter(opt => opt && opt.trim() !== '');
+        
+        // Filter out empty options and "Add Here"
+        const filteredOptions = options.filter(opt => opt && opt.trim() !== '' && opt !== 'Add Here');
         
         if (filteredOptions.length < 2) {
-            notify(Type.error, 'Multiple choice columns must have at least 2 options');
+            notify(Type.error, `Multiple choice column "${editedColumnNames[columnId]}" must have at least 2 options`);
             return false;
         }
         
@@ -271,10 +275,8 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
 
         // Validate multiple choice options
         for (const columnId in editedColumnTypes) {
-            if (editedColumnTypes[columnId] === 'multiple choice') {
-                if (!validateEntryOptions(columnId)) {
-                    return;
-                }
+            if (editedColumnTypes[columnId] === 'multiple choice' && !validateEntryOptions(columnId)) {
+                return;
             }
         }
 
@@ -410,10 +412,10 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
         }
     };
 
-    // Column editing modal with self-contained dropdown options state
+    // Column editing modal component
     const ColumnEditModal = ({ column }) => {
         // Track initial state for the column being edited
-        const [initialState, setInitialState] = useState({
+        const [initialState] = useState({
             type: editedColumnTypes[column.id],
             required: editedRequiredFields[column.id],
             identifier: editedIdentifierDomains[column.id],
@@ -430,13 +432,32 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
             return options;
         });
         
+        // This prevents the refresh when changing type
+        const handleLocalTypeChange = (newType) => {
+            // Update the type in parent state
+            handleColumnTypeChange(column.id, newType);
+            
+            // If switching to multiple choice and there are no existing options,
+            // make sure we have some default options ready
+            if (newType === 'multiple choice' && (!editedDropdownOptions[column.id] || editedDropdownOptions[column.id].length === 0)) {
+                const defaultOptions = ['Option 1', 'Option 2'];
+                // Update the parent's options
+                setEditedDropdownOptions(prev => ({
+                    ...prev,
+                    [column.id]: defaultOptions
+                }));
+                
+                // Update local options with Add Here
+                setLocalOptions(['Add Here', ...defaultOptions]);
+            }
+        };
+        
         // This will be called when the modal is closed with "Done"
         const handleDoneEditing = () => {
-            let filteredOptions = [];
-            
             // Handle multiple choice options
             if (editedColumnTypes[column.id] === 'multiple choice') {
-                filteredOptions = localOptions.filter(opt => opt !== "Add Here");
+                // Filter out "Add Here"
+                const filteredOptions = localOptions.filter(opt => opt !== "Add Here");
                 
                 // Validate options
                 if (filteredOptions.length < 2) {
@@ -452,13 +473,14 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
             }
             
             // Check if any changes were made in the edit modal
+            const currentOptions = localOptions.filter(opt => opt !== "Add Here");
             const hasChangesInEdit = 
                 initialState.type !== editedColumnTypes[column.id] || 
                 initialState.required !== editedRequiredFields[column.id] || 
                 initialState.identifier !== editedIdentifierDomains[column.id] || 
                 initialState.allowNegative !== editedAllowNegative[column.id] || 
                 JSON.stringify(initialState.options) !== JSON.stringify(
-                    editedColumnTypes[column.id] === 'multiple choice' ? filteredOptions : []
+                    editedColumnTypes[column.id] === 'multiple choice' ? currentOptions : []
                 );
             
             if (!hasChangesInEdit) {
@@ -493,7 +515,7 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
                         layout="horizontal"
                         options={Object.values(entryTypeOptions).filter(type => type !== entryTypeOptions.AUTO_ID)}
                         selectedOption={editedColumnTypes[column.id]}
-                        setSelectedOption={(type) => handleColumnTypeChange(column.id, type)}
+                        setSelectedOption={handleLocalTypeChange}
                     />
 
                     {editedColumnTypes[column.id] === 'multiple choice' && (
