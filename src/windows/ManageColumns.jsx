@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { RadioButtons, YesNoSelector, DropdownFlex } from '../components/FormFields';
 import WindowWrapper from '../wrappers/WindowWrapper';
@@ -229,7 +228,7 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
 
     const validateEntryOptions = (columnId) => {
         // Only validate if the column is of type multiple choice
-        if (editedColumnTypes[columnId] !== 'multiple choice') return true;
+        if (editedColumnTypes[columnId] !== entryTypeOptions.MULTIPLE_CHOICE) return true;
         
         const options = editedDropdownOptions[columnId] || [];
         
@@ -239,6 +238,22 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
         if (filteredOptions.length < 2) {
             notify(Type.error, `Multiple choice column "${editedColumnNames[columnId]}" must have at least 2 options`);
             return false;
+        }
+        
+        // Check for uniqueness of options
+        const uniqueOptions = new Set(filteredOptions);
+        if (uniqueOptions.size < filteredOptions.length) {
+            notify(Type.error, 'Each option must be unique');
+            return false;
+        }
+        
+        // Check option length limits (same as in ColumnOptions)
+        const ENTRY_OPTION_MAX_LENGTH = 50; // Same as in fieldConstraints.js
+        for (const option of filteredOptions) {
+            if (option.length > ENTRY_OPTION_MAX_LENGTH) {
+                notify(Type.error, `Option "${option}" exceeds maximum length of ${ENTRY_OPTION_MAX_LENGTH} characters.`);
+                return false;
+            }
         }
         
         return true;
@@ -270,7 +285,7 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
 
         // Validate multiple choice options
         for (const columnId in editedColumnTypes) {
-            if (editedColumnTypes[columnId] === 'multiple choice' && !validateEntryOptions(columnId)) {
+            if (editedColumnTypes[columnId] === entryTypeOptions.MULTIPLE_CHOICE && !validateEntryOptions(columnId)) {
                 return;
             }
         }
@@ -332,7 +347,7 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
                             required_field: editedRequiredFields[columnId] ?? false,
                             identifier_domain: editedIdentifierDomains[columnId] ?? false,
                             allow_negative: editedAllowNegative[columnId] ?? false,
-                            entry_options: newType === 'multiple choice' ? editedDropdownOptions[columnId] || [] : [],
+                            entry_options: newType === entryTypeOptions.MULTIPLE_CHOICE ? editedDropdownOptions[columnId] || [] : [],
                         });
 
                         updatesMade = true;
@@ -427,6 +442,39 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
             return options;
         });
         
+        // Validate data types using the same logic as ColumnOptions
+        const validateDataType = (columnId, type, options) => {
+            // For multiple choice, ensure we have at least 2 unique options
+            if (type === entryTypeOptions.MULTIPLE_CHOICE) {
+                const filteredOptions = options.filter(opt => 
+                    opt !== "Add Here" && opt.trim() !== ""
+                );
+                
+                if (filteredOptions.length < 2) {
+                    notify(Type.error, 'Multiple choice columns must have at least 2 options');
+                    return false;
+                }
+                
+                // Check for uniqueness
+                const uniqueOptions = new Set(filteredOptions);
+                if (uniqueOptions.size < 2) {
+                    notify(Type.error, 'Entry choices must include at least two unique values.');
+                    return false;
+                }
+                
+                // Check option length limits (like in ColumnOptions)
+                const ENTRY_OPTION_MAX_LENGTH = 50; // Same as in fieldConstraints.js
+                for (const option of filteredOptions) {
+                    if (option.length > ENTRY_OPTION_MAX_LENGTH) {
+                        notify(Type.error, `Option "${option}" exceeds maximum length of ${ENTRY_OPTION_MAX_LENGTH} characters.`);
+                        return false;
+                    }
+                }
+            }
+            
+            return true;
+        };
+        
         // This prevents the refresh when changing type
         const handleLocalTypeChange = (newType) => {
             // Update the type in parent state
@@ -434,7 +482,7 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
             
             // If switching to multiple choice and there are no existing options,
             // make sure we have some default options ready
-            if (newType === 'multiple choice' && (!editedDropdownOptions[column.id] || editedDropdownOptions[column.id].length === 0)) {
+            if (newType === entryTypeOptions.MULTIPLE_CHOICE && (!editedDropdownOptions[column.id] || editedDropdownOptions[column.id].length === 0)) {
                 const defaultOptions = ['Option 1', 'Option 2'];
                 // Update the parent's options
                 setEditedDropdownOptions(prev => ({
@@ -450,13 +498,12 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
         // This will be called when the modal is closed with "Done"
         const handleDoneEditing = () => {
             // Handle multiple choice options
-            if (editedColumnTypes[column.id] === 'multiple choice') {
+            if (editedColumnTypes[column.id] === entryTypeOptions.MULTIPLE_CHOICE) {
                 // Filter out "Add Here"
                 const filteredOptions = localOptions.filter(opt => opt !== "Add Here");
                 
-                // Validate options
-                if (filteredOptions.length < 2) {
-                    notify(Type.error, 'Multiple choice columns must have at least 2 options');
+                // Validate options using the shared validation logic
+                if (!validateDataType(column.id, entryTypeOptions.MULTIPLE_CHOICE, localOptions)) {
                     return;
                 }
                 
@@ -475,7 +522,7 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
                 initialState.identifier !== editedIdentifierDomains[column.id] || 
                 initialState.allowNegative !== editedAllowNegative[column.id] || 
                 JSON.stringify(initialState.options) !== JSON.stringify(
-                    editedColumnTypes[column.id] === 'multiple choice' ? currentOptions : []
+                    editedColumnTypes[column.id] === entryTypeOptions.MULTIPLE_CHOICE ? currentOptions : []
                 );
             
             if (!hasChangesInEdit) {
@@ -513,7 +560,7 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
                         setSelectedOption={handleLocalTypeChange}
                     />
 
-                    {editedColumnTypes[column.id] === 'multiple choice' && (
+                    {editedColumnTypes[column.id] === entryTypeOptions.MULTIPLE_CHOICE && (
                         <div className="mt-2">
                             <div className="flex items-center mb-2">
                                 <h3 className="text-sm font-semibold">Entry Choices:</h3>
@@ -532,8 +579,8 @@ export default function ManageColumns({ CloseManageColumns, triggerRefresh }) {
                         </div>
                     )}
 
-                    {(editedColumnTypes[column.id] === 'integer' ||
-                        editedColumnTypes[column.id] === 'decimal') && (
+                    {(editedColumnTypes[column.id] === entryTypeOptions.INTEGER ||
+                        editedColumnTypes[column.id] === entryTypeOptions.DECIMAL) && (
                             <div className="flex items-center space-x-2">
                                 <YesNoSelector
                                     label="Allow Negative Values"
