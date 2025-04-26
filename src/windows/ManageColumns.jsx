@@ -1,9 +1,4 @@
-import React, { useEffect, useState } from 'react';
-import { RadioButtons, YesNoSelector, DropdownFlex } from '../components/FormFields';
-import WindowWrapper from '../wrappers/WindowWrapper';
-import { Type, notify } from '../components/Notifier';
-import { getColumnsCollection } from '../utils/firestore';
-import Button from '../components/Button';
+
 import React, { useEffect, useState } from 'react';
 import { RadioButtons, YesNoSelector, DropdownFlex } from '../components/FormFields';
 import WindowWrapper from '../wrappers/WindowWrapper';
