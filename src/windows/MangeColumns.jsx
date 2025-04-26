@@ -94,7 +94,7 @@ export default function ManageColumns({ CloseManageColumns }) {
         try {
             const projectId = await getDocumentIdByEmailAndProjectName(Email, SelectedProject);
             if (!projectId) {
-                console.error('No project found with name:', SelectedProject);
+                notify(Type.error, `Project not found: ${SelectedProject}`);
                 return;
             }
 
@@ -129,18 +129,24 @@ export default function ManageColumns({ CloseManageColumns }) {
 
             if (updatesMade) {
                 await batch.commit();
+
                 if (Object.keys(nameChanges).length > 0) {
                     await updateEntryNames(projectId, nameChanges);
                 }
+
                 notify(Type.success, 'Columns updated successfully!');
-                await loadColumns();
-                CloseManageColumns();
+            } else {
+                notify(Type.success, 'No changes detected.');
             }
+
+            await loadColumns();
+            CloseManageColumns();
         } catch (error) {
             console.error('Error saving changes:', error);
-            notify(Type.error, 'Failed to save changes');
+            notify(Type.error, 'Failed to save changes.');
         }
     };
+
 
     // Update entry records if column names changed
     const updateEntryNames = async (projectId, nameChanges) => {
