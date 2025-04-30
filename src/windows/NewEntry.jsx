@@ -59,7 +59,7 @@ export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntry
 
         // Get and store the ID domain fields
         const domainFields = columns
-            .filter(column => column.identifier_domain === true && column.name !== 'Entry ID')
+            .filter(column => column.identifier_domain === true || column.name === 'Entry ID')
             .map(column => column.name);
         setIdDomainFields(domainFields);
 
@@ -151,13 +151,6 @@ export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntry
 
             setHistoricalEntries(matchingEntries);
 
-            // Notify user if historical entries were found
-            if (matchingEntries.length > 0) {
-                notify(
-                    Type.info,
-                    `Found ${matchingEntries.length} historical ${matchingEntries.length === 1 ? 'entry' : 'entries'} with matching ID fields.`
-                );
-            }
         } catch (error) {
             console.error("Error looking up historical entries:", error);
         }
