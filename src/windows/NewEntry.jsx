@@ -241,7 +241,7 @@ export default function NewEntry({ CloseNewEntry, existingEntry = false, onEntry
         }
 
         const nothingChanged = columnsCollection.every(
-            ({ name }) => userEntries[name] === existingEntry.entry_data[name]
+            ({ name }) => existingEntry.entry_data && userEntries[name] === existingEntry.entry_data[name]
         );
 
         if (existingEntry && nothingChanged) {
