@@ -1,5 +1,17 @@
-import React, { useState, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle } from 'react';
-import { getColumnsCollection, getEntriesForTab, getProjectFields, deleteEntry, getEntryDetails } from '../utils/firestore'; // Import deleteEntry
+import React, {
+    useState,
+    useEffect,
+    useCallback,
+    useMemo,
+    forwardRef,
+    useImperativeHandle
+} from 'react';
+import {
+    getColumnsCollection,
+    getEntriesForTab,
+    deleteEntry,
+    getEntryDetails
+} from '../utils/firestore';
 import { Pagination } from './Pagination';
 import Button from './Button';
 import WindowWrapper from '../wrappers/WindowWrapper';
@@ -7,21 +19,24 @@ import { Type, notify } from './Notifier';
 import NewEntry from '../windows/NewEntry';
 import { AiFillEdit, AiFillDelete } from 'react-icons/ai';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
-import { currentUserEmail, currentProjectName, currentTableName, currentBatchSize } from '../utils/jotai';
-import { visibleColumnsAtom } from '../utils/jotai';
+import {
+    currentUserEmail,
+    currentProjectName,
+    currentTableName,
+    currentBatchSize,
+    visibleColumnsAtom
+} from '../utils/jotai';
 import { searchQueryAtom, filteredEntriesAtom } from './SearchBar';
-import { filterEntriesBySearch } from '../utils/searchUtils';
 import EntryCountDisplay from './EntryCountDisplay';
 import 'react-resizable/css/styles.css';
 
-
 const DataViewer = forwardRef((props, ref) => {
-
     const SelectedProject = useAtomValue(currentProjectName);
     const SelectedTab = useAtomValue(currentTableName);
     const Email = useAtomValue(currentUserEmail);
 
     const [entries, setEntries] = useState([]);
+    const [allEntries, setAllEntries] = useState([]);
     const [columns, setColumns] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -30,547 +45,325 @@ const DataViewer = forwardRef((props, ref) => {
     const [batchSize] = useAtom(currentBatchSize);
     const setCurrentProject = useSetAtom(currentProjectName);
     const setCurrentTable = useSetAtom(currentTableName);
-    const [, setIsAdminOrOwner] = useState(false);
-    const [currentTab] = useAtom(currentTableName);
-    const [allEntries, setAllEntries] = useState([]); // Store all entries for search filtering
-    const [searchQuery] = useAtom(searchQueryAtom); // Get the search query from the atom
-    const [filteredEntries, setFilteredEntries] = useAtom(filteredEntriesAtom); // Store filtered entries
-
+    const [searchQuery] = useAtom(searchQueryAtom);
+    const [filteredEntries, setFilteredEntries] = useAtom(filteredEntriesAtom);
     const [showEditWindow, setEditWindow] = useState(null);
-    const [, setShowManageColumns] = useState(false);
-    const [columnOrder, setColumnOrder] = useState({});
-    const [columnsToDelete, setColumnsToDelete] = useState([]);
-    const [editedColumnNames, setEditedColumnNames] = useState({});
-    const [searchTerm] = useState('');
-    const getColumnClass = (columnName) => {
-        const classMap = {
-            'Date & Time': 'dateTimeColumn',
-            Site: 'siteColumn',
-            Year: 'yearColumn',
-            Taxa: 'taxaColumn',
-            Genus: 'genusColumn',
-            Species: 'speciesColumn',
-        };
-        return classMap[columnName] || '';
-    };
 
     const [visibleColumns] = useAtom(visibleColumnsAtom);
-    const [editedColumnTypes, setEditedColumnTypes] = useState({});
-    const [editedRequiredFields, setEditedRequiredFields] = useState({});
-    const [editedIdentifierDomains, setEditedIdentifierDomains] = useState({});
-    const [editedDropdownOptions, setEditedDropdownOptions] = useState({});
 
-    const defaultColumns = useMemo(() => {
-        return [
-            { id: 'actions', name: 'Actions', type: 'actions', order: -3 },
-            { id: 'datetime', name: 'Date & Time', type: 'datetime', order: -2 },
-        ];
-    }, []);
+    const fixedEl = document.querySelector('th.fixed-column');
+    const FIXED_COLUMN_WIDTH = fixedEl
+        ? fixedEl.getBoundingClientRect().width
+        : 100;
 
     const fetchColumns = useCallback(async () => {
         if (!SelectedProject || !SelectedTab) return;
-
+        setColumns([]);
         try {
             const columnsData = await getColumnsCollection(SelectedProject, SelectedTab, Email);
-            const sortedColumns = [...defaultColumns, ...columnsData].sort(
-                (a, b) => a.order - b.order,
-            );
-            setColumns(sortedColumns);
+            if (columnsData.length) {
+                const sortedColumns = columnsData
+                    .sort((a, b) => a.order - b.order)
+                    .map(col => ({
+                        ...col,
+                        width: col.width || ((window.innerWidth - FIXED_COLUMN_WIDTH) / columnsData.length)
+                    }));
+                setColumns(sortedColumns);
 
-            const orderObj = {};
-            const namesObj = {};
-            const typesObj = {};
-            const requiredObj = {};
-            const identifierObj = {};
-            const optionsObj = {};
-
-            sortedColumns.forEach((col, index) => {
-                orderObj[col.id] = index + 1;
-                namesObj[col.id] = col.name;
-                typesObj[col.id] = col.data_type || 'text';
-                requiredObj[col.id] = col.required_field || false;
-                identifierObj[col.id] = col.identifier_domain || false;
-                optionsObj[col.id] = col.entry_options || [];
-            });
-
-            setColumnOrder(orderObj);
-            setEditedColumnNames(namesObj);
-            setEditedColumnTypes(typesObj);
-            setEditedRequiredFields(requiredObj);
-            setEditedIdentifierDomains(identifierObj);
-            setEditedDropdownOptions(optionsObj);
+                const orderObj = {},
+                    namesObj = {},
+                    typesObj = {},
+                    requiredObj = {},
+                    identifierObj = {},
+                    optionsObj = {};
+                sortedColumns.forEach((col, idx) => {
+                    orderObj[col.id] = idx + 1;
+                    namesObj[col.id] = col.name;
+                    typesObj[col.id] = col.data_type || 'text';
+                    requiredObj[col.id] = col.required_field || false;
+                    identifierObj[col.id] = col.identifier_domain || false;
+                    optionsObj[col.id] = col.entry_options || [];
+                });
+            }
         } catch (err) {
             console.error('Error fetching columns:', err);
             setError('Failed to load columns');
         }
-    }, [SelectedProject, SelectedTab, Email, defaultColumns]);
+    }, [SelectedProject, SelectedTab, Email]);
 
     const fetchEntries = useCallback(async () => {
         if (!SelectedProject || !SelectedTab) return;
-
         try {
-            const entriesData = await getEntriesForTab(SelectedProject, SelectedTab, Email);
-            const filteredEntries = entriesData.filter(entry => !entry.deleted);
+            const raw = await getEntriesForTab(SelectedProject, SelectedTab, Email);
+            const alive = raw.filter(e => !e.deleted).map(e => ({
+                ...e,
+                entry_data: { ...e.entry_data },
+                entry_date: e.entry_date ? new Date(e.entry_date) : null
+            }));
 
-            const formattedEntries = filteredEntries.map((entry) => {
-                const formattedData = { ...entry.entry_data };
-                return {
-                    ...entry,
-                    entry_data: formattedData,
-                    entry_date: entry.entry_date ? new Date(entry.entry_date) : null
-                };
-            });
-
-            // Sort by date (newest first)
-            formattedEntries.sort((a, b) => {
-                if (!a.entry_date) return 1;
-                if (!b.entry_date) return -1;
-                return b.entry_date - a.entry_date;
-            });
-
-            setAllEntries(formattedEntries); // Store all entries
-            setEntries(formattedEntries); // Set entries (will be filtered by search)
+            alive.sort((a, b) => (b.entry_date || 0) - (a.entry_date || 0));
+            setAllEntries(alive);
+            setEntries(alive);
         } catch (err) {
             console.error('Error fetching entries:', err);
             setError('Failed to load entries');
         }
     }, [SelectedProject, SelectedTab, Email]);
 
-    // Apply search filtering when searchQuery changes - ONLY ONCE
-    useEffect(() => {
-        if (allEntries.length > 0) {
-            const filtered = filterEntriesBySearch(allEntries, searchQuery);
-            setFilteredEntries(filtered);
-            setEntries(filtered);
-            // Reset to first page when search changes
-            setCurrentPage(1);
-        }
-    }, [searchQuery, allEntries, setFilteredEntries, setCurrentPage]);
-
-    useImperativeHandle(ref, () => ({
-        fetchEntries,
-        fetchColumns
-    }));
+    useImperativeHandle(ref, () => ({ fetchColumns, fetchEntries }));
 
     useEffect(() => {
         let mounted = true;
-
-        const loadData = async () => {
+        const load = async () => {
             setLoading(true);
             setError(null);
-
-            try {
-                if (!mounted) return;
-                setCurrentProject(SelectedProject);
-                setCurrentTable(SelectedTab);
-
-                await Promise.all([fetchColumns(), fetchEntries()]);
-            } catch (err) {
-                if (mounted) {
-                    console.error('Error loading data:', err);
-                    setError('Failed to load data');
-                }
-            } finally {
-                if (mounted) {
-                    setLoading(false);
-                }
-            }
+            setCurrentProject(SelectedProject);
+            setCurrentTable(SelectedTab);
+            await Promise.all([fetchColumns(), fetchEntries()]);
+            if (mounted) setLoading(false);
         };
+        load();
+        return () => { mounted = false; };
+    }, [SelectedProject, SelectedTab, fetchColumns, fetchEntries]);
 
-        loadData();
+    useEffect(() => {
+        if (!searchQuery) {
+            setFilteredEntries(allEntries);
+            setEntries(allEntries);
+        } else {
+            const lower = searchQuery.toLowerCase();
+            const filtered = allEntries.filter(e =>
+                Object.values(e.entry_data).some(val =>
+                    String(val).toLowerCase().includes(lower)
+                )
+            );
+            setFilteredEntries(filtered);
+            setEntries(filtered);
+        }
+        setCurrentPage(1);
+    }, [searchQuery, allEntries, setFilteredEntries]);
 
-        return () => {
-            mounted = false;
-        };
-    }, [SelectedProject, SelectedTab, fetchColumns, fetchEntries, setCurrentProject, setCurrentTable]);
-
-    const sortedEntries = React.useMemo(() => {
+    const sortedEntries = useMemo(() => {
         if (!sortConfig.key) return entries;
-
         return [...entries].sort((a, b) => {
-            const aValue = a.entry_data[sortConfig.key] || '';
-            const bValue = b.entry_data[sortConfig.key] || '';
-
+            const aVal = a.entry_data[sortConfig.key] || '';
+            const bVal = b.entry_data[sortConfig.key] || '';
             if (sortConfig.key === 'entry_date') {
                 return sortConfig.direction === 'asc'
-                    ? new Date(bValue) - new Date(aValue)
-                    : new Date(aValue) - new Date(bValue);
+                    ? (a.entry_date || 0) - (b.entry_date || 0)
+                    : (b.entry_date || 0) - (a.entry_date || 0);
             }
-
-            if (sortConfig.direction === 'asc') {
-                return aValue.toString().localeCompare(bValue.toString());
-            }
-            return bValue.toString().localeCompare(aValue.toString());
+            return sortConfig.direction === 'asc'
+                ? String(aVal).localeCompare(bVal)
+                : String(bVal).localeCompare(aVal);
         });
     }, [entries, sortConfig]);
 
-    const paginatedEntries = React.useMemo(() => {
-        const startIndex = (currentPage - 1) * batchSize;
-        return filteredEntries.slice(startIndex, startIndex + batchSize);
-    }, [filteredEntries, currentPage, batchSize]);
+    const paginatedEntries = useMemo(() => {
+        const start = (currentPage - 1) * batchSize;
+        return sortedEntries.slice(start, start + batchSize);
+    }, [sortedEntries, currentPage, batchSize]);
 
+    const displayedColumns = columns.filter(col =>
+        visibleColumns[SelectedTab]?.[col.id] !== false
+    );
 
-    // Handlers
-    const handleSort = (columnName) => {
-        setSortConfig((prev) => ({
+    const handleSort = columnName => {
+        setSortConfig(prev => ({
             key: columnName,
-            direction: prev.key === columnName && prev.direction === 'asc' ? 'desc' : 'asc',
+            direction:
+                prev.key === columnName && prev.direction === 'asc'
+                    ? 'desc'
+                    : 'asc'
         }));
     };
 
-    useEffect(() => {
-        let mounted = true;
-
-        const loadData = async () => {
-            if (!SelectedProject || !SelectedTab) {
-                console.log('Skipping fetch — missing project or tab:', SelectedProject, SelectedTab);
-                return;
-            }
-
-            setLoading(true);
-            setError(null);
-
-            try {
-                if (!mounted) return;
-
-                setCurrentProject(SelectedProject);
-                setCurrentTable(SelectedTab);
-
-                await Promise.all([fetchColumns(), fetchEntries()]);
-            } catch (err) {
-                if (mounted) {
-                    console.error('Error loading data:', err);
-                    setError('Failed to load data');
-                }
-            } finally {
-                if (mounted) {
-                    setLoading(false);
-                }
-            }
-        };
-
-        loadData();
-
-        return () => {
-            mounted = false;
-        };
-    }, [SelectedProject, SelectedTab, fetchColumns, fetchEntries]);
-
-
-
-    useEffect(() => {
-        if (!searchTerm || searchTerm.trim() === '') {
-            // No search filter applied, use all entries
-            setFilteredEntries(sortedEntries);
-        } else {
-            // Apply search filter
-            const searchTermLower = searchTerm.toLowerCase();
-            const filtered = sortedEntries.filter(entry => {
-                // Search across all fields in entry_data
-                return Object.entries(entry.entry_data || {}).some(([key, value]) =>
-                    String(value).toLowerCase().includes(searchTermLower)
-                );
-            });
-            setFilteredEntries(filtered);
-        }
-
-        // Reset to first page when filters change
-        setCurrentPage(1);
-    }, [sortedEntries, searchTerm]);
-
-
-
-    // New column management handlers
-    const handleColumnOrderChange = (columnId, newValue) => {
-        if (newValue === 'DELETE') {
-            setColumnsToDelete((prev) => [...prev, columnId]);
-        } else {
-            setColumnOrder((prev) => ({
-                ...prev,
-                [columnId]: parseInt(newValue),
-            }));
-            // Remove from delete list if it was there
-            setColumnsToDelete((prev) => prev.filter((id) => id !== columnId));
-        }
-    };
-
-    const handleColumnNameChange = (columnId, newName) => {
-        setEditedColumnNames((prev) => ({
-            ...prev,
-            [columnId]: newName,
-        }));
-    };
-
-    const handleSaveColumnChanges = async () => {
-        if (columnsToDelete.length > 0) {
-            const confirmed = window.confirm(
-                'Warning: Deleting columns will permanently remove all data contained in those columns. Continue?',
-            );
-            if (!confirmed) return;
-        }
-
+    const handleEdit = async entryId => {
         try {
-            await saveColumnChanges(
-                SelectedProject,
-                SelectedTab,
-                columns,
-                columnsToDelete,
-                editedColumnNames,
-                columnOrder,
-                editedColumnTypes,
-                editedRequiredFields,
-                editedIdentifierDomains,
-                editedDropdownOptions
-            );
-            await fetchColumns();
-            await fetchEntries();
-            setShowManageColumns(false);
-            notify(Type.success, 'Column changes saved successfully');
-        } catch (error) {
-            console.error('Error saving column changes:', error);
-            notify(Type.error, 'Failed to save column changes');
-        }
-    };
-
-
-    const handleEdit = async (entryId) => {
-        try {
-            const entryDetails = await getEntryDetails(Email, SelectedProject, SelectedTab, entryId);
-            const editWindow = (
+            const details = await getEntryDetails(Email, SelectedProject, SelectedTab, entryId);
+            setEditWindow(
                 <NewEntry
                     CloseNewEntry={() => setEditWindow(null)}
                     ProjectName={SelectedProject}
                     TabName={SelectedTab}
                     Email={Email}
-                    existingEntry={entryDetails} // Pass the fetched entry details
-                    onEntryUpdated={async () => {
-                        await fetchEntries(); // Refresh entries after editing
-                    }}
+                    existingEntry={details}
+                    onEntryUpdated={() => fetchEntries()}
                 />
             );
-            setEditWindow(editWindow);
-        } catch (error) {
-            console.error('Error fetching entry details:', error);
+        } catch {
             notify(Type.error, 'Failed to fetch entry details');
         }
     };
-
-    const handleDelete = async (entryId) => {
-        const confirmed = window.confirm('Are you sure you want to delete this entry?');
-        if (!confirmed) return;
-
+    const handleDelete = async entryId => {
+        if (!window.confirm('Delete this entry?')) return;
         try {
             await deleteEntry(Email, SelectedProject, SelectedTab, entryId);
-            await fetchEntries(); // Refresh entries
-            notify(Type.success, 'Entry deleted successfully');
-        } catch (error) {
-            console.error('Error deleting entry:', error);
+            fetchEntries();
+            notify(Type.success, 'Entry deleted');
+        } catch {
             notify(Type.error, 'Failed to delete entry');
         }
     };
 
-    useEffect(() => {
-        const refreshColumnsListener = () => {
-            console.log("Refreshing columns after update...");
-            fetchColumns();
-        };
-
-        window.addEventListener("refreshColumns", refreshColumnsListener);
-
-        return () => {
-            window.removeEventListener("refreshColumns", refreshColumnsListener);
-        };
-    }, []);
-
-    useEffect(() => {
-        const checkPermissions = async () => {
-            if (!SelectedProject || !Email) {
-                setIsAdminOrOwner(false);
-                return;
-            }
-
-            try {
-                const projectFields = await getProjectFields(SelectedProject, ['owners', 'admins']);
-                if (!projectFields) {
-                    console.error('No project fields found');
-                    setIsAdminOrOwner(false);
-                    return;
-                }
-                const isAdmin = projectFields.admins?.includes(Email) || false;
-                const isOwner = projectFields.owners?.includes(Email) || false;
-                setIsAdminOrOwner(isAdmin || isOwner);
-            } catch (err) {
-                console.error('Error checking permissions:');
-                setIsAdminOrOwner(false);
-            }
-        };
-
-        checkPermissions();
-    }, [SelectedProject, Email]);
     if (loading) return <div className="p-4 text-center">Loading...</div>;
     if (error) return <div className="p-4 text-center text-red-600">{error}</div>;
 
-    const filteredColumns = columns.filter((col) => !['actions', 'datetime'].includes(col.id));
-    const lastColumnIndex = filteredColumns.length - 1;
-
     return (
         <div className="flex-grow bg-white dark:bg-neutral-950">
-            <div className="flex flex-col">
-                {/* Top section with entry count display -*/}
-                {/* <div className="px-5 py-3 flex justify-end items-center">
-                    <EntryCountDisplay 
-                        currentPageCount={paginatedEntries.length}
-                        totalFilteredCount={filteredEntries.length}
-                        totalCount={allEntries.length}
-                        isFiltered={searchQuery && searchQuery.trim() !== ''}
-                    />
-                </div> */}
-
-                <div className="overflow-x-auto">
-                    <table className="w-full data-table">
-                        <thead>
+            <div className="overflow-x-auto">
+                <table className={displayedColumns.length === 0 ? "w-full data-table" : "w-full-table data-table"}>
+                    <thead>
+                        {displayedColumns.length === 0 ? (
                             <tr className="bg-neutral-100 dark:bg-neutral-800">
-                                <th className="p-2 text-left border-b font-semibold column-border fixed-column">
+                                <th
+                                    className="p-2 text-left border-b font-semibold"
+                                    style={{ width: '100%' }}
+                                >
                                     Actions
                                 </th>
-
-                                {columns
-                                    .filter((col) =>
-                                        !['actions', 'datetime'].includes(col.id) &&
-                                        (visibleColumns[currentTab]?.[col.id] !== false)
-                                    )
-                                    .map((column, index) => {
-                                        const isLastColumn = index === lastColumnIndex;
-                                        return (
-                                            <th
-                                                key={column.id}
-                                                className="p-2 text-left border-b font-semibold cursor-pointer column-border"
-                                                style={{ width: column.width || 150 }}
-                                            >
-                                                <div
-                                                    className="flex items-center justify-between"
-                                                    onClick={() => handleSort(column.name)}
-                                                >
-                                                    <div className={`flex-1 ${column.type === 'identifier' ? 'min-w-[100px]' : ''} ${getColumnClass(column.name)}`}>
-                                                        {column.name}
-                                                        {sortConfig.key === column.name && (
-                                                            <span className="ml-1">
-                                                                {sortConfig.direction === 'asc' ? '↑' : '↓'}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                {!isLastColumn && (
-                                                    <div
-                                                        className="react-resizable-handle"
-                                                        onMouseDown={(e) => {
-                                                            // Add custom resize handler
-                                                            const startX = e.clientX;
-                                                            const startWidth = column.width || 150;
-                                                            e.stopPropagation(); // Prevent sort trigger
-
-                                                            const onMouseMove = (moveEvent) => {
-                                                                const newWidth = Math.max(50, startWidth + (moveEvent.clientX - startX));
-                                                                // Update column width in state
-                                                                setColumns(prev =>
-                                                                    prev.map(col =>
-                                                                        col.id === column.id ? { ...col, width: newWidth } : col
-                                                                    )
-                                                                );
-                                                            };
-
-                                                            const onMouseUp = () => {
-                                                                document.removeEventListener('mousemove', onMouseMove);
-                                                                document.removeEventListener('mouseup', onMouseUp);
-                                                            };
-
-                                                            document.addEventListener('mousemove', onMouseMove);
-                                                            document.addEventListener('mouseup', onMouseUp);
-                                                        }}
-                                                    />
-                                                )}
-                                            </th>
-                                        );
-                                    })
-                                }
                             </tr>
-                        </thead>
-                        <tbody>
-                            {paginatedEntries.length > 0 ? (
-                                paginatedEntries.map((entry) => (
-                                    <tr
-                                        key={entry.id}
-                                        className="hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                        ) : (
+                            <tr className="bg-neutral-100 dark:bg-neutral-800">
+                                <th className="p-2 text-left border-b font-semibold fixed-column">
+                                    Actions
+                                </th>
+                                {displayedColumns.map(col => (
+                                    <th
+                                        key={col.id}
+                                        className="p-2 text-left border-b font-semibold cursor-pointer column-border"
+                                        style={{ width: col.width }}
+                                        onClick={() => handleSort(col.name)}
                                     >
-                                        <td className="p-2 border-b fixed-column">
+                                        <div className="flex items-center">
+                                            {col.name}
+                                            {sortConfig.key === col.name && (
+                                                <span className="ml-1">
+                                                    {sortConfig.direction === 'asc' ? '↑' : '↓'}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <div
+                                            className="react-resizable-handle"
+                                            onMouseDown={e => {
+                                                e.stopPropagation();
+                                                const startX = e.clientX;
+                                                const startW = col.width || 150;
+                                                const onMove = mv => {
+                                                    const newW = Math.max(50, startW + (mv.clientX - startX));
+                                                    setColumns(prev =>
+                                                        prev.map(c =>
+                                                            c.id === col.id ? { ...c, width: newW } : c
+                                                        )
+                                                    );
+                                                };
+                                                const onUp = () => {
+                                                    document.removeEventListener('mousemove', onMove);
+                                                    document.removeEventListener('mouseup', onUp);
+                                                };
+                                                document.addEventListener('mousemove', onMove);
+                                                document.addEventListener('mouseup', onUp);
+                                            }}
+                                        />
+                                    </th>
+                                ))}
+                            </tr>
+                        )}
+                    </thead>
+
+                    <tbody>
+                        {paginatedEntries.length > 0 ? (
+                            paginatedEntries.map(entry => (
+                                <tr
+                                    key={entry.id}
+                                    className="hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                                >
+                                    {displayedColumns.length === 0 ? (
+                                        <td
+                                            className="p-2 border-b text-left"
+                                            style={{ width: '100%' }}
+                                        >
                                             <div className="flex space-x-2">
                                                 <Button
                                                     onClick={() => handleEdit(entry.id)}
                                                     icon={AiFillEdit}
-                                                    flexible={true}
-                                                    className={'flex items-center justify-center'}
+                                                    flexible
+                                                    className="flex items-center justify-center"
                                                 />
                                                 <Button
                                                     onClick={() => handleDelete(entry.id)}
                                                     icon={AiFillDelete}
-                                                    flexible={true}
-                                                    className={'flex items-center justify-center'}
+                                                    flexible
+                                                    className="flex items-center justify-center"
                                                 />
                                             </div>
                                         </td>
-
-                                        {columns
-                                            .filter((col) =>
-                                                !['actions', 'datetime'].includes(col.id) &&
-                                                (visibleColumns[currentTab]?.[col.id] !== false)
-                                            )
-                                            .map((column) => (
+                                    ) : (
+                                        <>
+                                            <td className="p-2 border-b fixed-column">
+                                                <div className="flex space-x-2">
+                                                    <Button
+                                                        onClick={() => handleEdit(entry.id)}
+                                                        icon={AiFillEdit}
+                                                        flexible
+                                                        className="flex items-center justify-center"
+                                                    />
+                                                    <Button
+                                                        onClick={() => handleDelete(entry.id)}
+                                                        icon={AiFillDelete}
+                                                        flexible
+                                                        className="flex items-center justify-center"
+                                                    />
+                                                </div>
+                                            </td>
+                                            {displayedColumns.map(col => (
                                                 <td
-                                                    key={`${entry.id}-${column.id}`}
-                                                    className={`p-2 border-b text-left ${column.type === 'identifier' ? 'min-w-[150px]' : ''
-                                                        } ${getColumnClass(column.name)}`}
+                                                    key={`${entry.id}-${col.id}`}
+                                                    className={`p-2 border-b text-left ${col.type === 'identifier' ? 'min-w-[150px]' : ''
+                                                        }`}
                                                 >
-                                                    {entry.entry_data?.[column.name] || 'N/A'}
+                                                    {(!entry.entry_data[col.name] || entry.entry_data[col.name] == "") ? 'N/A' : entry.entry_data[col.name]}
                                                 </td>
                                             ))}
-                                    </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan={columns.length + 1} className="p-4 text-center text-neutral-500">
-                                        {searchQuery ? 'No entries match your search criteria.' : 'No entries found.'}
-                                    </td>
+                                        </>
+                                    )}
                                 </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                            ))
+                        ) : (
+                            <tr>
+                                <td
+                                    colSpan={displayedColumns.length + 1}
+                                    className="p-4 text-center text-neutral-500"
+                                >
+                                    {searchQuery
+                                        ? 'No entries match your search criteria.'
+                                        : 'No entries found.'}
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
+            </div>
 
-                {showEditWindow && (
-                    <WindowWrapper
-                        header="Edit Entry"
-                        onLeftButton={() => setEditWindow(null)}
-                        leftButtonText="Close"
-                    >
-                        {showEditWindow}
-                    </WindowWrapper>
-                )}
+            {showEditWindow && (
+                <WindowWrapper header="Edit Entry" onLeftButton={() => setEditWindow(null)} leftButtonText="Close">
+                    {showEditWindow}
+                </WindowWrapper>
+            )}
 
-                <div className="px-5 py-3 flex justify-between items-center w-full">
-                    {/* Entry count display at the bottom - kept this one */}
-                    <EntryCountDisplay
-                        currentPageCount={paginatedEntries.length}
-                        totalFilteredCount={filteredEntries.length}
-                        totalCount={allEntries.length}
-                        isFiltered={searchQuery && searchQuery.trim() !== ''}
-                    />
-
-                    <Pagination
-                        currentPage={currentPage}
-                        totalPages={Math.ceil(filteredEntries.length / batchSize)}
-                        onPageChange={setCurrentPage}
-                    />
-                </div>
+            <div className="px-5 py-3 flex justify-between items-center">
+                <EntryCountDisplay
+                    currentPageCount={paginatedEntries.length}
+                    totalFilteredCount={filteredEntries.length}
+                    totalCount={allEntries.length}
+                    isFiltered={!!searchQuery}
+                />
+                <Pagination
+                    currentPage={currentPage}
+                    totalPages={Math.ceil(filteredEntries.length / batchSize)}
+                    onPageChange={setCurrentPage}
+                />
             </div>
         </div>
     );

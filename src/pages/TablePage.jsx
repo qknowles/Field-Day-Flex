@@ -47,8 +47,6 @@ export default function TablePage() {
 
     // Handle search functionality
     const handleSearch = (query) => {
-        console.log("Searching for:", query);
-        // The actual filtering is handled in the DataViewer component
     };
 
     // Reset column visibility
@@ -70,19 +68,17 @@ export default function TablePage() {
 
     useEffect(() => {
         const fetchColumns = async () => {
+            setColumns([]);
             if (selectedProject && selectedTab && email) {
                 try {
                     const columnsData = await getColumnsCollection(selectedProject, selectedTab, email);
-                    const defaultColumns = [
-                        { id: 'actions', name: 'Actions', type: 'actions', order: -3 },
-                        { id: 'datetime', name: 'Date & Time', type: 'datetime', order: -2 },
-                    ];
+                    if (columnsData.length > 0) {
+                        const sortedColumns = [...columnsData].sort(
+                            (a, b) => a.order - b.order
+                        );
 
-                    const sortedColumns = [...defaultColumns, ...columnsData].sort(
-                        (a, b) => a.order - b.order
-                    );
-
-                    setColumns(sortedColumns);
+                        setColumns(sortedColumns);
+                    }
                 } catch (error) {
                     console.error('Error fetching columns:', error);
                 }
@@ -90,19 +86,19 @@ export default function TablePage() {
         };
 
         fetchColumns();
+
+        const handleRefresh = () => fetchColumns();
+        window.addEventListener("refreshColumns", handleRefresh);
+
+        return () => window.removeEventListener("refreshColumns", handleRefresh);
+
     }, [selectedProject, selectedTab, email]);
 
 
     const toggleColumn = (columnId) => {
-        console.log('TablePage - Toggling column:', columnId, 'Tab:', selectedTab);
-
         setVisibleColumns(prev => {
             // Get the current visibility settings for the tab or initialize with empty object
             const currentTabSettings = prev[selectedTab] || {};
-
-            // Log the current state for debugging
-            console.log('Current visibility:', currentTabSettings[columnId]);
-            console.log('Changing to:', !currentTabSettings[columnId]);
 
             // Create a new state object with the updated visibility
             const newState = {
@@ -112,8 +108,6 @@ export default function TablePage() {
                     [columnId]: !currentTabSettings[columnId]
                 }
             };
-
-            console.log('New visibility state:', newState[selectedTab]);
             return newState;
         });
     };
@@ -222,7 +216,6 @@ export default function TablePage() {
     const recordAutoLogin = async () => {
         // Check both the module variable and the ref to be extra safe
         if (!email || hasRecordedLoginForSession.value || autoLoginRecordedRef.current) {
-            console.log('Auto login already recorded this session, skipping');
             return;
         }
 
@@ -242,7 +235,6 @@ export default function TablePage() {
             autoLoginRecordedRef.current = true;
             hasRecordedLoginForSession.value = true;
 
-            console.log('Auto login recorded for:', email);
         } catch (error) {
             console.error('Error recording login history:', error);
         }
@@ -273,7 +265,12 @@ export default function TablePage() {
                 <div className="flex items-center justify-between pt-3 px-5 pb-3 dark:bg-neutral-950 w-full">
                     <div className="flex items-center">
                         <p className="text-2xl mr-6">{selectedTab} - Entries</p>
-                        <Button text="New Entry" onClick={() => setShowNewEntry(true)} className="mr-6" />
+                        <Button
+                            text="New Entry"
+                            onClick={() => setShowNewEntry(true)}
+                            className="mr-6"
+                            disabled={columns.length < 1}
+                        />
                         <Button text="New Column" onClick={() => setShowColumnOptions(true)} className="mr-6" />
                         <Button text="Manage Columns" onClick={() => setShowManageColumns(true)} />
                     </div>
@@ -365,6 +362,7 @@ export default function TablePage() {
                     CancelColumnOptions={() => setShowColumnOptions(false)}
                     OpenNewTab={() => {
                         setShowColumnOptions(false);
+                        window.dispatchEvent(new Event('refreshColumns'));
                         // Refresh DataViewer after adding a column
                         if (dataViewerRef.current) {
                             if (dataViewerRef.current.fetchColumns) {

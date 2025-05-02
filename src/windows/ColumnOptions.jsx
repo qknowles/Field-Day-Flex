@@ -8,6 +8,7 @@ import { useAtomValue } from 'jotai';
 import { currentUserEmail, currentProjectName, currentTableName } from '../utils/jotai.js';
 import { entryTypeOptions } from '../utils/globals.js';
 import InfoIcon from '../components/InfoIcon';
+import { COLUMN_CONSTRAINTS, validateMaxLength, validateMinLength, getValidationError } from '../utils/fieldConstraints';
 
 export default function ColumnOptions({
     ColumnNames,
@@ -30,10 +31,12 @@ export default function ColumnOptions({
     const [rightButtonText, setRightButtonText] = useState('Next Column');
     const [columnIndex, setColumnIndex] = useState(0);
     const [tempEntryOptions, setTempEntryOptions] = useState([]);
+    const [yesNoOptions, setYesNoOptions] = useState([]);
     const [dataType, setDataType] = useState(new Array(ColumnNames.length).fill(''));
     const [entryOptions, setEntryOptions] = useState(Array.from({ length: ColumnNames.length }, () => []));
     const [identifierDomain, setIdentifierDomain] = useState(new Array(ColumnNames.length).fill(false));
     const [requiredField, setRequiredField] = useState(new Array(ColumnNames.length).fill(false));
+    const [allowNegative, setAllowNegative] = useState(new Array(ColumnNames.length).fill(false));
 
     // Create an array of options for components that need a list.
     const entryTypeOptionsArray = Object.values(entryTypeOptions).filter(
@@ -48,6 +51,19 @@ export default function ColumnOptions({
         // Validate that a proper entry type was selected unless going backward.
         if (!entryTypeOptionsArray.includes(dataType[columnIndex]) && direction !== 'goBackward') {
             notify(Type.error, 'Must first select an entry type.');
+            return false;
+        }
+
+        // Validate column name length
+        const validationError = getValidationError(
+            'Column name', 
+            ColumnNames[columnIndex], 
+            COLUMN_CONSTRAINTS.NAME_MIN_LENGTH, 
+            COLUMN_CONSTRAINTS.NAME_MAX_LENGTH
+        );
+        
+        if (validationError && direction !== 'goBackward') {
+            notify(Type.error, validationError);
             return false;
         }
 
@@ -71,8 +87,15 @@ export default function ColumnOptions({
                 notify(Type.error, 'Entry choices must include at least two unique values.');
                 return false;
             }
+
+            // Check if any option exceeds maximum length
+            for (const option of currentOptions) {
+                if (option.length > COLUMN_CONSTRAINTS.ENTRY_OPTION_MAX_LENGTH) {
+                    notify(Type.error, `Option "${option}" exceeds maximum length of ${COLUMN_CONSTRAINTS.ENTRY_OPTION_MAX_LENGTH} characters.`);
+                    return false;
+                }
+            }
         }
-        
         
         if (ColumnNames[columnIndex] === '' || ColumnNames[columnIndex] === null || ColumnNames[columnIndex] === undefined) {
             notify(Type.error, "Column name can't be empty.");
@@ -171,6 +194,7 @@ export default function ColumnOptions({
                         finalEntryOptions[i],
                         identifierDomain[i],
                         requiredField[i],
+                        allowNegative[i],
                     );
                     if (!columnAdded) {
                         notify(Type.error, 'Error adding columns.');
@@ -213,6 +237,11 @@ export default function ColumnOptions({
     }, [columnIndex, storeNewTab, goForward, ColumnNames]);
 
     const handleColumnNameChange = (newName) => {
+        // Enforce maximum length here to handle edge cases
+        if (newName.length > COLUMN_CONSTRAINTS.NAME_MAX_LENGTH) {
+            newName = newName.substring(0, COLUMN_CONSTRAINTS.NAME_MAX_LENGTH);
+        }
+        
         const updatedColumnNames = [...ColumnNames];
         updatedColumnNames[columnIndex] = newName;
         SetColumnNames(updatedColumnNames);
@@ -222,6 +251,13 @@ export default function ColumnOptions({
         setTempEntryOptions(entryOptions[columnIndex]);
         setRightButtonText(columnIndex === ColumnNames.length - 1 ? 'Finish' : 'Next Column');
     }, [columnIndex, ColumnNames.length, entryOptions]);
+
+    // Calculate character count for column name
+    const columnNameCharCount = ColumnNames[columnIndex]?.length || 0;
+    const isColumnNameValid = ColumnNames[columnIndex] ? (
+        validateMinLength(ColumnNames[columnIndex], COLUMN_CONSTRAINTS.NAME_MIN_LENGTH) && 
+        validateMaxLength(ColumnNames[columnIndex], COLUMN_CONSTRAINTS.NAME_MAX_LENGTH)
+    ) : false;
 
     return (
         <WindowWrapper
@@ -237,14 +273,25 @@ export default function ColumnOptions({
                         label="Column Name"
                         layout="horizontal-single"
                         input={
-                            <input
-                                value={ColumnNames[columnIndex]}
-                                onChange={(e) => handleColumnNameChange(e.target.value)}
-                            />
+                            <div className="flex flex-col w-full">
+                                <input
+                                    value={ColumnNames[columnIndex]}
+                                    onChange={(e) => handleColumnNameChange(e.target.value)}
+                                    maxLength={COLUMN_CONSTRAINTS.NAME_MAX_LENGTH}
+                                    className={!isColumnNameValid && ColumnNames[columnIndex] ? "border-red-500" : ""}
+                                />
+                                <div className={`text-xs mt-1 ${
+                                    !isColumnNameValid && ColumnNames[columnIndex] ? "text-red-500" : "text-neutral-500"
+                                }`}>
+                                    {columnNameCharCount}/{COLUMN_CONSTRAINTS.NAME_MAX_LENGTH} characters
+                                    {ColumnNames[columnIndex] && !validateMinLength(ColumnNames[columnIndex], COLUMN_CONSTRAINTS.NAME_MIN_LENGTH) && 
+                                        ` (min: ${COLUMN_CONSTRAINTS.NAME_MIN_LENGTH})`}
+                                </div>
+                            </div>
                         }
                     />
                     <InfoIcon 
-                        text="Enter a descriptive name for this column. This name will be visible in the data table headers."
+                        text={`Enter a descriptive name for this column (${COLUMN_CONSTRAINTS.NAME_MIN_LENGTH}-${COLUMN_CONSTRAINTS.NAME_MAX_LENGTH} characters). This name will be visible in the data table headers.`}
                         position="right"
                         className="ml-2"
                     />
@@ -277,7 +324,7 @@ export default function ColumnOptions({
                         <div className="flex items-center mb-2">
                             <span className="text-sm">Entry Choices:</span>
                             <InfoIcon 
-                                text="Add the options users can select from. Click 'Add Here' to add a new option. At least two unique options are required."
+                                text={`Add the options users can select from (max ${COLUMN_CONSTRAINTS.ENTRY_OPTION_MAX_LENGTH} characters each). Click 'Add Here' to add a new option. At least two unique options are required.`}
                                 position="right"
                                 className="ml-2"
                                 size={14}
@@ -291,7 +338,31 @@ export default function ColumnOptions({
                     </div>
                 )}
 
-                <div className="flex items-center">
+                <div className="flex items-center space-x-2">
+                    {(dataType[columnIndex] === entryTypeOptions.INTEGER ||
+                    dataType[columnIndex] === entryTypeOptions.DECIMAL) && (
+                        <YesNoSelector
+                            label="Allow negative values?"
+                            layout="horizontal-start"
+                            selection={allowNegative[columnIndex]}
+                            setSelection={(selection) =>
+                               setAllowNegative((prev) => {
+                                  const updated = [...prev];
+                                  updated[columnIndex] = selection;
+                                  return updated;
+                               })
+                            }
+                       />
+                       
+                    )}
+                    <InfoIcon
+                        text="When set to Yes, users will be allowed to use negative values for their number type entries."
+                        position="right"
+                        className="ml-2"
+                    />
+                </div>
+
+                <div className="flex items-center space-x-2">
                     <YesNoSelector
                         label="Make column a required field"
                         layout="horizontal-start"
@@ -304,33 +375,34 @@ export default function ColumnOptions({
                             })
                         }
                     />
-                    <InfoIcon 
+                    <InfoIcon
                         text="When set to Yes, users must provide a value for this field before saving an entry."
                         position="right"
                         className="ml-2"
                     />
                 </div>
-
-                <div className="flex items-center">
+               
+                <div className="flex items-center space-x-2">
                     <YesNoSelector
                         label="Include column in entry ID domain"
                         layout="horizontal-start"
                         selection={identifierDomain[columnIndex]}
                         setSelection={(selection) =>
-                            setIdentifierDomain((prev) => {
+                             setIdentifierDomain((prev) => {
                                 const updated = [...prev];
                                 updated[columnIndex] = selection;
                                 return updated;
                             })
                         }
-                    />
-                    <InfoIcon 
+                   />
+                   <InfoIcon 
                         text="If enabled, this field will be used when generating unique identifiers for entries. Useful for creating structured IDs based on field values."
                         position="right"
                         className="ml-2"
                         width={250}
                     />
-                </div>
+               </div>
+
             </div>
         </WindowWrapper>
     );
